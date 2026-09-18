@@ -20,6 +20,23 @@ export interface TrackingRow {
   budget_nature: string
 }
 
+// Helper to get a column value regardless of suffix (handles COLNAME or COLNAME.SUFFIX)
+function getCol(row: any, base: string): any {
+  if (row[base] !== undefined) return row[base]
+  const key = Object.keys(row).find(k => k === base || k.startsWith(base + '.'))
+  return key ? row[key] : undefined
+}
+
+// Convert Excel date serial number to ISO string
+function excelDateToISO(serial: any): string {
+  if (!serial) return ''
+  const num = Number(serial)
+  if (isNaN(num) || num === 0) return String(serial)
+  // Excel serial: days since 1900-01-01 (accounting for 1900 leap year bug)
+  const date = new Date((num - 25569) * 86400 * 1000)
+  return date.toISOString().split('T')[0]
+}
+
 export async function parseOrdersFile(file: File): Promise<OrderRow[]> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -30,21 +47,25 @@ export async function parseOrdersFile(file: File): Promise<OrderRow[]> {
         const sheet = workbook.Sheets[workbook.SheetNames[0]]
         const rows = XLSX.utils.sheet_to_json(sheet)
 
-        const parsed: OrderRow[] = rows.map((row: any) => ({
-          order_number: String(row.COMN_NUM || '').trim(),
-          order_date: String(row.COMD_DATE || '').trim(),
-          work_nature: String(row.WNATURE || '').trim(),
-          work_description: String(row.WNOTES || '').trim(),
-          company_id: String(row.ENTN_NUM || '').trim(),
-          owner_user_id: String(row.UTIC_CODE || '').trim(),
-          budget_nature: String(row.NAAC_CODE || '').trim(),
-          intervention_code: String(row.INTC_CODE || '').trim(),
-          site_city_zip: String(row.WCOMMUNE || '').trim(),
-          site_address: String(row.WADRESSE || '').trim(),
-          amount_ttc: parseFloat(String(row.COMN_MT_DEVIS || 0)),
-        }))
+        const parsed: OrderRow[] = rows.map((row: any) => {
+          const orderNum = getCol(row, 'COMN_NUM')
+          const orderDate = getCol(row, 'COMD_DATE')
+          return {
+            order_number: orderNum != null ? String(orderNum).trim() : '',
+            order_date: excelDateToISO(orderDate),
+            work_nature: String(getCol(row, 'WNATURE') || '').trim(),
+            work_description: String(getCol(row, 'WNOTES') || '').trim(),
+            company_id: String(getCol(row, 'ENTN_NUM') || '').trim(),
+            owner_user_id: String(getCol(row, 'UTIC_CODE') || '').trim(),
+            budget_nature: String(getCol(row, 'NAAC_CODE') || '').trim(),
+            intervention_code: String(getCol(row, 'INTC_CODE') || '').trim(),
+            site_city_zip: String(getCol(row, 'WCOMMUNE') || '').trim(),
+            site_address: String(getCol(row, 'WNOM_ADRESSE') || getCol(row, 'WADRESSE') || '').trim(),
+            amount_ttc: parseFloat(String(getCol(row, 'COMN_MT_DEVIS') || 0)) || 0,
+          }
+        })
 
-        resolve(parsed.filter(r => r.order_number)) // Remove empty rows
+        resolve(parsed.filter(r => r.order_number && r.order_number !== 'undefined'))
       } catch (error) {
         reject(error)
       }
@@ -63,13 +84,16 @@ export async function parseTrackingFile(file: File): Promise<TrackingRow[]> {
         const sheet = workbook.Sheets[workbook.SheetNames[0]]
         const rows = XLSX.utils.sheet_to_json(sheet)
 
-        const parsed: TrackingRow[] = rows.map((row: any) => ({
-          order_number: String(row.COMN_NUM || '').trim(),
-          trade_name: String(row.CORPS_ETAT || '').trim(),
-          budget_nature: String(row.NATURE_BUDGET || '').trim(),
-        }))
+        const parsed: TrackingRow[] = rows.map((row: any) => {
+          const orderNum = getCol(row, 'COMN_NUM')
+          return {
+            order_number: orderNum != null ? String(orderNum).trim() : '',
+            trade_name: String(getCol(row, 'STSC_CORPSETAT') || getCol(row, 'CORPS_ETAT') || '').trim(),
+            budget_nature: String(getCol(row, 'NAAC_CODE') || getCol(row, 'NATURE_BUDGET') || '').trim(),
+          }
+        })
 
-        resolve(parsed.filter(r => r.order_number))
+        resolve(parsed.filter(r => r.order_number && r.order_number !== 'undefined'))
       } catch (error) {
         reject(error)
       }

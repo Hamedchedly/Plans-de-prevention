@@ -6,20 +6,20 @@ export async function listUsers() {
   return data?.users || []
 }
 
-export async function createUser(email: string, password: string, role: string) {
+export async function createUser(email: string, password: string, role: string, operatorCode?: string) {
   const { data, error } = await supabase.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
-    user_metadata: { role },
+    user_metadata: { role, operator_code: operatorCode || null },
   })
   if (error) throw error
   return data.user
 }
 
-export async function updateUserRole(userId: string, role: string) {
+export async function updateUserRole(userId: string, role: string, operatorCode?: string) {
   const { error } = await supabase.auth.admin.updateUserById(userId, {
-    user_metadata: { role },
+    user_metadata: { role, operator_code: operatorCode },
   })
   if (error) throw error
 }

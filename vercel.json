@@ -1,7 +1,6 @@
 {
-  "root": "app",
   "buildCommand": "npm run build",
-  "outputDirectory": "dist",
+  "outputDirectory": "app/dist",
   "devCommand": "npm run dev",
   "framework": "vite"
 }

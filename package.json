@@ -1,0 +1,11 @@
+{
+  "name": "plans-de-prevention-root",
+  "version": "1.0.0",
+  "description": "Plans de Prévention V6 - Root Configuration",
+  "scripts": {
+    "build": "cd app && npm install && npm run build",
+    "dev": "cd app && npm run dev",
+    "start": "cd app && npm run preview"
+  },
+  "private": true
+}

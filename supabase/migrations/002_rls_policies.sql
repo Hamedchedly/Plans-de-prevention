@@ -197,7 +197,7 @@ to authenticated
 using (
   exists (
     select 1 from public.pp_orders o
-    where o.id = prevention_plans.order_id
+    where o.id = order_id
     and (o.owner_user_id = auth.uid() or get_user_role() in ('RESPONSABLE', 'SUPER_ADMIN'))
   )
 );
@@ -208,7 +208,7 @@ to authenticated
 with check (
   exists (
     select 1 from public.pp_orders o
-    where o.id = prevention_plans.order_id
+    where o.id = order_id
     and (o.owner_user_id = auth.uid() or get_user_role() in ('RESPONSABLE', 'SUPER_ADMIN'))
   )
 );
@@ -219,7 +219,7 @@ to authenticated
 using (
   exists (
     select 1 from public.pp_orders o
-    where o.id = prevention_plans.order_id
+    where o.id = order_id
     and (o.owner_user_id = auth.uid() or get_user_role() in ('RESPONSABLE', 'SUPER_ADMIN'))
   )
 );

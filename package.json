@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Plans de Prévention V6 - Root Configuration",
   "scripts": {
-    "build": "cd app && npm install && npm run build",
+    "build": "cd app && npm install && npm run build && cd .. && cp -r app/dist . || true",
     "dev": "cd app && npm run dev",
     "start": "cd app && npm run preview"
   },

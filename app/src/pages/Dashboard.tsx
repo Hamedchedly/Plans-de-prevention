@@ -118,6 +118,12 @@ export default function Dashboard() {
                 ✓ Qualifier
               </button>
               <button
+                onClick={() => navigate({ to: '/plan-preparation' })}
+                className="px-4 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700 font-medium"
+              >
+                📄 Préparer le Plan
+              </button>
+              <button
                 onClick={logout}
                 className="px-4 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700 font-medium"
               >

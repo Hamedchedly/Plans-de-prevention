@@ -3,6 +3,7 @@ import App from './App'
 import Dashboard from '@/pages/Dashboard'
 import Import from '@/pages/Import'
 import Qualification from '@/pages/Qualification'
+import PlanPreparation from '@/pages/PlanPreparation'
 import Admin from '@/pages/Admin'
 import Login from '@/pages/Login'
 
@@ -34,6 +35,12 @@ const qualificationRoute = new Route({
   component: Qualification,
 })
 
+const planPreparationRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: '/plan-preparation',
+  component: PlanPreparation,
+})
+
 const adminRoute = new Route({
   getParentRoute: () => rootRoute,
   path: '/admin',
@@ -45,6 +52,7 @@ const routeTree = rootRoute.addChildren([
   dashboardRoute,
   importRoute,
   qualificationRoute,
+  planPreparationRoute,
   adminRoute,
 ])
 

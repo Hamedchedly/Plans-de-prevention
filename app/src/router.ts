@@ -3,6 +3,7 @@ import App from './App'
 import Dashboard from '@/pages/Dashboard'
 import Import from '@/pages/Import'
 import Qualification from '@/pages/Qualification'
+import Admin from '@/pages/Admin'
 import Login from '@/pages/Login'
 
 const rootRoute = new RootRoute({
@@ -33,11 +34,18 @@ const qualificationRoute = new Route({
   component: Qualification,
 })
 
+const adminRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: '/admin',
+  component: Admin,
+})
+
 const routeTree = rootRoute.addChildren([
   loginRoute,
   dashboardRoute,
   importRoute,
   qualificationRoute,
+  adminRoute,
 ])
 
 export const router = new Router({ routeTree })

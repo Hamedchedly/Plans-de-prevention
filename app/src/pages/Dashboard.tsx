@@ -10,29 +10,50 @@ export default function Dashboard() {
   const [stats, setStats] = useState({ sansPlan: 0, qualifier: 0, filtered: 0, archived: 0 })
   const [orders, setOrders] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [operators, setOperators] = useState<string[]>([])
+  const [selectedOperator, setSelectedOperator] = useState<string>('')
 
   useEffect(() => {
+    loadOperators()
     loadData()
-  }, [activeTab])
+  }, [activeTab, selectedOperator])
+
+  const loadOperators = async () => {
+    const { data } = await supabase
+      .from('pp_orders')
+      .select('owner_user_id')
+      .neq('owner_user_id', null)
+
+    if (data) {
+      const uniqueOps = Array.from(new Set(data.map((d) => d.owner_user_id)))
+      setOperators(uniqueOps as string[])
+    }
+  }
 
   const loadData = async () => {
     setLoading(true)
 
     // Get counts
-    const { count: sansPlan } = await supabase
-      .from('pp_orders')
-      .select('*', { count: 'exact', head: true })
-      .eq('qualification_status', 'PENDING')
+    let countQuery = supabase.from('pp_orders').select('*', { count: 'exact', head: true })
+    if (selectedOperator) {
+      countQuery = countQuery.eq('owner_user_id', selectedOperator)
+    }
 
-    const { count: qualifier } = await supabase
-      .from('pp_orders')
-      .select('*', { count: 'exact', head: true })
-      .eq('qualification_status', 'PENDING')
+    const { count: sansPlan } = await countQuery.eq('qualification_status', 'PENDING')
 
-    const { count: filtered } = await supabase
-      .from('pp_orders')
-      .select('*', { count: 'exact', head: true })
-      .eq('scope_status', 'OUT_OF_SCOPE')
+    let countQuery2 = supabase.from('pp_orders').select('*', { count: 'exact', head: true })
+    if (selectedOperator) {
+      countQuery2 = countQuery2.eq('owner_user_id', selectedOperator)
+    }
+
+    const { count: qualifier } = await countQuery2.eq('qualification_status', 'PENDING')
+
+    let countQuery3 = supabase.from('pp_orders').select('*', { count: 'exact', head: true })
+    if (selectedOperator) {
+      countQuery3 = countQuery3.eq('owner_user_id', selectedOperator)
+    }
+
+    const { count: filtered } = await countQuery3.eq('scope_status', 'OUT_OF_SCOPE')
 
     setStats({
       sansPlan: sansPlan || 0,
@@ -43,6 +64,10 @@ export default function Dashboard() {
 
     // Get orders for current tab
     let query = supabase.from('pp_orders').select('*').limit(20)
+
+    if (selectedOperator) {
+      query = query.eq('owner_user_id', selectedOperator)
+    }
 
     if (activeTab === 'sans-plan') {
       query = query.eq('qualification_status', 'PENDING')
@@ -62,34 +87,62 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Plans de Prévention V6</h1>
-          <div className="flex items-center gap-4">
-            <div className="text-sm text-right">
-              <p className="font-medium text-gray-900">{user?.email}</p>
-              <p className="text-gray-600">{role || 'No role'}</p>
-            </div>
-            {role === 'SUPER_ADMIN' && (
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex justify-between items-center mb-4">
+            <h1 className="text-2xl font-bold">Plans de Prévention V6</h1>
+            <div className="flex items-center gap-4">
+              <div className="text-sm text-right">
+                <p className="font-medium text-gray-900">{user?.email}</p>
+                <p className="text-gray-600">{role || 'No role'}</p>
+              </div>
+              {role === 'SUPER_ADMIN' && (
+                <>
+                  <button
+                    onClick={() => navigate({ to: '/import' })}
+                    className="px-4 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700 font-medium"
+                  >
+                    📤 Import
+                  </button>
+                  <button
+                    onClick={() => navigate({ to: '/admin' })}
+                    className="px-4 py-2 text-sm bg-purple-600 text-white rounded hover:bg-purple-700 font-medium"
+                  >
+                    ⚙️ Config
+                  </button>
+                </>
+              )}
               <button
-                onClick={() => navigate({ to: '/import' })}
-                className="px-4 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700 font-medium"
+                onClick={() => navigate({ to: '/qualification' })}
+                className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 font-medium"
               >
-                📤 Import
+                ✓ Qualifier
               </button>
-            )}
-            <button
-              onClick={() => navigate({ to: '/qualification' })}
-              className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 font-medium"
-            >
-              ✓ Qualifier
-            </button>
-            <button
-              onClick={logout}
-              className="px-4 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700 font-medium"
-            >
-              Déconnexion
-            </button>
+              <button
+                onClick={logout}
+                className="px-4 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700 font-medium"
+              >
+                Déconnexion
+              </button>
+            </div>
           </div>
+
+          {role === 'RESPONSABLE' && (
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-700">Filtrer par opérateur:</label>
+              <select
+                value={selectedOperator}
+                onChange={(e) => setSelectedOperator(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              >
+                <option value="">Tous les opérateurs</option>
+                {operators.map((op) => (
+                  <option key={op} value={op}>
+                    {op}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
       </header>
 

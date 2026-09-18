@@ -2,7 +2,7 @@
 -- Migration 003: Initial reference data and system configuration
 
 -- Bootstrap Trades (from REFERENTIEL_CORPS_ETAT.xlsx)
-insert into public.trades (code, name, description, active) values
+insert into public.pp_trades (code, name, description, active) values
 ('0100', 'Aménagement logement', 'Aménagement des logements', true),
 ('0101', 'Maçonnerie', 'Travaux de maçonnerie générale', true),
 ('0102', 'Réfection voirie et abords', 'Réfection des voiries et abords', true),
@@ -25,7 +25,7 @@ insert into public.trades (code, name, description, active) values
 on conflict (code) do nothing;
 
 -- Bootstrap Risk Catalog (from REFERENTIEL_RISQUES_PLANS_PREVENTION.xlsx)
-insert into public.risk_catalog (code, name, active) values
+insert into public.pp_risk_catalog (code, name, active) values
 ('CHUTE', 'Chute de hauteur', true),
 ('ELECTROCUTION', 'Électrocution', true),
 ('ASPHYXIE', 'Asphyxie/Intoxication', true),
@@ -43,7 +43,7 @@ insert into public.risk_catalog (code, name, active) values
 on conflict (code) do nothing;
 
 -- Bootstrap Measure Catalog (27 safety measures)
-insert into public.measure_catalog (code, name, active) values
+insert into public.pp_measure_catalog (code, name, active) values
 ('EPI_CASQUE', 'Port du casque obligatoire', true),
 ('EPI_HARNAIS', 'Harnais de sécurité obligatoire', true),
 ('EPI_GILET', 'Gilet de signalisation obligatoire', true),
@@ -74,7 +74,7 @@ insert into public.measure_catalog (code, name, active) values
 on conflict (code) do nothing;
 
 -- Bootstrap Email Templates
-insert into public.email_templates (type, subject_template, body_template, version, active) values
+insert into public.pp_email_templates (type, subject_template, body_template, version, active) values
 ('INITIAL_SEND',
   'Fiche de prévention - {{order.order_number}}',
   'Madame, Monsieur {{company.os_contact.last_name}},\n\nVeuillez trouver ci-joint la fiche de prévention pour les travaux {{order.work_nature}}.\n\nDate: {{plan.drafted_at}}\nChargé: {{user.full_name}}\n\nVeuillez valider ou corriger les informations.\n\nCordialement,\n{{user.full_name}}\n{{user.phone}}',
@@ -88,7 +88,7 @@ insert into public.email_templates (type, subject_template, body_template, versi
 on conflict do nothing;
 
 -- Bootstrap Plan Template (v1)
-insert into public.plan_templates (name, active) values
+insert into public.pp_plan_templates (name, active) values
 ('Prevention Plan v1', true)
 on conflict do nothing;
 
@@ -97,9 +97,9 @@ do $$
 declare
   template_id uuid;
 begin
-  select id into template_id from public.plan_templates where name = 'Prevention Plan v1' limit 1;
+  select id into template_id from public.pp_plan_templates where name = 'Prevention Plan v1' limit 1;
 
-  insert into public.plan_template_versions (template_id, version, status, definition_json, created_by)
+  insert into public.pp_plan_template_versions (template_id, version, status, definition_json, created_by)
   values (
     template_id,
     1,

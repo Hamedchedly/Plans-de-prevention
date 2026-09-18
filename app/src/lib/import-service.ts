@@ -30,12 +30,13 @@ export async function importOrders(
   })
 
   // Get scope rules
-  const { data: rules } = await supabase
+  const rulesResult = await supabase
     .from('pp_command_scope_rules')
     .select('*, pp_command_scope_rule_values(value)')
     .eq('active', true)
     .single()
-    .catch(() => ({ data: null }))
+
+  const rules = rulesResult.data
 
   const allowedValues = rules?.pp_command_scope_rule_values?.map((v: any) => v.value) || []
 
@@ -47,12 +48,13 @@ export async function importOrders(
       const scopeStatus = isInScope ? 'IN_SCOPE' : 'OUT_OF_SCOPE'
 
       // Check if exists
-      const { data: existing } = await supabase
+      const existingResult = await supabase
         .from('pp_orders')
         .select('id')
         .eq('order_number', order.order_number)
         .single()
-        .catch(() => ({ data: null }))
+
+      const existing = existingResult.data
 
       if (existing) {
         result.skipped++
@@ -97,12 +99,13 @@ export async function importOrders(
         // Try to link trades from tracking
         for (const track of trackedRows) {
           // Find trade by name or code
-          const { data: trade } = await supabase
+          const tradeResult = await supabase
             .from('pp_trades')
             .select('id')
             .or(`name.ilike.%${track.trade_name}%, code.eq.${track.trade_name}`)
             .single()
-            .catch(() => ({ data: null }))
+
+          const trade = tradeResult.data
 
           if (trade) {
             await supabase.from('pp_order_trades').insert({
@@ -153,9 +156,8 @@ export async function qualifyOrder(
 export async function getOrdersNeedingQualification() {
   const { data } = await supabase
     .from('pp_orders')
-    .select('*, pp_order_trades(id)')
+    .select('*')
     .eq('qualification_status', 'PENDING')
-    .eq('pp_order_trades.source', 'BUDGET_TRACKING', { not: true })
 
   return data || []
 }

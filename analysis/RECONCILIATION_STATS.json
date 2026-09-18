@@ -1,0 +1,13 @@
+{
+  "commandes_total": 867,
+  "commandes_uniques": 867,
+  "commandes_trouvees_dans_suivi": 186,
+  "commandes_absentes_du_suivi": 681,
+  "commandes_suivi_uniques": 1026,
+  "s11_commandes": 36,
+  "s11_trouvees_dans_suivi": 20,
+  "s11_absentes_du_suivi": 16,
+  "date_max_commandes": "2026-09-18",
+  "commandes_derniers_7_jours": 82,
+  "commandes_derniers_30_jours": 431
+}

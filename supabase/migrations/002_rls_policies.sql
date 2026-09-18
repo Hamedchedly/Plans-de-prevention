@@ -338,20 +338,3 @@ on public.pp_workflow_events for insert
 to authenticated
 with check (get_user_role() in ('CHARGE_OPERATIONS', 'RESPONSABLE', 'SUPER_ADMIN'));
 
--- Enable RLS on tables that have policies
-alter table public.pp_user_profiles enable row level security;
-alter table public.pp_companies enable row level security;
-alter table public.pp_company_contacts enable row level security;
-alter table public.pp_order_trades enable row level security;
-alter table public.pp_order_reconciliation enable row level security;
-alter table public.pp_trades enable row level security;
-alter table public.pp_nature_catalog enable row level security;
-alter table public.pp_risk_catalog enable row level security;
-alter table public.pp_measure_catalog enable row level security;
-alter table public.pp_command_scope_rules enable row level security;
-alter table public.pp_command_scope_rule_values enable row level security;
-alter table public.pp_email_templates enable row level security;
-alter table public.pp_plan_templates enable row level security;
-alter table public.pp_plan_template_versions enable row level security;
-alter table public.pp_imports enable row level security;
-alter table public.pp_workflow_events enable row level security;

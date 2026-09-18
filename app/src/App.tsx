@@ -1,9 +1,16 @@
 import { useAuth } from '@/context/AuthContext'
-import LoginPage from '@/pages/Login'
-import Dashboard from '@/pages/Dashboard'
+import { Outlet, useNavigate } from '@tanstack/react-router'
+import { useEffect } from 'react'
 
 export default function App() {
   const { user, loading } = useAuth()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate({ to: '/login' })
+    }
+  }, [user, loading, navigate])
 
   if (loading) {
     return (
@@ -16,5 +23,5 @@ export default function App() {
     )
   }
 
-  return user ? <Dashboard /> : <LoginPage />
+  return <Outlet />
 }

@@ -1,0 +1,301 @@
+/* Custom Styles */
+
+:root {
+  --primary-color: #2563eb;
+  --primary-dark: #1e40af;
+  --success-color: #16a34a;
+  --warning-color: #ea580c;
+  --danger-color: #dc2626;
+  --light-gray: #f3f4f6;
+  --medium-gray: #9ca3af;
+  --dark-gray: #374151;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  color: var(--dark-gray);
+  line-height: 1.5;
+}
+
+/* Tables */
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+table th {
+  background-color: #f3f4f6;
+  font-weight: 600;
+  text-align: left;
+  padding: 12px 24px;
+  font-size: 0.875rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+table td {
+  padding: 12px 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+table tr:hover {
+  background-color: #f9fafb;
+}
+
+/* Forms */
+input[type="text"],
+input[type="file"],
+input[type="number"],
+textarea,
+select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+input[type="text"]:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+input[readonly],
+input[disabled] {
+  background-color: #f3f4f6;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+
+/* Checkboxes and Radio */
+input[type="checkbox"],
+input[type="radio"] {
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary-color);
+}
+
+label {
+  cursor: pointer;
+}
+
+/* Buttons */
+button {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-block;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.bg-blue-600 {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.bg-blue-600:hover {
+  background-color: var(--primary-dark);
+}
+
+.bg-green-600 {
+  background-color: var(--success-color);
+  color: white;
+}
+
+.bg-green-600:hover {
+  background-color: #15803d;
+}
+
+.bg-orange-600 {
+  background-color: var(--warning-color);
+  color: white;
+}
+
+.bg-orange-600:hover {
+  background-color: #c2410c;
+}
+
+.bg-gray-400,
+.bg-gray-600 {
+  color: white;
+}
+
+/* Fieldsets */
+fieldset {
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+legend {
+  padding: 0 8px;
+  font-weight: 600;
+  font-size: 1.125rem;
+}
+
+/* Cards and Shadows */
+.shadow {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.shadow-lg {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+/* PDF Preview */
+#pdfContent {
+  background: white;
+  color: black;
+  margin: 0 auto;
+  font-family: Arial, sans-serif;
+  font-size: 11pt;
+  line-height: 1.4;
+  page-break-inside: avoid;
+}
+
+#pdfContent h1 {
+  font-size: 24pt;
+  margin: 0;
+}
+
+#pdfContent h2 {
+  font-size: 14pt;
+  margin-top: 12pt;
+  margin-bottom: 8pt;
+  border-bottom: 2px solid #1e40af;
+  padding-bottom: 4pt;
+}
+
+#pdfContent table {
+  margin: 8pt 0;
+}
+
+#pdfContent table td {
+  padding: 4pt 8pt;
+}
+
+#pdfContent ul {
+  margin: 6pt 0;
+  padding-left: 20pt;
+}
+
+#pdfContent li {
+  margin: 4pt 0;
+}
+
+/* Print styles */
+@media print {
+  body {
+    background: white;
+  }
+
+  nav {
+    display: none;
+  }
+
+  #pdfContent {
+    box-shadow: none;
+    width: 100%;
+  }
+
+  button {
+    display: none;
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  nav {
+    padding: 12px 16px;
+  }
+
+  main {
+    padding: 16px;
+  }
+
+  table {
+    font-size: 0.875rem;
+  }
+
+  table th,
+  table td {
+    padding: 8px 12px;
+  }
+
+  .grid {
+    gap: 12px;
+  }
+
+  button {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+}
+
+/* Utility classes */
+.text-center {
+  text-align: center;
+}
+
+.text-sm {
+  font-size: 0.875rem;
+}
+
+.font-semibold {
+  font-weight: 600;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+.mb-4 {
+  margin-bottom: 16px;
+}
+
+.mb-6 {
+  margin-bottom: 24px;
+}
+
+.mt-4 {
+  margin-top: 16px;
+}
+
+.hidden {
+  display: none;
+}
+
+.opacity-50 {
+  opacity: 0.5;
+}
+
+.cursor-not-allowed {
+  cursor: not-allowed;
+}

@@ -1,91 +1,33 @@
-import { useState } from 'react'
-import { useAuth } from '@/context/AuthContext'
+import { useState, type FormEvent } from 'react'
+import { useAuth } from '../lib/auth'
+import { Button, Card, Notice, fieldClass, errMsg } from '../components/ui'
 
-export default function LoginPage() {
+export default function Login() {
+  const { signIn } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const { login } = useAuth()
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
 
-  async function handleLogin(e: React.FormEvent) {
+  const submit = async (e: FormEvent) => {
     e.preventDefault()
-    setError('')
-    setLoading(true)
-
-    try {
-      await login(email, password)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed')
-    } finally {
-      setLoading(false)
-    }
+    setBusy(true); setErr(null)
+    try { await signIn(email.trim(), password) } catch (x) { setErr(errMsg(x)) } finally { setBusy(false) }
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
-      <div className="w-full max-w-md space-y-8">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold tracking-tight foreground mb-2">
-            Plans de Prévention V6
-          </h1>
-          <p className="text-muted-foreground">
-            Gestion des plans de prévention
-          </p>
-        </div>
-
-        <form onSubmit={handleLogin} className="space-y-6 bg-card p-8 rounded-lg border">
-          {error && (
-            <div className="p-4 bg-destructive/10 text-destructive rounded-md text-sm">
-              {error}
-            </div>
-          )}
-
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium mb-2">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="super_admin@example.com"
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium mb-2">
-              Mot de passe
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="••••••••"
-              required
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-md font-medium hover:opacity-90 disabled:opacity-50 transition"
-          >
-            {loading ? 'Connexion...' : 'Se connecter'}
-          </button>
-
-          <div className="text-center text-sm text-muted-foreground space-y-1">
-            <p>Bootstrap users (development):</p>
-            <p>super_admin / superadmin</p>
-            <p>user / user</p>
-          </div>
+    <div className="mx-auto mt-16 max-w-sm px-4">
+      <Card>
+        <h1 className="mb-1 text-lg font-semibold">Plans de prévention</h1>
+        <p className="mb-4 text-sm text-muted-foreground">Secteur 11 · connexion</p>
+        <form onSubmit={submit} className="space-y-3">
+          <input className={fieldClass} type="email" placeholder="Adresse e-mail" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="username" />
+          <input className={fieldClass} type="password" placeholder="Mot de passe" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
+          {err && <Notice tone="error">{err}</Notice>}
+          <Button type="submit" className="w-full" disabled={busy}>{busy ? 'Connexion…' : 'Se connecter'}</Button>
         </form>
-      </div>
+        <p className="mt-4 text-xs text-muted-foreground">Les comptes sont créés par un Super Admin.</p>
+      </Card>
     </div>
   )
 }

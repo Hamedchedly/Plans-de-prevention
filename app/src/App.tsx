@@ -1,27 +1,73 @@
-import { useAuth } from '@/context/AuthContext'
-import { Outlet, useNavigate } from '@tanstack/react-router'
-import { useEffect } from 'react'
+import { useState } from 'react'
+import { useAuth } from './lib/auth'
+import type { OrderRow } from './lib/types'
+import { Button, Card, Notice } from './components/ui'
+import Login from './pages/Login'
+import Dashboard from './pages/Dashboard'
+import PlanEditor from './pages/PlanEditor'
+import ImportPage from './pages/Import'
+import Admin from './pages/Admin'
+
+type Page = 'commandes' | 'import' | 'administration'
 
 export default function App() {
-  const { user, loading } = useAuth()
-  const navigate = useNavigate()
+  const { session, profile, loading, signOut } = useAuth()
+  const [page, setPage] = useState<Page>('commandes')
+  const [editing, setEditing] = useState<OrderRow | null>(null)
 
-  useEffect(() => {
-    if (!loading && !user) {
-      navigate({ to: '/login' })
-    }
-  }, [user, loading, navigate])
+  if (loading) return <div className="p-8 text-sm text-muted-foreground">Chargement…</div>
+  if (!session) return <Login />
 
-  if (loading) {
+  if (!profile || !profile.is_active) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="text-center">
-          <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Chargement...</p>
-        </div>
+      <div className="mx-auto mt-16 max-w-md px-4">
+        <Card>
+          <h1 className="mb-2 text-lg font-semibold">Accès non disponible</h1>
+          <p className="mb-4 text-sm text-muted-foreground">
+            {profile ? 'Ce compte est désactivé.' : 'Aucun profil n’est associé à ce compte.'} Demandez à un Super Admin de l’activer.
+          </p>
+          <Button variant="ghost" onClick={() => signOut()}>Se déconnecter</Button>
+        </Card>
       </div>
     )
   }
 
-  return <Outlet />
+  const isManager = profile.role === 'RESPONSABLE' || profile.role === 'SUPER_ADMIN'
+  const navItems: { key: Page; label: string; show: boolean }[] = [
+    { key: 'commandes', label: 'Commandes', show: true },
+    { key: 'import', label: 'Import', show: isManager },
+    { key: 'administration', label: 'Administration', show: isManager },
+  ]
+
+  return (
+    <div className="min-h-screen">
+      <header className="border-b border-border bg-card">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-3">
+          <div className="mr-auto">
+            <div className="text-sm font-semibold">Plans de prévention · Secteur 11</div>
+            <div className="text-xs text-muted-foreground">{profile.full_name || profile.email} · {profile.role}</div>
+          </div>
+          {navItems.filter((n) => n.show).map((n) => (
+            <Button key={n.key} variant={page === n.key && !editing ? 'primary' : 'ghost'} onClick={() => { setEditing(null); setPage(n.key) }}>
+              {n.label}
+            </Button>
+          ))}
+          <Button variant="ghost" onClick={() => signOut()}>Quitter</Button>
+        </div>
+      </header>
+      <main className="mx-auto max-w-7xl px-4 py-6">
+        {editing ? (
+          <PlanEditor order={editing} onBack={() => setEditing(null)} />
+        ) : page === 'commandes' ? (
+          <Dashboard onOpen={setEditing} />
+        ) : page === 'import' && isManager ? (
+          <ImportPage />
+        ) : page === 'administration' && isManager ? (
+          <Admin />
+        ) : (
+          <Notice tone="error">Accès refusé.</Notice>
+        )}
+      </main>
+    </div>
+  )
 }

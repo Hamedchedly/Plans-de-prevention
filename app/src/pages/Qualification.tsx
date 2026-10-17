@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { qualifyOrder } from '@/lib/import-service'
+import { qualifyOrder, EXCLUDED_BUDGET_NATURES } from '@/lib/import-service'
 import { useAuth } from '@/context/AuthContext'
 
 interface Order {
@@ -32,12 +32,18 @@ export default function Qualification() {
   }, [])
 
   const loadData = async () => {
-    // Get orders needing qualification
-    const { data: ordersData } = await supabase
+    // Get orders needing qualification — exclude HO permanently, filter by operator if applicable
+    let q = supabase
       .from('pp_orders')
-      .select('id, order_number, work_nature, work_description, site_address')
+      .select('id, order_number, work_nature, work_description, site_address, owner_user_id, budget_nature')
       .eq('qualification_status', 'PENDING')
-      .limit(100)
+      .not('budget_nature', 'in', `(${EXCLUDED_BUDGET_NATURES.join(',')})`)
+
+    if (user?.user_metadata?.role === 'CHARGE_OPERATIONS' && user?.user_metadata?.operator_code) {
+      q = q.eq('owner_user_id', user.user_metadata.operator_code)
+    }
+
+    const { data: ordersData } = await q.limit(100)
 
     // Get trades
     const { data: tradesData } = await supabase

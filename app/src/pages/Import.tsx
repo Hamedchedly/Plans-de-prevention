@@ -173,29 +173,24 @@ export default function Import() {
     setStep('preview')
   }
 
+  const [importMessage, setImportMessage] = useState('')
+
   const handleImport = async () => {
     setStep('importing')
     setGlobalError(null)
     setImportProgress(0)
+    setImportMessage('Démarrage...')
 
     try {
       const { valid } = validateOrders(parsedOrders.current)
       const { unique } = detectDuplicates(valid)
 
-      // Simulate progress steps
-      const progressInterval = setInterval(() => {
-        setImportProgress(p => Math.min(p + 2, 90))
-      }, 200)
-
-      const result = await importOrders(unique, parsedTracking.current)
-
-      clearInterval(progressInterval)
-      setImportProgress(100)
-
-      setImportResult({
-        ...result,
-        total: unique.length,
+      const result = await importOrders(unique, parsedTracking.current, (pct, msg) => {
+        setImportProgress(pct)
+        setImportMessage(msg)
       })
+
+      setImportResult({ ...result, total: unique.length })
       setStep('done')
     } catch (e) {
       setGlobalError(String(e))
@@ -461,10 +456,10 @@ export default function Import() {
                   </div>
                 </div>
                 <p className="text-sm font-medium text-gray-700">
-                  Importation en cours... {importProgress}%
+                  {importMessage || 'Importation en cours...'} {importProgress}%
                 </p>
                 <p className="text-xs text-gray-400 mt-1">
-                  Traitement de {preview.orders.length} commandes, veuillez patienter
+                  {preview.orders.length} commandes — opérations en cours, veuillez patienter
                 </p>
               </div>
             )}

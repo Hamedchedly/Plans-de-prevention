@@ -3,26 +3,45 @@ import JSZip from 'jszip'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import type { Referentiel } from '../lib/refdata'
-import { computeMeasures, proposeRisks, type NatureRef } from '../lib/rules'
+import { computeMeasures, proposeRisks, searchNatures, type NatureRef } from '../lib/rules'
 import { buildPlanPdf, planFileName } from '../lib/planPdf'
 import { defaultPeriod, fmtFr } from '../lib/period'
+import { natureCandidates, type OrderSuggestion } from '../lib/natureSuggest'
 import type { OrderRow } from '../lib/types'
 import type { CompanyRow } from '../pages/AdminCompanies'
 import { Badge, Button, Card, Notice, errMsg, fieldClass } from './ui'
-import type { OrderSuggestion } from '../lib/natureSuggest'
 
-interface Line { orderNumber: string; natureId: number | null; lots: number[] }
+interface Period { start: string; end: string }
+interface Line {
+  orderNumber: string
+  natureId: number | null
+  lots: number[]
+  risks: string[]          // risques cochés
+  measures: string[]       // mesures cochées
+  companyFills: boolean    // date d'intervention à renseigner par l'entreprise
+  period: Period
+}
 interface CompanyEdit { name: string; os_email: string }
 
-const STEPS = ['Natures et lots', 'Entreprises', 'Aperçu PDF', 'Export']
+const STEPS = ['Nature et lots', 'Risques et mesures', 'Entreprise et date', 'Aperçu et export']
+const OVERVIEW = STEPS.length - 1
+const BY_ORDER_STEPS = STEPS.length - 1
 
-/** Données de la fiche pour une ligne : risques et mesures déduits comme dans l'éditeur. */
-function sheetFor(line: Line, ref: Referentiel) {
-  const nature = line.natureId != null ? ref.natures.find((n) => n.id === line.natureId) : undefined
-  const natures: NatureRef[] = nature ? [nature] : []
-  const risks = proposeRisks(ref.lotDefaults, line.lots, natures)
-  const measures = computeMeasures(new Set(risks.keys()), ref.rules)
-  return { nature, risks, measures }
+const unique = <T,>(xs: T[]) => [...new Set(xs)]
+
+/** Risques proposés pour une nature et des lots, et mesures qui en découlent (mêmes règles que l'éditeur). */
+function derive(ref: Referentiel, natureId: number | null, lots: number[], previousMeasures: string[] = []) {
+  const nature = natureId != null ? ref.natures.find((n) => n.id === natureId) : undefined
+  const proposal = proposeRisks(ref.lotDefaults, lots, nature ? [nature] : [])
+  const risks = [...proposal.keys()]
+  return { risks, proposal, measures: measuresFor(ref, risks, previousMeasures) }
+}
+
+/** Mesures : calculées à partir des risques cochés, plus les mesures manuelles déjà cochées. */
+function measuresFor(ref: Referentiel, risks: string[], previous: string[]) {
+  const computed = computeMeasures(new Set(risks), ref.rules)
+  const manual = previous.filter((c) => ref.rules.find((r) => r.code === c)?.ruleType === 'MANUAL')
+  return unique([...computed, ...manual])
 }
 
 export default function BulkPlanWizard({
@@ -43,65 +62,59 @@ export default function BulkPlanWizard({
     email: profile.contact_email || profile.email || '',
     phone: profile.phone || '',
   } : null)
-  const [periods, setPeriods] = useState<Map<string, { start: string; end: string }>>(() =>
-    new Map(orders.map((o) => [o.order_number, defaultPeriod(o.order_date, o.period_start, o.period_end)])))
-  const periodText = (n: string) => {
-    const p = periods.get(n)
-    return p ? `${fmtFr(p.start)} au ${fmtFr(p.end)}` : ''
-  }
+
+  const byNumber = useMemo(() => new Map(orders.map((o) => [o.order_number, o])), [orders])
+
+  // Préremplissage : nature seulement si la suggestion est fiable ; lots et risques/mesures en découlent.
+  const [lines, setLines] = useState<Line[]>(() => orders.map((o) => {
+    const sg = suggestions.get(o.order_number)
+    const natureId = sg?.confident && sg.natureId != null ? sg.natureId : null
+    const nature = natureId != null ? ref.natures.find((n) => n.id === natureId) : undefined
+    const lots = unique([...(nature?.lots ?? []), ...(nature && sg?.lot != null ? [sg.lot] : [])])
+    const d = derive(ref, natureId, lots)
+    return {
+      orderNumber: o.order_number, natureId, lots, risks: d.risks, measures: d.measures,
+      companyFills: false, period: defaultPeriod(o.order_date, o.period_start, o.period_end),
+    }
+  }))
+  const [cur, setCur] = useState(0)
   const [step, setStep] = useState(0)
+  const [queries, setQueries] = useState<Record<string, string>>({})
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState<string | null>(null)
+  const [previewIndex, setPreviewIndex] = useState(0)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
-  // Pré-sélection uniquement pour une suggestion fiable (même règle que la liste et l'éditeur).
-  const [lines, setLines] = useState<Line[]>(() => orders.map((o) => {
-    const sg = suggestions.get(o.order_number)
-    const nature = sg?.confident && sg.natureId != null ? ref.natures.find((n) => n.id === sg.natureId) : undefined
-    const lots = new Set<number>(nature?.lots ?? [])
-    if (nature && sg?.lot != null) lots.add(sg.lot)
-    return { orderNumber: o.order_number, natureId: nature?.id ?? null, lots: [...lots] }
+  const line = lines[cur]
+  const order = byNumber.get(line.orderNumber)
+  const sg = suggestions.get(line.orderNumber)
+  const nature = line.natureId != null ? ref.natures.find((n) => n.id === line.natureId) : undefined
+
+  const updateLine = (orderNumber: string, change: (l: Line) => Partial<Line>) =>
+    setLines((prev) => prev.map((l) => (l.orderNumber === orderNumber ? { ...l, ...change(l) } : l)))
+
+  const chooseNature = (natureId: number | null) => updateLine(line.orderNumber, (l) => {
+    const n = natureId != null ? ref.natures.find((x) => x.id === natureId) : undefined
+    const lots = unique([...l.lots, ...(n?.lots ?? [])])
+    const d = derive(ref, natureId, lots, l.measures)
+    return { natureId, lots, risks: d.risks, measures: d.measures }
+  })
+  const toggleLot = (code: number) => updateLine(line.orderNumber, (l) => {
+    const lots = l.lots.includes(code) ? l.lots.filter((c) => c !== code) : [...l.lots, code]
+    const d = derive(ref, l.natureId, lots, l.measures)
+    return { lots, risks: d.risks, measures: d.measures }
+  })
+  const toggleRisk = (code: string) => updateLine(line.orderNumber, (l) => {
+    const risks = l.risks.includes(code) ? l.risks.filter((c) => c !== code) : [...l.risks, code]
+    return { risks, measures: measuresFor(ref, risks, l.measures) }
+  })
+  const toggleMeasure = (code: string) => updateLine(line.orderNumber, (l) => ({
+    measures: l.measures.includes(code) ? l.measures.filter((c) => c !== code) : [...l.measures, code],
   }))
 
-  const byNumber = useMemo(() => new Map(orders.map((o) => [o.order_number, o])), [orders])
+  // ---- entreprises (corrections partagées par commande)
   const isisOf = (orderNumber: string) => byNumber.get(orderNumber)?.isis_code ?? null
-
-  // ---- étape 1 : commandes sans nature (à choisir) et groupes par nature
-  const pendingLines = useMemo(() => lines.filter((l) => l.natureId == null), [lines])
-  const groups = useMemo(() => {
-    const g = new Map<string, Line[]>()
-    for (const l of lines) {
-      if (l.natureId == null) continue
-      const key = String(l.natureId)
-      g.set(key, [...(g.get(key) ?? []), l])
-    }
-    return [...g.entries()]
-  }, [lines])
-
-  const setLineNature = (orderNumber: string, natureId: number | null) => {
-    setLines((prev) => prev.map((l) => {
-      if (l.orderNumber !== orderNumber) return l
-      const nature = natureId != null ? ref.natures.find((n) => n.id === natureId) : undefined
-      return { ...l, natureId, lots: [...new Set([...l.lots, ...(nature?.lots ?? [])])] }
-    }))
-  }
-
-  const setGroupNature = (key: string, natureId: number | null) => {
-    setLines((prev) => prev.map((l) => {
-      if ((l.natureId == null ? 'none' : String(l.natureId)) !== key) return l
-      const nature = natureId != null ? ref.natures.find((n) => n.id === natureId) : undefined
-      return { ...l, natureId, lots: [...new Set([...l.lots, ...(nature?.lots ?? [])])] }
-    }))
-  }
-  const toggleGroupLot = (key: string, code: number) => {
-    setLines((prev) => prev.map((l) => {
-      if ((l.natureId == null ? 'none' : String(l.natureId)) !== key) return l
-      return { ...l, lots: l.lots.includes(code) ? l.lots.filter((c) => c !== code) : [...l.lots, code] }
-    }))
-  }
-
-  // ---- étape 2 : entreprises
-  const isisList = useMemo(() => [...new Set(lines.map((l) => isisOf(l.orderNumber)).filter((x): x is string => !!x))], [lines, byNumber]) // eslint-disable-line react-hooks/exhaustive-deps
   const [edits, setEdits] = useState<Map<string, CompanyEdit>>(new Map())
   const companyOf = (isis: string): CompanyEdit => edits.get(isis) ?? { name: companies.get(isis)?.name ?? '', os_email: companies.get(isis)?.os_email ?? '' }
   const setEdit = (isis: string, field: keyof CompanyEdit, value: string) => {
@@ -121,40 +134,42 @@ export default function BulkPlanWizard({
         const { error } = await supabase.rpc('propose_company', { p_isis: isis, p_fields: { name: e.name, os_email: e.os_email } })
         if (error) throw new Error(`${isis} : ${error.message}`)
       }
-      setErr(null)
       setProgress('Corrections proposées : elles seront validées par le Super Admin.')
     } catch (e) { setErr(errMsg(e)) } finally { setBusy(false) }
   }
 
-  // ---- étape 3 : aperçu
-  const [previewIndex, setPreviewIndex] = useState(0)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const current = lines[previewIndex]
+  // ---- données de fiche (aperçu et export partagent la même construction)
+  const pdfInput = (l: Line, o: OrderRow) => {
+    const n = l.natureId != null ? ref.natures.find((x) => x.id === l.natureId) : undefined
+    return {
+      orderNumber: o.order_number,
+      lotNames: l.lots.map((c) => ref.lotNameByCode.get(c) ?? `Lot ${c}`),
+      taskLabel: n?.label ?? o.nature_text ?? '',
+      activity: o.nature_text ?? o.description ?? '',
+      zone: [o.address, o.city, o.tranche_name].filter(Boolean).join(' · '),
+      period: l.companyFills ? 'À renseigner par l’entreprise' : `${fmtFr(l.period.start)} au ${fmtFr(l.period.end)}`,
+      companyLabel: companyLabel(o.isis_code),
+      risks: l.risks.map((c) => ref.riskLabel.get(c) ?? c),
+      measures: l.measures.map((c) => ({
+        family: ref.measures.find((m) => m.code === c)?.family ?? 'Autres',
+        label: ref.measures.find((m) => m.code === c)?.label ?? c,
+      })),
+      redactor: redactorOf(),
+      date: new Date().toLocaleDateString('fr-FR'),
+    }
+  }
+
+  // ---- aperçu PDF (étape finale)
   useEffect(() => {
-    if (step !== 2 || !current) return
+    if (step !== OVERVIEW) return
+    const l = lines[previewIndex]
+    const o = l && byNumber.get(l.orderNumber)
+    if (!l || !o) return
     let url: string | null = null
     let alive = true
     ;(async () => {
       try {
-        const order = byNumber.get(current.orderNumber)
-        if (!order) return
-        const { nature, risks, measures } = sheetFor(current, ref)
-        const bytes = await buildPlanPdf({
-          orderNumber: order.order_number,
-          lotNames: current.lots.map((c) => ref.lotNameByCode.get(c) ?? `Lot ${c}`),
-          taskLabel: nature?.label ?? order.nature_text ?? '',
-          activity: order.nature_text ?? order.description ?? '',
-          zone: [order.address, order.city, order.tranche_name].filter(Boolean).join(' · '),
-          period: periodText(order.order_number),
-          companyLabel: companyLabel(order.isis_code),
-          risks: [...risks.keys()].map((c) => ref.riskLabel.get(c) ?? c),
-          measures: [...measures].map((c) => ({
-            family: ref.measures.find((m) => m.code === c)?.family ?? 'Autres',
-            label: ref.measures.find((m) => m.code === c)?.label ?? c,
-          })),
-          redactor: redactorOf(),
-          date: new Date().toLocaleDateString('fr-FR'),
-        })
+        const bytes = await buildPlanPdf(pdfInput(l, o))
         const blob = new Blob([bytes as BlobPart], { type: 'application/pdf' })
         url = URL.createObjectURL(blob)
         if (alive) setPreviewUrl(url); else URL.revokeObjectURL(url)
@@ -162,9 +177,9 @@ export default function BulkPlanWizard({
     })()
     return () => { alive = false; if (url) URL.revokeObjectURL(url); setPreviewUrl(null) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, previewIndex, current?.orderNumber, current?.natureId, current?.lots.join(','), edits, periods])
+  }, [step, previewIndex, lines, edits])
 
-  // ---- étape 4 : création des fiches et export ZIP
+  // ---- export : enregistrement de chaque fiche, PDF, ZIP
   const exportAll = async () => {
     setBusy(true); setErr(null); setProgress(null)
     const zip = new JSZip()
@@ -172,56 +187,45 @@ export default function BulkPlanWizard({
     const failures: string[] = []
     let done = 0
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i]
-      const order = byNumber.get(line.orderNumber)
-      if (!order) continue
-      setProgress(`Fiche ${i + 1} / ${lines.length} : ${line.orderNumber}`)
+      const l = lines[i]
+      const o = byNumber.get(l.orderNumber)
+      if (!o) continue
+      setProgress(`Fiche ${i + 1} / ${lines.length} : ${l.orderNumber}`)
       try {
-        const { nature, risks, measures } = sheetFor(line, ref)
+        const n = l.natureId != null ? ref.natures.find((x) => x.id === l.natureId) : undefined
+        const proposal = derive(ref, l.natureId, l.lots).proposal
+        const computed = new Set(computeMeasures(new Set(l.risks), ref.rules))
         const { error } = await supabase.rpc('save_plan', {
-          p_order: order.order_number,
-          p_nature_id: nature && !nature.pending ? nature.id : null,
-          p_proposal_id: nature?.pending ? nature.proposalId ?? null : null,
-          p_lots: line.lots.map((code) => ({
-            code, source: ref.natures.some((n) => n.id === line.natureId && n.lots.includes(code)) ? 'NATURE' : 'AUTO_ANALYSIS', confidence: null,
+          p_order: o.order_number,
+          p_nature_id: n && !n.pending ? n.id : null,
+          p_proposal_id: n?.pending ? n.proposalId ?? null : null,
+          p_lots: l.lots.map((code) => ({
+            code, source: n?.lots.includes(code) ? 'NATURE' : 'AUTO_ANALYSIS', confidence: null,
           })),
-          p_risks: [...risks].map(([code, origin]) => ({ code, checked: true, origin })),
-          p_measures: [...measures].map((code) => ({ code, checked: true, origin: 'AUTO' })),
+          p_risks: l.risks.map((code) => ({ code, checked: true, origin: proposal.get(code) ?? 'MANUEL' })),
+          p_measures: l.measures.map((code) => ({ code, checked: true, origin: computed.has(code) ? 'AUTO' : 'MANUEL' })),
         })
         if (error) throw new Error(error.message)
-        const per = periods.get(order.order_number) ?? defaultPeriod(order.order_date)
-        const { error: pErr } = await supabase.rpc('set_plan_period', { p_order: order.order_number, p_start: per.start, p_end: per.end })
+        const { error: pErr } = await supabase.rpc('set_plan_period', {
+          p_order: o.order_number,
+          p_start: l.companyFills ? null : l.period.start,
+          p_end: l.companyFills ? null : l.period.end,
+        })
         if (pErr) throw new Error(pErr.message)
 
         const base = planFileName(template, {
-          entreprise: companyLabel(order.isis_code) || order.order_number,
-          commande: order.order_number,
-          secteur: order.sector_code ?? '',
+          entreprise: companyLabel(o.isis_code) || o.order_number,
+          commande: o.order_number,
+          secteur: o.sector_code ?? '',
         })
         const count = used.get(base) ?? 0
         used.set(base, count + 1)
         const name = count ? base.replace(/\.pdf$/, ` (${count + 1}).pdf`) : base
 
-        const bytes = await buildPlanPdf({
-          orderNumber: order.order_number,
-          lotNames: line.lots.map((c) => ref.lotNameByCode.get(c) ?? `Lot ${c}`),
-          taskLabel: nature?.label ?? order.nature_text ?? '',
-          activity: order.nature_text ?? order.description ?? '',
-          zone: [order.address, order.city, order.tranche_name].filter(Boolean).join(' · '),
-          period: periodText(order.order_number),
-          companyLabel: companyLabel(order.isis_code),
-          risks: [...risks.keys()].map((c) => ref.riskLabel.get(c) ?? c),
-          measures: [...measures].map((c) => ({
-            family: ref.measures.find((m) => m.code === c)?.family ?? 'Autres',
-            label: ref.measures.find((m) => m.code === c)?.label ?? c,
-          })),
-          redactor: redactorOf(),
-          date: new Date().toLocaleDateString('fr-FR'),
-        })
-        zip.file(name, bytes)
+        zip.file(name, await buildPlanPdf(pdfInput(l, o)))
         done++
       } catch (e) {
-        failures.push(`${line.orderNumber} : ${errMsg(e)}`)
+        failures.push(`${l.orderNumber} : ${errMsg(e)}`)
       }
     }
     try {
@@ -240,18 +244,58 @@ export default function BulkPlanWizard({
     } catch (e) { setBusy(false); setErr(errMsg(e)) }
   }
 
-  const natureOptions = useMemo(() => {
-    const byGroup = new Map<string, NatureRef[]>()
-    for (const n of ref.natures) {
-      const k = n.groupLabel ?? 'Autres'
-      byGroup.set(k, [...(byGroup.get(k) ?? []), n])
-    }
-    return [...byGroup.entries()]
+  // ---- navigation : étapes pour chaque commande, puis aperçu et export
+  const goNext = () => {
+    if (step < BY_ORDER_STEPS - 1) setStep(step + 1)
+    else if (cur < lines.length - 1) { setCur(cur + 1); setStep(0) }
+    else setStep(OVERVIEW)
+  }
+  const goPrev = () => {
+    if (step === OVERVIEW) { setCur(lines.length - 1); setStep(BY_ORDER_STEPS - 1); return }
+    if (step > 0) setStep(step - 1)
+    else if (cur > 0) { setCur(cur - 1); setStep(BY_ORDER_STEPS - 1) }
+  }
+  const canNext = step !== 0 || line.natureId != null
+
+  // ---- recherche de nature (préremplie avec le libellé source)
+  const query = queries[line.orderNumber] ?? order?.nature_text ?? ''
+  const searchHits = useMemo(() => (query.trim() ? searchNatures(query, ref.natures, ref.vocab, ref.lotNameByCode, 8) : []), [query, ref])
+  const topCandidates = useMemo(() => (order ? natureCandidates(order, ref, 3) : []), [order, ref])
+  const suggestedLots = unique([
+    ...(nature?.lots ?? []),
+    ...(!nature && topCandidates[0] ? topCandidates[0].nature.lots : []),
+    ...(sg?.confident && sg.lot != null ? [sg.lot] : []),
+  ])
+  const otherLots = ref.lots.filter((lot) => !suggestedLots.includes(lot.code))
+
+  const natureButton = (n: NatureRef, badge?: string) => (
+    <button key={n.id} type="button" onClick={() => chooseNature(n.id)}
+      className={`flex w-full items-start justify-between gap-3 rounded-md border px-3 py-2 text-left text-sm transition-colors ${line.natureId === n.id ? 'border-primary bg-primary/10' : 'border-border hover:bg-muted'}`}>
+      <span>
+        <span className="block font-medium">{n.label}</span>
+        <span className="block text-xs text-muted-foreground">{n.groupLabel ?? ''}</span>
+      </span>
+      {badge && <Badge tone={line.natureId === n.id ? 'ok' : 'default'}>{badge}</Badge>}
+    </button>
+  )
+
+  const riskGroups = useMemo(() => {
+    const g = new Map<string, Referentiel['risks']>()
+    for (const r of ref.risks) g.set(r.family, [...(g.get(r.family) ?? []), r])
+    return [...g.entries()]
   }, [ref])
+  const measureGroups = useMemo(() => {
+    const g = new Map<string, Referentiel['measures']>()
+    for (const m of ref.measures) g.set(m.family, [...(g.get(m.family) ?? []), m])
+    return [...g.entries()]
+  }, [ref])
+  const computedMeasures = useMemo(() => new Set(computeMeasures(new Set(line.risks), ref.rules)), [line.risks, ref])
+
+  const isComplete = (l: Line) => l.natureId != null
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4" role="dialog" aria-modal="true">
-      <div className="my-8 w-full max-w-4xl space-y-4 rounded-lg border border-border bg-card p-5 shadow-lg">
+      <div className="my-6 w-full max-w-5xl space-y-4 rounded-xl border border-border bg-card p-5 shadow-xl">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="mr-auto font-semibold">
             {lines.length === 1 ? `Créer la fiche · ${lines[0].orderNumber}` : `Création groupée de fiches · ${lines.length} commande(s)`}
@@ -261,197 +305,266 @@ export default function BulkPlanWizard({
 
         <div className="flex flex-wrap gap-2 text-sm">
           {STEPS.map((s, i) => (
-            <Badge key={s} tone={i === step ? 'ok' : 'default'}>{i + 1}. {s}</Badge>
+            <button key={s} type="button" onClick={() => setStep(i)}
+              className={`rounded-full border px-3 py-1 text-xs ${i === step ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground hover:bg-muted'}`}>
+              {i + 1}. {s}
+            </button>
           ))}
         </div>
+
+        {/* Libellé source, descriptif et numéro : toujours visibles */}
+        {step !== OVERVIEW && order && (
+          <Card className="space-y-1 bg-muted/40">
+            <div className="flex flex-wrap items-baseline gap-2">
+              <span className="font-mono text-sm font-semibold">{order.order_number}</span>
+              <span className="text-xs text-muted-foreground">{[order.address, order.city].filter(Boolean).join(', ') || '—'}</span>
+              <span className="ml-auto text-xs text-muted-foreground">Commande {cur + 1} / {lines.length}</span>
+            </div>
+            <p className="text-sm"><span className="text-xs text-muted-foreground">Libellé source · </span>{order.nature_text || '—'}</p>
+            <p className="text-sm text-muted-foreground"><span className="text-xs">Descriptif · </span>{order.description || '—'}</p>
+          </Card>
+        )}
 
         {err && <Notice tone="error">{err}</Notice>}
         {progress && <Notice tone="ok">{progress}</Notice>}
 
-        {step === 0 && (
-          <div className="space-y-3">
-            {pendingLines.length > 0 && (
-              <Card className="space-y-3 border-amber-300">
-                <div>
-                  <h3 className="text-sm font-semibold">Nature à choisir ({pendingLines.length})</h3>
-                  <p className="text-xs text-muted-foreground">
-                    La correspondance n’est pas assez sûre pour être pré-sélectionnée. Choisissez la nature parmi les propositions, ou dans la liste complète.
-                  </p>
-                </div>
-                {pendingLines.map((l) => {
-                  const o = byNumber.get(l.orderNumber)
-                  const sg = suggestions.get(l.orderNumber)
-                  return (
-                    <div key={l.orderNumber} className="space-y-2 rounded-md border border-border p-3">
-                      <div className="text-sm">
-                        <span className="font-mono text-xs">{l.orderNumber}</span>
-                        <span className="ml-2">{o?.nature_text || o?.description || '—'}</span>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {(sg?.candidates ?? []).map((n) => (
-                          <button key={n.id} type="button" onClick={() => setLineNature(l.orderNumber, n.id)}
-                            className="rounded-md border border-border bg-background px-3 py-1.5 text-left text-xs hover:border-primary hover:bg-primary/5">
-                            <span className="block font-medium">{n.label}</span>
-                            <span className="text-muted-foreground">{n.groupLabel ?? ''}</span>
-                          </button>
-                        ))}
-                        {!(sg?.candidates ?? []).length && <span className="text-xs text-muted-foreground">Aucune proposition automatique.</span>}
-                      </div>
-                      <select className={fieldClass} value="" onChange={(e) => e.target.value && setLineNature(l.orderNumber, Number(e.target.value))}>
-                        <option value="">Autre nature…</option>
-                        {natureOptions.map(([g, ns]) => (
-                          <optgroup key={g} label={g}>
-                            {ns.map((n) => <option key={n.id} value={n.id}>{n.label}{n.pending ? ' (en attente)' : ''}</option>)}
-                          </optgroup>
-                        ))}
-                      </select>
-                    </div>
-                  )
-                })}
-              </Card>
-            )}
-            {groups.length > 0 && <p className="text-sm text-muted-foreground">Chaque nature retenue regroupe ses commandes ; le lot suggéré est coché et modifiable pour tout le groupe.</p>}
-            {groups.map(([key, items]) => {
-              const nature = ref.natures.find((n) => String(n.id) === key)
-              const lotsOfGroup = new Set(items.flatMap((l) => l.lots))
-              return (
-                <Card key={key}>
-                  <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <select className={fieldClass + ' flex-1 min-w-[260px]'} value={nature?.id ?? ''}
-                      onChange={(e) => setGroupNature(key, e.target.value ? Number(e.target.value) : null)}>
-                      <option value="">— Aucune nature —</option>
-                      {natureOptions.map(([g, ns]) => (
-                        <optgroup key={g} label={g}>
-                          {ns.map((n) => <option key={n.id} value={n.id}>{n.label}{n.pending ? ' (en attente)' : ''}</option>)}
-                        </optgroup>
-                      ))}
-                    </select>
-                    <Badge>{items.length} commande(s)</Badge>
-                  </div>
-                  <div className="mb-2 text-xs text-muted-foreground">{items.map((l) => l.orderNumber).join(', ')}</div>
-                  <div className="flex flex-wrap gap-1">
-                    {ref.lots.map((lot) => {
-                      const on = items.every((l) => l.lots.includes(lot.code))
-                      const some = !on && lotsOfGroup.has(lot.code)
-                      return (
-                        <button key={lot.code} type="button" onClick={() => toggleGroupLot(key, lot.code)}
-                          className={`rounded-md border px-2 py-1 text-xs ${on ? 'border-primary bg-primary/10 font-medium' : some ? 'border-dashed border-border' : 'border-border text-muted-foreground'}`}>
-                          {on ? '✓ ' : ''}{lot.name}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </Card>
-              )
-            })}
-          </div>
-        )}
-
-        {step === 1 && (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">Complétez le nom et l’email OS manquants. Les corrections sont proposées au Super Admin ; la fiche peut être créée sans elles.</p>
-            <div className="overflow-x-auto rounded-lg border border-border">
-              <table className="w-full text-sm">
-                <thead className="bg-muted text-left text-xs text-muted-foreground">
-                  <tr><th className="px-3 py-2">N° entreprise</th><th className="px-3 py-2">Nom</th><th className="px-3 py-2">Email OS</th><th className="px-3 py-2">Commandes</th></tr>
-                </thead>
-                <tbody>
-                  {isisList.map((isis) => {
-                    const c = companyOf(isis)
-                    const count = lines.filter((l) => isisOf(l.orderNumber) === isis).length
-                    return (
-                      <tr key={isis} className="border-t border-border">
-                        <td className="px-3 py-2 font-mono text-xs">{isis}</td>
-                        <td className="px-3 py-2"><input className={fieldClass} value={c.name} onChange={(e) => setEdit(isis, 'name', e.target.value)} placeholder="Nom de l’entreprise" /></td>
-                        <td className="px-3 py-2"><input className={fieldClass} value={c.os_email} onChange={(e) => setEdit(isis, 'os_email', e.target.value)} placeholder="Email OS" /></td>
-                        <td className="px-3 py-2">{count}{!c.name.trim() || !c.os_email.trim() ? <span className="ml-2"><Badge tone="warn">à compléter</Badge></span> : null}</td>
-                      </tr>
-                    )
-                  })}
-                  {!isisList.length && <tr><td className="px-3 py-3 text-muted-foreground" colSpan={4}>Aucune entreprise sur ces commandes.</td></tr>}
-                </tbody>
-              </table>
-            </div>
-            <Button variant="ghost" onClick={() => void proposeCorrections()} disabled={busy || !edits.size}>Proposer les corrections au Super Admin</Button>
-          </div>
-        )}
-
-        {step === 2 && (
-          <div className="grid gap-3 md:grid-cols-[260px_1fr]">
-            <div className="max-h-[70vh] space-y-1 overflow-y-auto rounded-md border border-border p-2">
+        <div className={`grid gap-4 ${lines.length > 1 ? 'md:grid-cols-[220px_1fr]' : ''}`}>
+          {lines.length > 1 && (
+            <div className="max-h-[60vh] space-y-1 overflow-y-auto rounded-md border border-border p-2">
               {lines.map((l, i) => (
-                <button key={l.orderNumber} type="button" onClick={() => setPreviewIndex(i)}
-                  className={`block w-full rounded px-2 py-1 text-left text-xs ${i === previewIndex ? 'bg-primary/10 font-medium' : 'hover:bg-muted'}`}>
-                  {l.orderNumber} · {companyLabel(isisOf(l.orderNumber)) || '—'}
+                <button key={l.orderNumber} type="button" onClick={() => { setCur(i); if (step === OVERVIEW) setPreviewIndex(i) }}
+                  className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs ${i === cur && step !== OVERVIEW ? 'bg-primary/10 font-medium' : 'hover:bg-muted'}`}>
+                  <span className={`h-2 w-2 shrink-0 rounded-full ${isComplete(l) ? 'bg-emerald-500' : 'bg-amber-400'}`} aria-hidden="true" />
+                  <span className="font-mono">{l.orderNumber}</span>
+                  <span className="truncate text-muted-foreground">{companyLabel(isisOf(l.orderNumber)) || '—'}</span>
                 </button>
               ))}
             </div>
-            <div className="min-h-[70vh] rounded-md border border-border">
-              {previewUrl ? (
-                <iframe title="Aperçu de la fiche" src={previewUrl} className="h-[70vh] w-full" />
-              ) : (
-                <p className="p-4 text-sm text-muted-foreground">Génération de l’aperçu…</p>
-              )}
-            </div>
-          </div>
-        )}
+          )}
 
-        {step === 3 && (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Chaque fiche est enregistrée puis passe à « À envoyer ». Les PDF sont regroupés dans un fichier ZIP nommé selon le modèle défini par le Super Admin.
-            </p>
-            <div className="rounded-md border border-border p-3 font-mono text-xs">
-              {lines.slice(0, 5).map((l) => {
-                const o = byNumber.get(l.orderNumber)
-                return <div key={l.orderNumber}>{planFileName(template, { entreprise: companyLabel(o?.isis_code ?? null) || l.orderNumber, commande: l.orderNumber, secteur: o?.sector_code ?? '' })}</div>
-              })}
-              {lines.length > 5 && <div className="text-muted-foreground">… {lines.length - 5} autre(s)</div>}
-            </div>
-            {identityMissing && (
-              <Notice tone="error">Votre identité est incomplète : renseignez prénom, nom, téléphone et mail via « Mon profil » avant de créer des fiches.</Notice>
+          <div className="min-w-0 space-y-4">
+            {step === 0 && (
+              <div className="space-y-4">
+                <Card className="space-y-3">
+                  <h3 className="text-sm font-semibold">Nature</h3>
+                  {topCandidates.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-xs text-muted-foreground">Suggestions</p>
+                      {topCandidates.map((h) => natureButton(h.nature, h.score >= 0.5 ? 'fiable' : 'à confirmer'))}
+                    </div>
+                  )}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs text-muted-foreground">Rechercher une autre nature</label>
+                    <input className={fieldClass} value={query} onChange={(e) => setQueries((q) => ({ ...q, [line.orderNumber]: e.target.value }))} />
+                    {searchHits.length > 0 && (
+                      <div className="max-h-64 space-y-1.5 overflow-y-auto pr-1">
+                        {searchHits.map((h) => natureButton(h.nature))}
+                      </div>
+                    )}
+                  </div>
+                  {nature && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-muted-foreground">Nature retenue :</span>
+                      <span className="font-medium">{nature.label}</span>
+                      <Button variant="ghost" className="ml-auto h-7 px-2 text-xs" onClick={() => chooseNature(null)}>Retirer</Button>
+                    </div>
+                  )}
+                </Card>
+
+                <Card className="space-y-3">
+                  <div>
+                    <h3 className="text-sm font-semibold">Lots concernés</h3>
+                    <p className="text-xs text-muted-foreground">Les lots suggérés par la nature et l’analyse sont en tête ; cochez ou décochez librement.</p>
+                  </div>
+                  {suggestedLots.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {ref.lots.filter((lot) => suggestedLots.includes(lot.code)).map((lot) => (
+                        <LotChip key={lot.code} name={lot.name} on={line.lots.includes(lot.code)} suggested onClick={() => toggleLot(lot.code)} />
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-1.5">
+                    {otherLots.map((lot) => (
+                      <LotChip key={lot.code} name={lot.name} on={line.lots.includes(lot.code)} onClick={() => toggleLot(lot.code)} />
+                    ))}
+                  </div>
+                </Card>
+              </div>
             )}
-            <div className="overflow-x-auto rounded-md border border-border">
-              <table className="w-full text-sm">
-                <thead className="bg-muted text-left text-xs text-muted-foreground">
-                  <tr><th className="px-3 py-2">Commande</th><th className="px-3 py-2">Début</th><th className="px-3 py-2">Fin</th></tr>
-                </thead>
-                <tbody>
-                  {lines.map((l) => {
-                    const per = periods.get(l.orderNumber) ?? defaultPeriod(byNumber.get(l.orderNumber)?.order_date ?? null)
-                    return (
-                      <tr key={l.orderNumber} className="border-t border-border">
-                        <td className="px-3 py-2 font-mono text-xs">{l.orderNumber}</td>
-                        <td className="px-3 py-2"><input type="date" className={fieldClass} value={per.start}
-                          onChange={(e) => setPeriods((prev) => new Map(prev).set(l.orderNumber, defaultPeriod(e.target.value)))} /></td>
-                        <td className="px-3 py-2"><input type="date" className={fieldClass} value={per.end}
-                          onChange={(e) => setPeriods((prev) => new Map(prev).set(l.orderNumber, { start: per.start, end: e.target.value }))} /></td>
-                      </tr>
-                    )
+
+            {step === 1 && (
+              <div className="space-y-4">
+                <p className="text-xs text-muted-foreground">
+                  Risques proposés par les lots et la nature. Les mesures se mettent à jour quand vous modifiez les risques.
+                </p>
+                <Card className="space-y-3">
+                  <h3 className="text-sm font-semibold">Risques ({line.risks.length})</h3>
+                  {riskGroups.map(([family, items]) => (
+                    <div key={family}>
+                      <p className="mb-1 text-xs font-medium text-muted-foreground">{family}</p>
+                      <div className="grid gap-1.5 sm:grid-cols-2">
+                        {items.map((r) => (
+                          <label key={r.code} className="flex cursor-pointer items-center gap-2 rounded-md border border-border px-2 py-1.5 text-sm hover:bg-muted/50">
+                            <input type="checkbox" className="accent-primary" checked={line.risks.includes(r.code)} onChange={() => toggleRisk(r.code)} />
+                            <span>{r.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </Card>
+                <Card className="space-y-3">
+                  <h3 className="text-sm font-semibold">Mesures de prévention ({line.measures.length})</h3>
+                  {measureGroups.map(([family, items]) => (
+                    <div key={family}>
+                      <p className="mb-1 text-xs font-medium text-muted-foreground">{family}</p>
+                      <div className="grid gap-1.5 sm:grid-cols-2">
+                        {items.map((m) => (
+                          <label key={m.code} className="flex cursor-pointer items-center gap-2 rounded-md border border-border px-2 py-1.5 text-sm hover:bg-muted/50">
+                            <input type="checkbox" className="accent-primary" checked={line.measures.includes(m.code)} onChange={() => toggleMeasure(m.code)} />
+                            <span className="flex-1">{m.label}</span>
+                            <span className="text-[10px] text-muted-foreground">{computedMeasures.has(m.code) ? 'auto' : m.ruleType === 'MANUAL' ? 'manuel' : ''}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </Card>
+              </div>
+            )}
+
+            {step === 2 && (
+              <div className="space-y-4">
+                <Card className="space-y-3">
+                  <h3 className="text-sm font-semibold">Entreprise</h3>
+                  {order?.isis_code ? (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className="block text-xs text-muted-foreground">Nom de l’entreprise (n° {order.isis_code})
+                        <input className={fieldClass} value={companyOf(order.isis_code).name} onChange={(e) => setEdit(order.isis_code!, 'name', e.target.value)} placeholder="Nom de l’entreprise" />
+                      </label>
+                      <label className="block text-xs text-muted-foreground">Email OS
+                        <input className={fieldClass} value={companyOf(order.isis_code).os_email} onChange={(e) => setEdit(order.isis_code!, 'os_email', e.target.value)} placeholder="Email OS" />
+                      </label>
+                      <div className="sm:col-span-2 flex flex-wrap items-center gap-2">
+                        <Button variant="ghost" onClick={() => void proposeCorrections()} disabled={busy || !edits.size}>Proposer les corrections au Super Admin</Button>
+                        <span className="text-xs text-muted-foreground">Les corrections sont validées par le Super Admin ; la fiche peut être créée sans elles.</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <Notice>Aucune entreprise rattachée à cette commande.</Notice>
+                  )}
+                </Card>
+
+                <Card className="space-y-3">
+                  <h3 className="text-sm font-semibold">Date d’intervention</h3>
+                  <label className="flex cursor-pointer items-center gap-2 text-sm">
+                    <input type="checkbox" className="accent-primary" checked={line.companyFills}
+                      onChange={(e) => updateLine(line.orderNumber, () => ({ companyFills: e.target.checked }))} />
+                    C’est à l’entreprise de renseigner la date d’intervention
+                  </label>
+                  {!line.companyFills && (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className="block text-xs text-muted-foreground">Début
+                        <input type="date" className={fieldClass} value={line.period.start}
+                          onChange={(e) => updateLine(line.orderNumber, (l) => ({ period: { start: e.target.value, end: l.period.end } }))} />
+                      </label>
+                      <label className="block text-xs text-muted-foreground">Fin
+                        <input type="date" className={fieldClass} value={line.period.end}
+                          onChange={(e) => updateLine(line.orderNumber, (l) => ({ period: { start: l.period.start, end: e.target.value } }))} />
+                      </label>
+                      <p className="sm:col-span-2 text-xs text-muted-foreground">Par défaut : du jour de la commande à deux mois plus tard. Modifiable.</p>
+                    </div>
+                  )}
+                  {line.companyFills && (
+                    <Notice>La fiche indiquera « À renseigner par l’entreprise ». Les dates restent à compléter par l’entreprise.</Notice>
+                  )}
+                </Card>
+
+                {identityMissing && (
+                  <Notice tone="error">Votre identité est incomplète : renseignez prénom, nom, téléphone et mail via « Mon profil » avant d’exporter.</Notice>
+                )}
+              </div>
+            )}
+
+            {step === OVERVIEW && (
+              <div className="space-y-4">
+                <div className="grid gap-3 md:grid-cols-[1fr_1.3fr]">
+                  <div className="max-h-[60vh] overflow-auto rounded-md border border-border">
+                    <table className="w-full text-xs">
+                      <thead className="bg-muted text-left text-muted-foreground">
+                        <tr><th className="px-2 py-1.5">Commande</th><th className="px-2 py-1.5">Nature</th><th className="px-2 py-1.5">Lots</th><th className="px-2 py-1.5">Risques</th><th className="px-2 py-1.5">Date</th></tr>
+                      </thead>
+                      <tbody>
+                        {lines.map((l, i) => {
+                          const n = l.natureId != null ? ref.natures.find((x) => x.id === l.natureId) : undefined
+                          return (
+                            <tr key={l.orderNumber} onClick={() => setPreviewIndex(i)}
+                              className={`cursor-pointer border-t border-border ${i === previewIndex ? 'bg-primary/10' : 'hover:bg-muted/50'}`}>
+                              <td className="px-2 py-1.5 font-mono">{l.orderNumber}</td>
+                              <td className="px-2 py-1.5">{n?.label ?? <span className="text-amber-700">à choisir</span>}</td>
+                              <td className="px-2 py-1.5">{l.lots.length}</td>
+                              <td className="px-2 py-1.5">{l.risks.length}</td>
+                              <td className="px-2 py-1.5">{l.companyFills ? 'entreprise' : `${fmtFr(l.period.start)}`}</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="min-h-[50vh] rounded-md border border-border">
+                    {previewUrl ? (
+                      <iframe title="Aperçu de la fiche" src={previewUrl} className="h-[60vh] w-full" />
+                    ) : (
+                      <p className="p-4 text-sm text-muted-foreground">Génération de l’aperçu…</p>
+                    )}
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Chaque fiche est enregistrée puis passe à « À envoyer ». Les PDF sont regroupés dans un ZIP nommé selon le modèle défini par le Super Admin.
+                </p>
+                <div className="rounded-md border border-border p-3 font-mono text-xs">
+                  {lines.slice(0, 5).map((l) => {
+                    const o = byNumber.get(l.orderNumber)
+                    return <div key={l.orderNumber}>{planFileName(template, { entreprise: companyLabel(o?.isis_code ?? null) || l.orderNumber, commande: l.orderNumber, secteur: o?.sector_code ?? '' })}</div>
                   })}
-                </tbody>
-              </table>
-            </div>
-            <p className="text-xs text-muted-foreground">Par défaut : du jour de la commande à deux mois plus tard. Modifiable pour chaque fiche.</p>
-            <Button onClick={() => void exportAll()} disabled={busy || !lines.length || identityMissing}>
-              {busy ? 'Création en cours…' : `Créer les ${lines.length} fiche(s) et exporter le ZIP`}
-            </Button>
+                  {lines.length > 5 && <div className="text-muted-foreground">… {lines.length - 5} autre(s)</div>}
+                </div>
+                {lines.some((l) => l.natureId == null) && (
+                  <Notice tone="error">Certaines commandes n’ont pas de nature : revenez à l’étape 1.</Notice>
+                )}
+                {identityMissing && (
+                  <Notice tone="error">Votre identité est incomplète : renseignez-la via « Mon profil ».</Notice>
+                )}
+                <Button onClick={() => void exportAll()} disabled={busy || !lines.length || identityMissing || lines.some((l) => l.natureId == null)}>
+                  {busy ? 'Création en cours…' : `Créer les ${lines.length} fiche(s) et exporter le ZIP`}
+                </Button>
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
         <div className="flex items-center gap-2 border-t border-border pt-3">
-          <Button variant="ghost" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0 || busy}>Précédent</Button>
-          <span className="mr-auto" />
-          {step < STEPS.length - 1 && (
-            <div className="flex items-center gap-3">
-              {step === 0 && pendingLines.length > 0 && (
-                <span className="text-xs text-amber-700">{pendingLines.length} commande(s) sans nature choisie</span>
-              )}
-              <Button onClick={() => setStep((s) => s + 1)} disabled={busy || !lines.length || (step === 0 && pendingLines.length > 0)}>Suivant</Button>
-            </div>
+          <Button variant="ghost" onClick={goPrev} disabled={busy || (step === 0 && cur === 0)}>Précédent</Button>
+          <span className="mr-auto text-xs text-muted-foreground">
+            {step !== OVERVIEW && `${STEPS[step]} · commande ${cur + 1} / ${lines.length}`}
+          </span>
+          {step === 0 && !canNext && <span className="text-xs text-amber-700">Choisissez une nature pour continuer</span>}
+          {step !== OVERVIEW && (
+            <Button onClick={goNext} disabled={busy || !canNext}>
+              {step === BY_ORDER_STEPS - 1 && cur === lines.length - 1 ? 'Aperçu et export' : step === BY_ORDER_STEPS - 1 ? 'Commande suivante' : 'Suivant'}
+            </Button>
           )}
         </div>
       </div>
     </div>
+  )
+}
+
+function LotChip({ name, on, suggested, onClick }: { name: string; on: boolean; suggested?: boolean; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} aria-pressed={on}
+      className={`rounded-md border px-2.5 py-1 text-xs transition-colors ${on ? 'border-primary bg-primary/10 font-medium' : suggested ? 'border-dashed border-primary/60 text-foreground' : 'border-border text-muted-foreground hover:bg-muted'}`}>
+      {on ? '✓ ' : ''}{name}{suggested && !on ? ' · suggéré' : ''}
+    </button>
   )
 }

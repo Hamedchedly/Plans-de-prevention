@@ -10,6 +10,16 @@ import CompanyDialog from '../components/CompanyDialog'
 import BulkPlanWizard from '../components/BulkPlanWizard'
 import OrderActionDialog from '../components/OrderActionDialog'
 import { fetchCompanies, type CompanyRow } from './AdminCompanies'
+import { Ban, ArrowRightLeft, Info, RotateCcw, Trash2 } from 'lucide-react'
+
+/** Bouton icône avec libellé accessible et infobulle. */
+function IconButton({ icon: Icon, label, onClick, disabled }: { icon: typeof Info; label: string; onClick: () => void; disabled?: boolean }) {
+  return (
+    <Button variant="ghost" onClick={onClick} disabled={disabled} title={label} aria-label={label} className="h-8 w-8 p-0">
+      <Icon className="h-4 w-4" aria-hidden="true" />
+    </Button>
+  )
+}
 
 type Tab = 'NON_QUALIFIEE' | 'A_ENVOYER' | 'EN_ATTENTE_RETOUR' | 'ARCHIVEE' | 'ENVOYE_MANUELLEMENT' | 'DEMANDES' | 'CORBEILLE'
 
@@ -364,7 +374,7 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="text-sm">{companyName ?? o.isis_code ?? '—'}</span>
                           {o.isis_code && (
-                            <Button variant="ghost" onClick={() => setCompanyFor(o.isis_code)} className="h-6 px-2 text-xs">Infos</Button>
+                            <IconButton icon={Info} label="Informations sur l’entreprise" onClick={() => setCompanyFor(o.isis_code)} />
                           )}
                         </div>
                         {o.isis_code && companyName && <div className="font-mono text-[11px] text-muted-foreground">{o.isis_code}</div>}
@@ -396,7 +406,7 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
                       <td className="px-3 py-2.5 text-right">
                         <div className="flex flex-wrap justify-end gap-1.5 whitespace-nowrap">
                           {isTrashView ? (
-                            isManager && <Button variant="ghost" onClick={() => setTrashedState([o.order_number], false)} disabled={busy}>Restaurer</Button>
+                            isManager && <IconButton icon={RotateCcw} label="Restaurer" onClick={() => setTrashedState([o.order_number], false)} disabled={busy} />
                           ) : (
                             <>
                               {o.scope_status === 'IN_SCOPE' && o.plan_status === 'NON_QUALIFIEE' && (
@@ -406,16 +416,16 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
                                 <Button onClick={() => onOpen(o)}>Modifier le plan</Button>
                               )}
                               {o.scope_status === 'IN_SCOPE' && (
-                                <Button variant="ghost" onClick={() => setActionOrder(o)}>Demander l’exclusion</Button>
+                                <IconButton icon={Ban} label="Demander l’exclusion" onClick={() => setActionOrder(o)} />
                               )}
                               {isManager && o.scope_status === 'OUT_OF_SCOPE' && (
-                                <Button variant="ghost" onClick={() => setActionOrder(o)}>Réaffecter</Button>
+                                <IconButton icon={ArrowRightLeft} label="Réaffecter" onClick={() => setActionOrder(o)} />
                               )}
                               {isManager && o.scope_status === 'OUT_OF_SCOPE' && (
-                                <Button variant="ghost" onClick={() => reintegrate(o)} disabled={busy}>Réintégrer</Button>
+                                <IconButton icon={RotateCcw} label="Réintégrer au périmètre" onClick={() => reintegrate(o)} disabled={busy} />
                               )}
                               {isManager && (
-                                <Button variant="ghost" onClick={() => setTrashedState([o.order_number], true)} disabled={busy}>Corbeille</Button>
+                                <IconButton icon={Trash2} label="Mettre à la corbeille" onClick={() => setTrashedState([o.order_number], true)} disabled={busy} />
                               )}
                             </>
                           )}

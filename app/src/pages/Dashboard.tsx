@@ -9,15 +9,17 @@ import CompanyDialog from '../components/CompanyDialog'
 import { fetchCompanies, type CompanyRow } from './AdminCompanies'
 import BulkPlanWizard from '../components/BulkPlanWizard'
 
-type Tab = 'NON_QUALIFIEE' | 'A_ENVOYER' | 'EN_ATTENTE_RETOUR' | 'ARCHIVEE' | 'ENVOYE_MANUELLEMENT' | 'DEMANDES'
-const TABS: { key: Tab; label: string }[] = [
+type Tab = 'NON_QUALIFIEE' | 'A_ENVOYER' | 'EN_ATTENTE_RETOUR' | 'ARCHIVEE' | 'ENVOYE_MANUELLEMENT' | 'DEMANDES' | 'CORBEILLE'
+const TABS: { key: Tab; label: string; managerOnly?: boolean }[] = [
   { key: 'NON_QUALIFIEE', label: 'À qualifier' },
   { key: 'A_ENVOYER', label: 'À envoyer' },
   { key: 'EN_ATTENTE_RETOUR', label: 'En attente retour' },
   { key: 'ARCHIVEE', label: 'Archivées' },
   { key: 'ENVOYE_MANUELLEMENT', label: 'Envoyées manuellement' },
   { key: 'DEMANDES', label: 'Exclusions en attente' },
+  { key: 'CORBEILLE', label: 'Corbeille', managerOnly: true },
 ]
+const PAGE = 15
 const PLAN_LABEL: Record<string, string> = {
   NON_QUALIFIEE: 'Non qualifiée', A_ENVOYER: 'À envoyer', EN_ATTENTE_RETOUR: 'En attente retour', ARCHIVEE: 'Archivée',
   ENVOYE_MANUELLEMENT: 'Envoyée manuellement',
@@ -29,11 +31,12 @@ const fmtDay = (n: number) => new Date(n * 86400000).toLocaleDateString('fr-FR')
 
 interface Suggestion { nature: string | null; natureId: number | null; group: string | null; lot: number | null; lotName: string | null }
 
+/** Commandes actives (hors corbeille). */
 async function fetchAllOrders(): Promise<OrderRow[]> {
   const page = 1000
   const out: OrderRow[] = []
   for (let from = 0; ; from += page) {
-    const { data, error } = await supabase.from('orders').select('*')
+    const { data, error } = await supabase.from('orders').select('*').is('trashed_at', null)
       .order('order_date', { ascending: false, nullsFirst: false }).order('order_number')
       .range(from, from + page - 1)
     if (error) throw new Error(error.message)
@@ -41,6 +44,13 @@ async function fetchAllOrders(): Promise<OrderRow[]> {
     if (!data || data.length < page) break
   }
   return out
+}
+
+async function fetchTrashedOrders(): Promise<OrderRow[]> {
+  const { data, error } = await supabase.from('orders').select('*').not('trashed_at', 'is', null)
+    .order('order_date', { ascending: false, nullsFirst: false }).order('order_number')
+  if (error) throw new Error(error.message)
+  return (data ?? []) as OrderRow[]
 }
 
 export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void }) {
@@ -70,16 +80,31 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
   const [companies, setCompanies] = useState<Map<string, CompanyRow>>(new Map())
   const [companyFor, setCompanyFor] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [limit, setLimit] = useState(PAGE)
+  const [trashedCount, setTrashedCount] = useState(0)
+  const [trashed, setTrashed] = useState<OrderRow[]>([])
+  const [version, setVersion] = useState(0)
 
   const load = async () => {
     setLoading(true); setErr(null)
     try {
-      const [orders, referentiel, comps] = await Promise.all([fetchAllOrders(), getReferentiel(), fetchCompanies().catch(() => [])])
+      const [orders, referentiel, comps, trashedRes] = await Promise.all([
+        fetchAllOrders(), getReferentiel(), fetchCompanies().catch(() => []),
+        supabase.from('orders').select('order_number', { count: 'exact', head: true }).not('trashed_at', 'is', null),
+      ])
       setRows(orders); setRef(referentiel)
       setCompanies(new Map(comps.map((c) => [c.isis_code, c])))
+      setTrashedCount(trashedRes.count ?? 0)
+      setVersion((v) => v + 1)
     } catch (e) { setErr(errMsg(e)) } finally { setLoading(false) }
   }
   useEffect(() => { void load() }, [])
+
+  // Le contenu de la corbeille n'est chargé que lorsqu'on l'ouvre.
+  useEffect(() => {
+    if (tab !== 'CORBEILLE' || !isManager) return
+    fetchTrashedOrders().then(setTrashed).catch((e) => setErr(errMsg(e)))
+  }, [tab, version, isManager])
 
   const sectors = useMemo(() => [...new Set(rows.map((r) => r.sector_code).filter(Boolean))] as string[], [rows])
   const operators = useMemo(() => [...new Set(rows.map((r) => r.operator_code).filter(Boolean))] as string[], [rows])
@@ -145,10 +170,27 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
 
   const base = rows.filter((o) => (sector === 'TOUS' || o.sector_code === sector) && (!operator || o.operator_code === operator) && matches(o) && matchesFilters(o))
   const visible = base.filter((o) => inTab(o, tab))
-  const count = (t: Tab) => base.filter((o) => inTab(o, t)).length
-  const actionableVisible = visible.filter((o) => ACTIONABLE.includes(tab) && o.scope_status === 'IN_SCOPE').slice(0, 300)
+  const count = (t: Tab) => (t === 'CORBEILLE' ? trashedCount : base.filter((o) => inTab(o, t)).length)
+  const isTrashView = tab === 'CORBEILLE'
+  const list = isTrashView ? trashed.filter(matches) : visible
+  const shownRows = list.slice(0, limit)
+  const actionableVisible = visible.filter((o) => ACTIONABLE.includes(tab) && o.scope_status === 'IN_SCOPE')
+
+  // Retour à 15 lignes dès qu'on change d'onglet ou de filtre.
+  useEffect(() => { setLimit(PAGE) }, [tab, q, sector, operator, lotFilter, groupFilter, fromDay, toDay])
 
   const changeTab = (t: Tab) => { setTab(t); setSelected(new Set()) }
+
+  const setTrashedState = async (numbers: string[], toTrash: boolean) => {
+    if (toTrash && !window.confirm(`Mettre ${numbers.length} commande(s) à la corbeille ? Elles sortent des listes ; elles peuvent être restaurées à tout moment.`)) return
+    setBusy(true); setErr(null)
+    const { error } = await supabase.rpc('set_orders_trashed', { p_orders: numbers, p_trashed: toTrash })
+    setBusy(false)
+    if (error) { setErr(error.message); return }
+    setSelected(new Set())
+    setNotice(toTrash ? `${numbers.length} commande(s) mise(s) à la corbeille.` : `${numbers.length} commande(s) restaurée(s).`)
+    await load()
+  }
   const toggle = (n: string) => setSelected((s) => { const next = new Set(s); next.has(n) ? next.delete(n) : next.add(n); return next })
   const allChecked = actionableVisible.length > 0 && actionableVisible.every((o) => selected.has(o.order_number))
   const toggleAll = () => setSelected(allChecked ? new Set() : new Set(actionableVisible.map((o) => o.order_number)))
@@ -252,7 +294,7 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
       )}
 
       <div className="flex flex-wrap gap-2 border-b border-border">
-        {TABS.map((t) => (
+        {TABS.filter((t) => !t.managerOnly || isManager).map((t) => (
           <button key={t.key} onClick={() => changeTab(t.key)}
             className={`-mb-px border-b-2 px-3 py-2 text-sm ${tab === t.key ? 'border-primary font-semibold' : 'border-transparent text-muted-foreground'}`}>
             {t.label} <span className="text-xs">({count(t.key)})</span>
@@ -284,8 +326,8 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
       )}
 
       {err && <Notice tone="error">{err}</Notice>}
-      {loading ? <p className="text-sm text-muted-foreground">Chargement des commandes…</p> : visible.length === 0 ? (
-        <Notice>Aucune commande dans cette vue.</Notice>
+      {loading ? <p className="text-sm text-muted-foreground">Chargement des commandes…</p> : list.length === 0 ? (
+        <Notice>{isTrashView ? 'La corbeille est vide.' : 'Aucune commande dans cette vue.'}</Notice>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-border bg-card">
           <table className="w-full text-sm">
@@ -306,7 +348,7 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
               </tr>
             </thead>
             <tbody>
-              {visible.slice(0, 300).map((o) => {
+              {shownRows.map((o) => {
                 const sg = suggestions.get(o.order_number)
                 const canSelect = ACTIONABLE.includes(tab) && o.scope_status === 'IN_SCOPE'
                 return (
@@ -336,24 +378,34 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
                     <td className="px-3 py-2">{o.operator_code ?? '—'}</td>
                     <td className="px-3 py-2">
                       <div className="flex flex-wrap gap-1">
+                        {isTrashView && <Badge tone="warn">Corbeille</Badge>}
                         {o.scope_override && <Badge tone="warn">Forcé</Badge>}
                         {o.scope_status === 'IN_SCOPE' && <Badge>{PLAN_LABEL[o.plan_status]}</Badge>}
                         {o.naac_code && <Badge>{o.naac_code}</Badge>}
                       </div>
                     </td>
                     <td className="px-3 py-2 text-right whitespace-nowrap">
-                      {o.isis_code && <Button variant="ghost" onClick={() => setCompanyFor(o.isis_code)} className="mr-2">Infos entreprise</Button>}
-                      {o.scope_status === 'IN_SCOPE' && (o.plan_status === 'NON_QUALIFIEE' || o.plan_status === 'A_ENVOYER') && (
-                        <Button onClick={() => onOpen(o)} className="mr-2">
-                          {o.plan_status === 'NON_QUALIFIEE' ? 'Qualifier' : 'Modifier le plan'}
-                        </Button>
-                      )}
-                      {o.scope_status === 'IN_SCOPE' && o.scope_request_status !== 'EN_ATTENTE' && (
-                        <Button variant="ghost" onClick={() => void requestExclusion(o)}>Demander l’exclusion</Button>
-                      )}
-                      {o.scope_request_status === 'EN_ATTENTE' && <Badge tone="warn">Exclusion en attente</Badge>}
-                      {isManager && o.scope_status === 'OUT_OF_SCOPE' && (
-                        <Button variant="ghost" onClick={() => void reintegrate(o)}>Réintégrer</Button>
+                      {isTrashView ? (
+                        isManager && <Button variant="ghost" onClick={() => void setTrashedState([o.order_number], false)} disabled={busy}>Restaurer</Button>
+                      ) : (
+                        <>
+                          {o.isis_code && <Button variant="ghost" onClick={() => setCompanyFor(o.isis_code)} className="mr-2">Infos entreprise</Button>}
+                          {o.scope_status === 'IN_SCOPE' && (o.plan_status === 'NON_QUALIFIEE' || o.plan_status === 'A_ENVOYER') && (
+                            <Button onClick={() => onOpen(o)} className="mr-2">
+                              {o.plan_status === 'NON_QUALIFIEE' ? 'Qualifier' : 'Modifier le plan'}
+                            </Button>
+                          )}
+                          {o.scope_status === 'IN_SCOPE' && o.scope_request_status !== 'EN_ATTENTE' && (
+                            <Button variant="ghost" onClick={() => void requestExclusion(o)} className="mr-2">Demander l’exclusion</Button>
+                          )}
+                          {o.scope_request_status === 'EN_ATTENTE' && <Badge tone="warn">Exclusion en attente</Badge>}
+                          {isManager && o.scope_status === 'OUT_OF_SCOPE' && (
+                            <Button variant="ghost" onClick={() => void reintegrate(o)} className="mr-2">Réintégrer</Button>
+                          )}
+                          {isManager && (
+                            <Button variant="ghost" onClick={() => void setTrashedState([o.order_number], true)} disabled={busy}>Mettre à la corbeille</Button>
+                          )}
+                        </>
                       )}
                     </td>
                   </tr>
@@ -361,7 +413,16 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
               })}
             </tbody>
           </table>
-          {visible.length > 300 && <p className="p-3 text-xs text-muted-foreground">300 premières lignes affichées sur {visible.length} : affinez la recherche.</p>}
+        </div>
+      )}
+      {!loading && list.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+          <span className="text-muted-foreground">Affichage de {shownRows.length} sur {list.length} commande(s)</span>
+          {list.length > limit && (
+            <Button variant="ghost" onClick={() => setLimit((l) => l + PAGE)}>
+              Afficher plus ({Math.min(PAGE, list.length - limit)} de plus)
+            </Button>
+          )}
         </div>
       )}
       {notice && <Notice tone="ok">{notice}</Notice>}

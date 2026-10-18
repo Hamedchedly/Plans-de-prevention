@@ -13,7 +13,12 @@ export interface PlanPdfData {
   riskOptions: { label: string; checked: boolean }[]  // tous les risques du référentiel, cochés selon la fiche
   measureOptions: { family: string; label: string; checked: boolean }[]
   redactor: { name: string; email: string; phone: string } | null
+  alertLine?: string   // procédure d'alerte (modèle administrable)
+  footer?: string      // pied de page (modèle administrable, {commande} remplacé)
 }
+
+export const DEFAULT_ALERT = '15 SAMU · 18 POMPIERS · 114 URGENCES · 17 POLICE SECOURS'
+export const DEFAULT_FOOTER = 'Plan de prévention · commande {commande} · S11'
 
 /** Période à compléter par l'entreprise. */
 export const DOTTED_PERIOD = '...... / ...... / ............  au  ...... / ...... / ............'
@@ -180,7 +185,7 @@ export async function buildPlanPdf(d: PlanPdfData, logo: Uint8Array | null = nul
   gap(7)
   blockRow([
     { title: 'Personne à alerter', value: contact, alert: true },
-    { title: 'Procédure d’alerte', value: '15 SAMU · 18 POMPIERS · 114 URGENCES · 17 POLICE SECOURS', alert: true },
+    { title: 'Procédure d’alerte', value: d.alertLine || DEFAULT_ALERT, alert: true },
   ])
 
   // Cases à cocher
@@ -246,7 +251,8 @@ export async function buildPlanPdf(d: PlanPdfData, logo: Uint8Array | null = nul
 
   // Pied de page
   pages.forEach((p, i) => {
-    const label = `Plan de prévention · commande ${d.orderNumber} · S11${pages.length > 1 ? ` · page ${i + 1}/${pages.length}` : ''}`
+    const base = (d.footer || DEFAULT_FOOTER).split('{commande}').join(d.orderNumber)
+    const label = `${base}${pages.length > 1 ? ` · page ${i + 1}/${pages.length}` : ''}`
     p.drawText(clean(label), { x: MX, y: MB, size: 6.5, font, color: MUTED })
   })
 

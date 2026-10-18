@@ -7,10 +7,10 @@ type Choice = 'EXCLUSION' | 'REAFFECTER' | 'MANUEL'
 
 /** Panneau de validation unique pour une commande : demande d'exclusion, réaffectation ou envoi manuel. */
 export default function OrderActionDialog({
-  order, isManager, operators, onClose, onDone,
+  order, canReassign, operators, onClose, onDone,
 }: {
   order: OrderRow
-  isManager: boolean
+  canReassign: boolean
   operators: string[]
   onClose: () => void
   onDone: (message: string) => void
@@ -19,7 +19,7 @@ export default function OrderActionDialog({
   const exclusionPending = order.scope_request_status === 'EN_ATTENTE'
   const options: { key: Choice; title: string; hint: string; available: boolean }[] = [
     { key: 'EXCLUSION', title: 'Demander l’exclusion du périmètre', hint: 'Le Super Admin décide après votre motif.', available: inScope && !exclusionPending },
-    { key: 'REAFFECTER', title: 'Réaffecter à un autre chargé', hint: 'La commande change de chargé d’opérations.', available: isManager },
+    { key: 'REAFFECTER', title: 'Réaffecter à un autre chargé', hint: 'La commande change de chargé d’opérations.', available: canReassign },
     { key: 'MANUEL', title: 'Envoyée manuellement', hint: 'Hors application : la commande sort des listes à traiter.', available: inScope },
   ]
   const firstAvailable = options.find((o) => o.available)?.key ?? 'EXCLUSION'

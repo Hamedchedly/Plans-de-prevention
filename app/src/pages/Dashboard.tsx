@@ -10,8 +10,9 @@ import CompanyDialog from '../components/CompanyDialog'
 import BulkPlanWizard from '../components/BulkPlanWizard'
 import OrderActionDialog from '../components/OrderActionDialog'
 import { fetchCompanies, type CompanyRow } from './AdminCompanies'
-import { Ban, ArrowRightLeft, Download, Eye, Inbox, Info, Pencil, RotateCcw, SlidersHorizontal, Trash2 } from 'lucide-react'
-import { buildSheetPdf, buildSheetsZip, downloadBlob, fetchSavedLines, openPdf, redactorOf, planFileName, type Line } from '../lib/sheet'
+import { Ban, ArrowRightLeft, CheckCheck, Download, Eye, Inbox, Info, Mail, Pencil, RotateCcw, SlidersHorizontal, Trash2 } from 'lucide-react'
+import { buildSheetPdf, buildSheetsZip, contactFor, downloadBlob, fetchContacts, fetchSavedLines, openPdf, planFileName, readSettings, DEFAULT_MAIL_CORPS, DEFAULT_MAIL_OBJET, type Contact, type Line } from '../lib/sheet'
+import MailDialog from '../components/MailDialog'
 
 type Tab = 'NON_QUALIFIEE' | 'A_ENVOYER' | 'EN_ATTENTE_RETOUR' | 'ARCHIVEE' | 'ENVOYE_MANUELLEMENT' | 'DEMANDES' | 'CORBEILLE'
 
@@ -52,6 +53,7 @@ const MIN_VISIBLE = 3
 const dayOf = (iso: string) => Math.floor(Date.parse(iso) / 86400000)
 const todayDay = () => Math.floor(Date.now() / 86400000)
 const fmtDay = (n: number) => new Date(n * 86400000).toLocaleDateString('fr-FR')
+const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('fr-FR')
 
 async function fetchAllOrders(): Promise<OrderRow[]> {
   const page = 1000
@@ -88,6 +90,10 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
   const [notice, setNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [version, setVersion] = useState(0)
+  const [contacts, setContacts] = useState<Map<string, Contact>>(new Map())
+  const [dates, setDates] = useState<Map<string, { drafted: string | null; sent: string | null }>>(new Map())
+  const [settings, setSettings] = useState<Record<string, string>>({})
+  const [mailOrder, setMailOrder] = useState<OrderRow | null>(null)
 
   const [tab, setTab] = useState<Tab>('NON_QUALIFIEE')
   const [moreOpen, setMoreOpen] = useState(false)
@@ -122,6 +128,18 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
       setCompanies(new Map(comps.map((c) => [c.isis_code, c])))
       setTrashedCount(trashedRes.count ?? 0)
       setVersion((v) => v + 1)
+      // Personne à alerter (chargé créateur), dates de fiche et modèles
+      setContacts(await fetchContacts(orders.map((o) => o.operator_code ?? '')).catch(() => new Map<string, Contact>()))
+      const planned = orders.filter((o) => o.plan_status !== 'NON_QUALIFIEE').map((o) => o.order_number)
+      const dts = new Map<string, { drafted: string | null; sent: string | null }>()
+      if (planned.length) {
+        const { data } = await supabase.rpc('plan_dates', { p_orders: planned })
+        for (const r of (data ?? []) as { order_number: string; drafted_at: string | null; sent_at: string | null }[]) {
+          dts.set(r.order_number, { drafted: r.drafted_at, sent: r.sent_at })
+        }
+      }
+      setDates(dts)
+      setSettings(await readSettings())
     } catch (e) { setErr(errMsg(e)) } finally { setLoading(false) }
   }
   useEffect(() => { void load() }, [])
@@ -208,6 +226,11 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
     await load()
   }
 
+  const returnReceived = (o: OrderRow) => {
+    if (!window.confirm(`Marquer le retour de l’entreprise pour la commande ${o.order_number} ?\nLa fiche passera en « Archivée ».`)) return
+    void runAction('advance_plan_status', { p_order: o.order_number, p_to: 'ARCHIVEE' }, `Retour enregistré pour la commande ${o.order_number}.`)
+  }
+
   const sendManually = (ids: string[]) => {
     if (!ids.length) return
     if (!window.confirm(`Marquer ${ids.length} commande(s) comme envoyée(s) manuellement ?\nElles ne figureront plus dans vos listes à traiter.`)) return
@@ -241,14 +264,14 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
     if (!ref) return
     try {
       const l = await savedLine(o)
-      openPdf(await buildSheetPdf(l, o, ref, companyNameOf(o.isis_code), redactorOf(profile)))
+      openPdf(await buildSheetPdf(l, o, ref, companyNameOf(o.isis_code), contactFor(contacts, o)))
     } catch (e) { setErr(errMsg(e)) }
   }
   const downloadSheet = async (o: OrderRow) => {
     if (!ref) return
     try {
       const l = await savedLine(o)
-      const bytes = await buildSheetPdf(l, o, ref, companyNameOf(o.isis_code), redactorOf(profile))
+      const bytes = await buildSheetPdf(l, o, ref, companyNameOf(o.isis_code), contactFor(contacts, o))
       const name = planFileName(fileTemplate, { entreprise: companyNameOf(o.isis_code) || o.order_number, commande: o.order_number, secteur: o.sector_code ?? '' })
       downloadBlob(new Blob([bytes as BlobPart], { type: 'application/pdf' }), name)
     } catch (e) { setErr(errMsg(e)) }
@@ -267,7 +290,7 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
       const map = await fetchSavedLines(selectedOrders, ref)
       const lines = selectedOrders.map((o) => map.get(o.order_number)).filter((l): l is Line => !!l)
       const byNumber = new Map(selectedOrders.map((o) => [o.order_number, o]))
-      const { blob, count, failures } = await buildSheetsZip(lines, byNumber, ref, companyNameOf, redactorOf(profile), fileTemplate, setNotice)
+      const { blob, count, failures } = await buildSheetsZip(lines, byNumber, ref, companyNameOf, (x) => contactFor(contacts, x), fileTemplate, setNotice)
       if (count > 0) downloadBlob(blob, `fiches_plans_prevention_${new Date().toISOString().slice(0, 10)}.zip`)
       if (failures.length) setErr(`${failures.length} PDF non généré(s) :\n${failures.join('\n')}`)
       else setNotice(`${count} PDF téléchargé(s).`)
@@ -466,6 +489,12 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
                           {o.scope_request_status === 'EN_ATTENTE' && <Badge tone="warn">Exclusion en attente</Badge>}
                           {o.naac_code && <Badge>{o.naac_code}</Badge>}
                         </div>
+                        {(dates.get(o.order_number)?.drafted || dates.get(o.order_number)?.sent) && (
+                          <div className="mt-1 space-y-0.5 text-[11px] text-muted-foreground">
+                            {dates.get(o.order_number)?.drafted && <div>Rédigée le {fmtDate(dates.get(o.order_number)!.drafted!)}</div>}
+                            {dates.get(o.order_number)?.sent && <div>Envoyée le {fmtDate(dates.get(o.order_number)!.sent!)}</div>}
+                          </div>
+                        )}
                       </td>
                       <td className="px-3 py-2.5 text-right">
                         <div className="flex flex-wrap justify-end gap-1.5 whitespace-nowrap">
@@ -481,7 +510,16 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
                                   <IconButton icon={Eye} label="Prévisualiser la fiche" onClick={() => void previewSheet(o)} />
                                   <IconButton icon={Pencil} label="Modifier la fiche" onClick={() => void editSheet(o)} disabled={busy || !ref} />
                                   <IconButton icon={Download} label="Télécharger le PDF" onClick={() => void downloadSheet(o)} />
+                                  <IconButton icon={Mail} label="Envoyer par mail" onClick={() => setMailOrder(o)} disabled={busy} />
                                   <IconButton icon={SlidersHorizontal} label="Éditeur avancé (natures, lots, mesures)" onClick={() => onOpen(o)} />
+                                </>
+                              )}
+                              {o.scope_status === 'IN_SCOPE' && o.plan_status === 'EN_ATTENTE_RETOUR' && (
+                                <>
+                                  <IconButton icon={Eye} label="Prévisualiser la fiche" onClick={() => void previewSheet(o)} />
+                                  <IconButton icon={Download} label="Télécharger le PDF" onClick={() => void downloadSheet(o)} />
+                                  <IconButton icon={Mail} label="Renvoyer par mail" onClick={() => setMailOrder(o)} disabled={busy} />
+                                  <IconButton icon={CheckCheck} label="Retour de l’entreprise reçu" onClick={() => returnReceived(o)} disabled={busy} />
                                 </>
                               )}
                               {o.scope_status === 'IN_SCOPE' && (
@@ -517,6 +555,19 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
         </div>
       )}
 
+      {mailOrder && (
+        <MailDialog
+          order={mailOrder}
+          company={companyNameOf(mailOrder.isis_code) || mailOrder.isis_code || ''}
+          osEmail={companies.get(mailOrder.isis_code ?? '')?.os_email ?? ''}
+          contact={contactFor(contacts, mailOrder)}
+          objet={settings.mail_objet ?? DEFAULT_MAIL_OBJET}
+          corps={settings.mail_corps ?? DEFAULT_MAIL_CORPS}
+          onDownloadPdf={() => downloadSheet(mailOrder)}
+          onDone={(m) => { setMailOrder(null); setNotice(m); void load() }}
+          onClose={() => setMailOrder(null)}
+        />
+      )}
       {wizard && ref && (
         <BulkPlanWizard
           orders={wizard.orders}
@@ -533,7 +584,7 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
       {actionOrder && (
         <OrderActionDialog
           order={actionOrder}
-          isManager={isManager}
+          canReassign={isManager || (!!profile?.operator_code && actionOrder.operator_code === profile.operator_code)}
           operators={operators}
           onClose={() => setActionOrder(null)}
           onDone={(m) => { setActionOrder(null); setNotice(m); void load() }}

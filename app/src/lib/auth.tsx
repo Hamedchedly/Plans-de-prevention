@@ -18,6 +18,19 @@ interface AuthState {
 
 const Ctx = createContext<AuthState | undefined>(undefined)
 
+
+/** Journalise une connexion une fois par onglet et par utilisateur (sessions restaurées comprises). */
+function logSessionOnce(userId: string, email: string) {
+  const key = `login_logged:${userId}`
+  try {
+    if (sessionStorage.getItem(key)) return
+    sessionStorage.setItem(key, '1')
+  } catch {
+    /* stockage indisponible : on journalise sans déduplication */
+  }
+  void logActivity('LOGIN', 'auth', userId, { email })
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -37,8 +50,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await loadProfile(data.session?.user.id)
       setLoading(false)
     })
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_e, s) => {
+    const { data: sub } = supabase.auth.onAuthStateChange(async (event, s) => {
       setSession(s)
+      if (s && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) logSessionOnce(s.user.id, s.user.email ?? '')
       await loadProfile(s?.user.id)
     })
     return () => sub.subscription.unsubscribe()
@@ -53,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setError(null)
       const { data, error: err } = await supabase.auth.signInWithPassword({ email, password })
       if (err) throw err
-      void logActivity('LOGIN', 'auth', data.user?.id ?? '', { email })
+      if (data.user) logSessionOnce(data.user.id, email)
     },
     signOut: async () => { await endSession() },
     refreshProfile: async () => loadProfile(session?.user.id),

@@ -9,11 +9,14 @@ import { CompaniesSection, CompanyProposalsSection } from './AdminCompanies'
 import { DataSection } from './AdminData'
 import { startImpersonation } from '../lib/impersonation'
 import ProfileDialog from '../components/ProfileDialog'
+import { CreatorsSection, KpiSection, TemplatesSection } from './AdminOps'
 
-type Section = 'validations' | 'tracabilite' | 'perimetre' | 'referentiels' | 'entreprises' | 'donnees' | 'alertes' | 'utilisateurs' | 'fichiers'
+type Section = 'validations' | 'tracabilite' | 'perimetre' | 'referentiels' | 'entreprises' | 'donnees' | 'alertes' | 'utilisateurs' | 'fichiers' | 'chargés' | 'indicateurs' | 'modeles'
 
 const SECTIONS: { key: Section; label: string; superOnly: boolean }[] = [
   { key: 'alertes', label: 'Alertes', superOnly: false },
+  { key: 'indicateurs', label: 'Indicateurs', superOnly: false },
+  { key: 'chargés', label: 'Chargés d’opérations', superOnly: false },
   { key: 'validations', label: 'Validations', superOnly: true },
   { key: 'tracabilite', label: 'Traçabilité', superOnly: true },
   { key: 'perimetre', label: 'Périmètre', superOnly: true },
@@ -22,6 +25,7 @@ const SECTIONS: { key: Section; label: string; superOnly: boolean }[] = [
   { key: 'donnees', label: 'Base de données', superOnly: true },
   { key: 'utilisateurs', label: 'Utilisateurs', superOnly: true },
   { key: 'fichiers', label: 'Fichiers de fiches', superOnly: true },
+  { key: 'modeles', label: 'Modèles mail et PDF', superOnly: true },
 ]
 
 export default function Admin() {
@@ -45,6 +49,9 @@ export default function Admin() {
       {section === 'donnees' && isSuper && <DataSection />}
       {section === 'utilisateurs' && isSuper && <UsersSection />}
       {section === 'fichiers' && isSuper && <FileNameSection />}
+      {section === 'modeles' && isSuper && <TemplatesSection />}
+      {section === 'indicateurs' && <KpiSection />}
+      {section === 'chargés' && <CreatorsSection />}
     </div>
   )
 }

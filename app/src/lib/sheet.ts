@@ -137,14 +137,60 @@ export async function savePlans(lines: Line[], byNumber: Map<string, OrderRow>, 
   return failures
 }
 
+export interface Contact extends Redactor { isActive: boolean; complete: boolean }
+
+/** Contacts des chargés (personne à alerter) pour une liste de codes opérateurs. */
+export async function fetchContacts(codes: string[]): Promise<Map<string, Contact>> {
+  const out = new Map<string, Contact>()
+  const list = unique(codes.filter(Boolean))
+  if (!list.length) return out
+  const { data, error } = await supabase.rpc('operator_contacts', { p_codes: list })
+  if (error) throw new Error(error.message)
+  for (const r of (data ?? []) as { operator_code: string; full_name: string | null; phone: string | null; email: string | null; is_active: boolean; complete: boolean }[]) {
+    out.set(r.operator_code, { name: r.full_name ?? '', phone: r.phone ?? '', email: r.email ?? '', isActive: r.is_active, complete: r.complete })
+  }
+  return out
+}
+
+/** Personne à alerter d'une commande : le chargé qui l'a créée. */
+export function contactFor(contacts: Map<string, Contact>, o: OrderRow): Redactor | null {
+  const c = o.operator_code ? contacts.get(o.operator_code) : undefined
+  return c ? { name: c.name, email: c.email, phone: c.phone } : null
+}
+
+/** Paramètres administrables, relus au plus toutes les 30 secondes. */
+let settingsCache: { at: number; values: Record<string, string> } | null = null
+export async function readSettings(): Promise<Record<string, string>> {
+  if (settingsCache && Date.now() - settingsCache.at < 30000) return settingsCache.values
+  const keys = ['pdf_procedure_alerte', 'pdf_pied_de_page', 'mail_objet', 'mail_corps']
+  const values: Record<string, string> = {}
+  await Promise.all(keys.map(async (k) => {
+    const { data } = await supabase.rpc('app_setting_get', { p_key: k })
+    if (typeof data === 'string' && data.trim()) values[k] = data
+  }))
+  settingsCache = { at: Date.now(), values }
+  return values
+}
+
+export const DEFAULT_MAIL_OBJET = 'Plan de prévention – commande {commande} – {entreprise}'
+export const DEFAULT_MAIL_CORPS = 'Bonjour,\n\nVeuillez trouver ci-joint le plan de prévention relatif à la commande {commande} ({nature}).\nPériode d’intervention : {periode}.\n\nMerci de nous le retourner signé.\n\nCordialement,\n{redacteur}'
+
+/** Remplace {variable} par sa valeur (variables inconnues vidées). */
+export const fillTemplate = (s: string, v: Record<string, string>) => s.replace(/\{(\w+)\}/g, (_, k: string) => v[k] ?? '')
+
 export async function buildSheetPdf(l: Line, o: OrderRow, ref: Referentiel, companyName: string, redactor: Redactor | null): Promise<Uint8Array> {
-  return buildPlanPdf(sheetPdfInput(l, o, ref, companyName, redactor), await brandLogo())
+  const [logo, st] = await Promise.all([brandLogo(), readSettings()])
+  return buildPlanPdf({
+    ...sheetPdfInput(l, o, ref, companyName, redactor),
+    alertLine: st.pdf_procedure_alerte,
+    footer: st.pdf_pied_de_page,
+  }, logo)
 }
 
 /** Tous les PDF d'une sélection, regroupés dans un ZIP nommé selon le modèle défini par le Super Admin. */
 export async function buildSheetsZip(
   lines: Line[], byNumber: Map<string, OrderRow>, ref: Referentiel, companyNameOf: (isis: string | null) => string,
-  redactor: Redactor | null, template: string, onProgress?: (msg: string) => void,
+  contactOf: (o: OrderRow) => Redactor | null, template: string, onProgress?: (msg: string) => void,
 ): Promise<{ blob: Blob; count: number; failures: string[] }> {
   const zip = new JSZip()
   const used = new Map<string, number>()
@@ -161,7 +207,7 @@ export async function buildSheetsZip(
       const c = used.get(base) ?? 0
       used.set(base, c + 1)
       const name = c ? base.replace(/\.pdf$/, ` (${c + 1}).pdf`) : base
-      zip.file(name, await buildSheetPdf(l, o, ref, companyNameOf(o.isis_code), redactor))
+      zip.file(name, await buildSheetPdf(l, o, ref, companyNameOf(o.isis_code), contactOf(o)))
       count++
     } catch (e) {
       failures.push(`${l.orderNumber} : ${e instanceof Error ? e.message : String(e)}`)

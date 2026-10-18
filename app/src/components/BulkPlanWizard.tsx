@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useAuth } from '../lib/auth'
 import type { Referentiel } from '../lib/refdata'
 import { computeMeasures, searchNatures, type NatureRef } from '../lib/rules'
 import { fmtFr, defaultPeriod } from '../lib/period'
 import { natureCandidates, type OrderSuggestion } from '../lib/natureSuggest'
 import { supabase } from '../lib/supabase'
-import { derive, identityIncomplete, measuresFor, periodLabel, redactorOf, savePlans, buildSheetsZip, downloadBlob, buildSheetPdf, unique, planFileName, type Line } from '../lib/sheet'
+import { derive, contactFor, fetchContacts, measuresFor, periodLabel, savePlans, buildSheetsZip, downloadBlob, buildSheetPdf, unique, planFileName, type Contact, type Line } from '../lib/sheet'
 import type { OrderRow } from '../lib/types'
 import type { CompanyRow } from '../pages/AdminCompanies'
 import { Badge, Button, Card, Notice, errMsg, fieldClass } from './ui'
@@ -15,6 +14,16 @@ interface CompanyEdit { name: string; os_email: string }
 const STEPS = ['Nature et lots', 'Risques et mesures', 'Entreprise et date', 'Aperçu et validation']
 const OVERVIEW = STEPS.length - 1
 const BY_ORDER_STEPS = STEPS.length - 1
+
+/** Chargés dont la personne à alerter n'est pas complète : les PDF ne peuvent pas être exportés tant que ce n'est pas réglé. */
+function IdentityNotice({ codes }: { codes: string[] }) {
+  return (
+    <Notice tone="warn">
+      Identité incomplète ou compte non inscrit pour : <span className="font-mono">{codes.join(', ')}</span>.
+      La personne à alerter doit être complétée (Administration › Chargés d’opérations, ou saisie par la personne à son inscription) avant l’export des PDF.
+    </Notice>
+  )
+}
 
 export default function BulkPlanWizard({
   orders, suggestions, ref, companies, template, initial, mode = 'create', onClose, onDone,
@@ -29,9 +38,19 @@ export default function BulkPlanWizard({
   onClose: () => void
   onDone: (message: string) => void
 }) {
-  const { profile } = useAuth()
-  const identityMissing = identityIncomplete(profile)
-  const redactor = redactorOf(profile)
+  // Personne à alerter : le chargé qui a créé chaque commande (identité saisie par le Super Admin ou à l'inscription)
+  const [contacts, setContacts] = useState<Map<string, Contact>>(new Map())
+  const [contactsReady, setContactsReady] = useState(false)
+  useEffect(() => {
+    fetchContacts(orders.map((o) => o.operator_code ?? ''))
+      .then(setContacts)
+      .catch(() => setContacts(new Map()))
+      .finally(() => setContactsReady(true))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const operatorsIncomplete = unique(orders.map((o) => o.operator_code ?? '').filter((c) => !c || !contacts.get(c)?.complete))
+  const identityMissing = contactsReady && operatorsIncomplete.length > 0
+  const contactOf = (o: OrderRow) => contactFor(contacts, o)
   const [created, setCreated] = useState(false)
 
   const byNumber = useMemo(() => new Map(orders.map((o) => [o.order_number, o])), [orders])
@@ -121,14 +140,14 @@ export default function BulkPlanWizard({
     let alive = true
     ;(async () => {
       try {
-        const bytes = await buildSheetPdf(l, o, ref, companyLabel(o.isis_code), redactor)
+        const bytes = await buildSheetPdf(l, o, ref, companyLabel(o.isis_code), contactOf(o))
         url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'application/pdf' }))
         if (alive) setPreviewUrl(url); else URL.revokeObjectURL(url)
       } catch (e) { if (alive) setErr(errMsg(e)) }
     })()
     return () => { alive = false; if (url) URL.revokeObjectURL(url); setPreviewUrl(null) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, previewIndex, lines, edits])
+  }, [step, previewIndex, lines, edits, contacts])
 
   // ---- validation : la fiche est créée (statut « Fiche créée ») même sans export
   const validate = async () => {
@@ -144,7 +163,7 @@ export default function BulkPlanWizard({
   const download = async () => {
     setBusy(true); setErr(null)
     try {
-      const { blob, count, failures } = await buildSheetsZip(lines, byNumber, ref, companyLabel, redactor, template, setProgress)
+      const { blob, count, failures } = await buildSheetsZip(lines, byNumber, ref, companyLabel, contactOf, template, setProgress)
       if (count > 0) downloadBlob(blob, `fiches_plans_prevention_${new Date().toISOString().slice(0, 10)}.zip`)
       setBusy(false)
       if (failures.length) setErr(`${failures.length} PDF non généré(s) :\n${failures.join('\n')}`)
@@ -389,9 +408,7 @@ export default function BulkPlanWizard({
                   )}
                 </Card>
 
-                {identityMissing && (
-                  <Notice tone="error">Votre identité est incomplète : renseignez prénom, nom, téléphone et mail via « Mon profil » avant d’exporter.</Notice>
-                )}
+                {identityMissing && <IdentityNotice codes={operatorsIncomplete} />}
               </div>
             )}
 
@@ -441,14 +458,12 @@ export default function BulkPlanWizard({
                 {lines.some((l) => l.natureId == null) && (
                   <Notice tone="error">Certaines commandes n’ont pas de nature : revenez à l’étape 1.</Notice>
                 )}
-                {identityMissing && (
-                  <Notice tone="error">Votre identité est incomplète : renseignez-la via « Mon profil ».</Notice>
-                )}
+                {identityMissing && <IdentityNotice codes={operatorsIncomplete} />}
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button onClick={() => void validate()} disabled={busy || !lines.length || identityMissing || lines.some((l) => l.natureId == null)}>
+                  <Button onClick={() => void validate()} disabled={busy || !lines.length || lines.some((l) => l.natureId == null)}>
                     {busy ? 'Enregistrement…' : mode === 'edit' ? `Enregistrer les modifications (${lines.length})` : `Valider et créer ${lines.length > 1 ? `les ${lines.length} fiches` : 'la fiche'}`}
                   </Button>
-                  <Button variant="ghost" onClick={() => void download()} disabled={busy || !created}>Télécharger les PDF (ZIP)</Button>
+                  <Button variant="ghost" onClick={() => void download()} disabled={busy || !created || identityMissing}>Télécharger les PDF (ZIP)</Button>
                   {created && <Button variant="ghost" onClick={finish} disabled={busy}>Terminer</Button>}
                 </div>
                 {!created && <p className="text-xs text-muted-foreground">La fiche est créée dès la validation ; l’export PDF peut se faire ensuite depuis la liste.</p>}

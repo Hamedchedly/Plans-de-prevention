@@ -84,15 +84,26 @@ export function searchNatures(
   const qt = tokens(query)
   if (!qt.length) return []
   const qe = expandQuery(query, vocab)
+  const phrase = fold(query).replace(/\s+/g, ' ').trim()
+  // opération demandée : pose, dépose, ou les deux (« pose / dépose » couvre les deux)
+  const qFold = fold(query)
+  const wantsDepose = /\bdepos/.test(qFold)
+  const wantsPose = /\bpos(e|er)\b|\binstall/.test(qFold) && !wantsDepose
   const hits: SearchHit[] = []
   for (const n of natures) {
     const kws = tokens(n.label)
+    const labelFold = fold(n.label)
     let s = 0
     for (const w of qe) {
       let best = 0
       for (const kw of kws) best = Math.max(best, wordScore(w, kw))
       s += best
     }
+    // phrase tapée presque telle quelle dans le libellé : signal fort
+    if (phrase.length >= 4 && labelFold.includes(phrase)) s += qt.length * 0.5
+    // le verbe demandé est porté par le libellé
+    if (wantsDepose && labelFold.includes('depos')) s += 0.5
+    if (wantsPose && /\bpose\b|^installation|\binstall/.test(labelFold)) s += 0.5
     // un mot qui désigne le lot (ex. « toiture » → Couverture) compte aussi
     for (const lot of n.lots) {
       const lname = fold(lotNameByCode.get(lot) ?? '')

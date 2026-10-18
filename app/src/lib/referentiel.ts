@@ -24,15 +24,16 @@ export async function importReferentielV4(userId: string): Promise<string> {
     ok(await supabase.from('lot_risks').upsert(part, { onConflict: 'lot_code,risk_code' }))
   }
 
-  // natures : upsert par libellé, puis liens recréés
+  // natures : upsert par clé stable ref_key (ancien libellé), le libellé peut donc être reformulé sans doublon
   for (const part of chunk(seed.natures)) {
     ok(await supabase.from('natures').upsert(
-      part.map((n) => ({ label: n.label, model_code: n.model_code, group_label: n.group_label })), { onConflict: 'label' }))
+      part.map((n) => ({ ref_key: n.ref_key, label: n.label, model_code: n.model_code, group_label: n.group_label })),
+      { onConflict: 'ref_key' }))
   }
-  const { data: natureRows, error: nErr } = await supabase.from('natures').select('id,label')
+  const { data: natureRows, error: nErr } = await supabase.from('natures').select('id,ref_key')
   if (nErr) throw new Error(nErr.message)
-  const idByLabel = new Map((natureRows ?? []).map((r: { id: number; label: string }) => [r.label, r.id]))
-  const natureIds = seed.natures.map((n) => idByLabel.get(n.label)).filter((x): x is number => typeof x === 'number')
+  const idByKey = new Map((natureRows ?? []).map((r: { id: number; ref_key: string }) => [r.ref_key, r.id]))
+  const natureIds = seed.natures.map((n) => idByKey.get(n.ref_key)).filter((x): x is number => typeof x === 'number')
   ok(await supabase.from('nature_lots').delete().in('nature_id', natureIds))
   ok(await supabase.from('nature_risks').delete().in('nature_id', natureIds))
   ok(await supabase.from('nature_measures').delete().in('nature_id', natureIds))
@@ -44,7 +45,7 @@ export async function importReferentielV4(userId: string): Promise<string> {
   const nl: { nature_id: number; lot_code: number }[] = []
   const nr: { nature_id: number; risk_code: string }[] = []
   for (const n of seed.natures) {
-    const id = idByLabel.get(n.label)
+    const id = idByKey.get(n.ref_key)
     if (typeof id !== 'number') continue
     n.lots.forEach((lot) => nl.push({ nature_id: id, lot_code: lot }))
     n.extra_risks.forEach((r) => nr.push({ nature_id: id, risk_code: r }))

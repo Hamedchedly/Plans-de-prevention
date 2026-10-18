@@ -21,6 +21,7 @@ const MIN_CHARS = 1
 const EDITABLE: PlanStatus[] = ['NON_QUALIFIEE', 'A_ENVOYER']
 const STATUS_LABEL: Record<PlanStatus, string> = {
   NON_QUALIFIEE: 'Non qualifiée', A_ENVOYER: 'À envoyer', EN_ATTENTE_RETOUR: 'En attente retour entreprise', ARCHIVEE: 'Archivée',
+  ENVOYE_MANUELLEMENT: 'Envoyée manuellement (hors application)',
 }
 
 /** Risques : défauts des lots + écarts des natures retenues. Un choix manuel (MANUEL) n'est jamais écrasé. */

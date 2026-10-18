@@ -1253,7 +1253,8 @@
       "lots": [
         1
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Dépose de plaques ou éléments en amiante-ciment (toiture, conduits, bardage)"
     },
     {
       "label": "Retrait de flocages, calorifugeages ou matériaux friables (procédure lourde avec confinement)",
@@ -1262,7 +1263,8 @@
       "lots": [
         1
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Retrait de flocages, calorifugeages ou matériaux friables (procédure lourde avec confinement)"
     },
     {
       "label": "Retrait de dalles de sol ou colle amiantée",
@@ -1271,7 +1273,8 @@
       "lots": [
         1
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Retrait de dalles de sol ou colle amiantée"
     },
     {
       "label": "Aspiration ou raclage des poussières amiantées",
@@ -1280,7 +1283,8 @@
       "lots": [
         1
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Aspiration ou raclage des poussières amiantées"
     },
     {
       "label": "Encapsulage si conservation du support (application de fixateur ou résine)",
@@ -1291,7 +1295,8 @@
       ],
       "extra_risks": [
         "R08"
-      ]
+      ],
+      "ref_key": "Encapsulage si conservation du support (application de fixateur ou résine)"
     },
     {
       "label": "Aspiration de la zone avec aspirateur à filtration absolue (THE)",
@@ -1300,7 +1305,8 @@
       "lots": [
         1
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Aspiration de la zone avec aspirateur à filtration absolue (THE)"
     },
     {
       "label": "Lavage humide des surfaces si nécessaire",
@@ -1309,7 +1315,8 @@
       "lots": [
         1
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Lavage humide des surfaces si nécessaire"
     },
     {
       "label": "Dépose des éléments non porteurs : cloisons, plafonds, doublages",
@@ -1318,7 +1325,8 @@
       "lots": [
         2
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Dépose des éléments non porteurs : cloisons, plafonds, doublages"
     },
     {
       "label": "Dépose des équipements techniques : luminaires, radiateurs, sanitaires",
@@ -1327,7 +1335,8 @@
       "lots": [
         2
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Dépose des équipements techniques : luminaires, radiateurs, sanitaires"
     },
     {
       "label": "Dépose des menuiseries (portes, fenêtres)",
@@ -1336,7 +1345,8 @@
       "lots": [
         2
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Dépose des menuiseries (portes, fenêtres)"
     },
     {
       "label": "Dépose des revêtements : sols souples, carrelages, faïences",
@@ -1345,7 +1355,8 @@
       "lots": [
         2
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Dépose des revêtements : sols souples, carrelages, faïences"
     },
     {
       "label": "Dépose des réseaux intérieurs (plomberie, électricité, VMC)",
@@ -1357,7 +1368,8 @@
       "extra_risks": [
         "R09",
         "R06"
-      ]
+      ],
+      "ref_key": "Dépose des réseaux intérieurs (plomberie, électricité, VMC)"
     },
     {
       "label": "Démolition de murs non porteurs à la masse, burineur",
@@ -1366,7 +1378,8 @@
       "lots": [
         2
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Démolition de murs non porteurs à la masse, burineur"
     },
     {
       "label": "Démolition de petits ouvrages (escaliers, murets, appuis)",
@@ -1375,7 +1388,8 @@
       "lots": [
         2
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Démolition de petits ouvrages (escaliers, murets, appuis)"
     },
     {
       "label": "Reprise ponctuelle de dalles ou planchers",
@@ -1384,7 +1398,8 @@
       "lots": [
         2
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Reprise ponctuelle de dalles ou planchers"
     },
     {
       "label": "Démolition de murs porteurs au BRH (brise-roche hydraulique)",
@@ -1393,7 +1408,8 @@
       "lots": [
         2
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Démolition de murs porteurs au BRH (brise-roche hydraulique)"
     },
     {
       "label": "Démolition de planchers béton ou structures métalliques",
@@ -1402,7 +1418,8 @@
       "lots": [
         2
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Démolition de planchers béton ou structures métalliques"
     },
     {
       "label": "Abattage de bâtiment (grignotage ou abattage à la pelle)",
@@ -1411,7 +1428,8 @@
       "lots": [
         2
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Abattage de bâtiment (grignotage ou abattage à la pelle)"
     },
     {
       "label": "Sciage et carottage de béton (création de trémies ou réservations)",
@@ -1420,7 +1438,8 @@
       "lots": [
         2
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Sciage et carottage de béton (création de trémies ou réservations)"
     },
     {
       "label": "Démolition de cheminées ou souches en toiture",
@@ -1429,7 +1448,8 @@
       "lots": [
         2
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Démolition de cheminées ou souches en toiture"
     },
     {
       "label": "Dépose de fondations superficielles",
@@ -1438,7 +1458,8 @@
       "lots": [
         2
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Dépose de fondations superficielles"
     },
     {
       "label": "Sciage de dalles ou murs en milieux contraints",
@@ -1447,7 +1468,8 @@
       "lots": [
         2
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Sciage de dalles ou murs en milieux contraints"
     },
     {
       "label": "Intervention en site occupé (zones horaires, protections renforcées)",
@@ -1456,7 +1478,8 @@
       "lots": [
         2
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Intervention en site occupé (zones horaires, protections renforcées)"
     },
     {
       "label": "Travaux en milieu urbain / bâtiment mitoyen (procédures spécifiques)",
@@ -1465,7 +1488,8 @@
       "lots": [
         2
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Travaux en milieu urbain / bâtiment mitoyen (procédures spécifiques)"
     },
     {
       "label": "Réalisation de semelles filantes ou isolées en béton armé",
@@ -1474,7 +1498,8 @@
       "lots": [
         3
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Réalisation de semelles filantes ou isolées en béton armé"
     },
     {
       "label": "Création de longrines, plots ou radiers",
@@ -1483,7 +1508,8 @@
       "lots": [
         3
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Création de longrines, plots ou radiers"
     },
     {
       "label": "Réalisation de fondations profondes (pieux, micropieux si sous-traité)",
@@ -1492,16 +1518,18 @@
       "lots": [
         3
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Réalisation de fondations profondes (pieux, micropieux si sous-traité)"
     },
     {
-      "label": "Pose de blocs béton (parpaings), briques, agglos cellulaires / dépose",
+      "label": "Pose / Dépose de blocs béton (parpaings), briques, agglos cellulaires",
       "model_code": "2.1",
       "group_label": "2. Élévations en maçonnerie",
       "lots": [
         3
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose de blocs béton (parpaings), briques, agglos cellulaires"
     },
     {
       "label": "Montage de murs porteurs ou non porteurs",
@@ -1510,7 +1538,8 @@
       "lots": [
         3
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Montage de murs porteurs ou non porteurs"
     },
     {
       "label": "Réalisation de chaînages horizontaux et verticaux",
@@ -1519,7 +1548,8 @@
       "lots": [
         3
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Réalisation de chaînages horizontaux et verticaux"
     },
     {
       "label": "Réalisation d'ouvertures : réservations, linteaux, seuils",
@@ -1528,7 +1558,8 @@
       "lots": [
         3
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Réalisation d'ouvertures : réservations, linteaux, seuils"
     },
     {
       "label": "Remplissage de murs (en rénovation)",
@@ -1537,7 +1568,8 @@
       "lots": [
         3
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Remplissage de murs (en rénovation)"
     },
     {
       "label": "Coffrage traditionnel ou modulaire (panneaux métalliques, bois)",
@@ -1546,7 +1578,8 @@
       "lots": [
         3
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Coffrage traditionnel ou modulaire (panneaux métalliques, bois)"
     },
     {
       "label": "Coulage des voiles et poteaux béton (avec contrôle vibrage et cure)",
@@ -1555,16 +1588,18 @@
       "lots": [
         3
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Coulage des voiles et poteaux béton (avec contrôle vibrage et cure)"
     },
     {
-      "label": "Pose de prédalles, poutrelles, hourdis / dépose",
+      "label": "Pose / Dépose de prédalles, poutrelles, hourdis",
       "model_code": "3.3",
       "group_label": "3. Béton armé (banché ou préfabriqué)",
       "lots": [
         3
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose de prédalles, poutrelles, hourdis"
     },
     {
       "label": "Coulage de dalles pleine, sur coffrage, ou sur entrevous",
@@ -1573,7 +1608,8 @@
       "lots": [
         3
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Coulage de dalles pleine, sur coffrage, ou sur entrevous"
     },
     {
       "label": "Réalisation de trémies, gaines, cages d'escalier",
@@ -1582,7 +1618,8 @@
       "lots": [
         3
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Réalisation de trémies, gaines, cages d'escalier"
     },
     {
       "label": "Ouverture de murs porteurs (avec pose de linteaux ou poutres métalliques)",
@@ -1591,7 +1628,8 @@
       "lots": [
         3
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Ouverture de murs porteurs (avec pose de linteaux ou poutres métalliques)"
     },
     {
       "label": "Renforcement de planchers (résines, fibres, béton armé complémentaire)",
@@ -1603,7 +1641,8 @@
       "extra_risks": [
         "R08",
         "R14"
-      ]
+      ],
+      "ref_key": "Renforcement de planchers (résines, fibres, béton armé complémentaire)"
     },
     {
       "label": "Réalisation de massifs ou socles pour équipements techniques",
@@ -1612,7 +1651,8 @@
       "lots": [
         3
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Réalisation de massifs ou socles pour équipements techniques"
     },
     {
       "label": "Injecteurs / coulis pour consolidation si zone sensible",
@@ -1621,7 +1661,8 @@
       "lots": [
         3
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Injecteurs / coulis pour consolidation si zone sensible"
     },
     {
       "label": "Réservations pour réseaux techniques (gaines, traversées)",
@@ -1632,16 +1673,18 @@
       ],
       "extra_risks": [
         "R09"
-      ]
+      ],
+      "ref_key": "Réservations pour réseaux techniques (gaines, traversées)"
     },
     {
-      "label": "Pose de membranes d'étanchéité sous dallage / dépose",
+      "label": "Pose / Dépose de membranes d'étanchéité sous dallage",
       "model_code": "6.1",
       "group_label": "6. Étanchéité et traitement des bétons",
       "lots": [
         3
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose de membranes d'étanchéité sous dallage"
     },
     {
       "label": "Traitement des joints de dilatation ou de construction",
@@ -1650,7 +1693,8 @@
       "lots": [
         3
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Traitement des joints de dilatation ou de construction"
     },
     {
       "label": "Application de produit de cure, hydrofuge, ou traitement anti-carbonatation",
@@ -1661,7 +1705,8 @@
       ],
       "extra_risks": [
         "R14"
-      ]
+      ],
+      "ref_key": "Application de produit de cure, hydrofuge, ou traitement anti-carbonatation"
     },
     {
       "label": "Dépose de l'ancienne charpente ou de parties défectueuses",
@@ -1670,7 +1715,8 @@
       "lots": [
         4
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Dépose de l'ancienne charpente ou de parties défectueuses"
     },
     {
       "label": "Démontage sécurisé en toiture occupée",
@@ -1679,7 +1725,8 @@
       "lots": [
         4
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Démontage sécurisé en toiture occupée"
     },
     {
       "label": "Traitement ou renforcement ponctuel des appuis (murs, poutres)",
@@ -1688,25 +1735,28 @@
       "lots": [
         4
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Traitement ou renforcement ponctuel des appuis (murs, poutres)"
     },
     {
-      "label": "Pose d'une chapente bois / dépose",
+      "label": "Pose / Dépose d'une charpente bois",
       "model_code": "2.1",
       "group_label": "2. Pose de charpente bois",
       "lots": [
         4
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose d'une chapente bois"
     },
     {
-      "label": "Pose d'une charpente métallique (portiques, poutres, etc.) / dépose",
+      "label": "Pose / Dépose d'une charpente métallique (portiques, poutres, etc.)",
       "model_code": "3.1",
       "group_label": "3. Pose de charpente métallique",
       "lots": [
         4
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose d'une charpente métallique (portiques, poutres, etc.)"
     },
     {
       "label": "Traitement anti-corrosion sur zones de coupe ou soudures",
@@ -1717,7 +1767,8 @@
       ],
       "extra_risks": [
         "R08"
-      ]
+      ],
+      "ref_key": "Traitement anti-corrosion sur zones de coupe ou soudures"
     },
     {
       "label": "Application de traitement fongicide, insecticide ou ignifuge sur bois",
@@ -1726,7 +1777,8 @@
       "lots": [
         4
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Application de traitement fongicide, insecticide ou ignifuge sur bois"
     },
     {
       "label": "Peinture antirouille ou galvanisation sur éléments métalliques",
@@ -1735,16 +1787,18 @@
       "lots": [
         4
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Peinture antirouille ou galvanisation sur éléments métalliques"
     },
     {
-      "label": "Pose de pare-vapeur ou pare-pluie en sous-toiture si nécessaire / dépose",
+      "label": "Pose / Dépose de pare-vapeur ou pare-pluie en sous-toiture si nécessaire",
       "model_code": "4.3",
       "group_label": "4. Traitement et protection",
       "lots": [
         4
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose de pare-vapeur ou pare-pluie en sous-toiture si nécessaire"
     },
     {
       "label": "Remplacement d'éléments de charpente affaiblis",
@@ -1753,16 +1807,18 @@
       "lots": [
         4
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Remplacement d'éléments de charpente affaiblis"
     },
     {
-      "label": "Pose de pièces de renfort (potelet, sabot, doublage) / dépose",
+      "label": "Pose / Dépose de pièces de renfort (potelet, sabot, doublage)",
       "model_code": "5.2",
       "group_label": "5. Maintenance (le cas échéant)",
       "lots": [
         4
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose de pièces de renfort (potelet, sabot, doublage)"
     },
     {
       "label": "Traitement curatif de bois attaqué (champignons, insectes)",
@@ -1771,7 +1827,8 @@
       "lots": [
         4
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Traitement curatif de bois attaqué (champignons, insectes)"
     },
     {
       "label": "Dépose des éléments de couverture (tuiles, ardoises, bac acier)",
@@ -1780,7 +1837,8 @@
       "lots": [
         5
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Dépose des éléments de couverture (tuiles, ardoises, bac acier)"
     },
     {
       "label": "Retrait des liteaux ou voliges abîmés",
@@ -1789,7 +1847,8 @@
       "lots": [
         5
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Retrait des liteaux ou voliges abîmés"
     },
     {
       "label": "Mise en place de l'écran de sous-toiture (pare-pluie, pare-vapeur)",
@@ -1798,10 +1857,11 @@
       "lots": [
         5
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Mise en place de l'écran de sous-toiture (pare-pluie, pare-vapeur)"
     },
     {
-      "label": "Pose des tuiles (terre cuite, béton), ardoises, bacs acier, plaques fibro-ciment (hors amiante) / dépose",
+      "label": "Pose / Dépose des tuiles (terre cuite, béton), ardoises, bacs acier, plaques fibro-ciment (hors amiante)",
       "model_code": "3.1",
       "group_label": "3. Pose des matériaux de couverture",
       "lots": [
@@ -1809,25 +1869,28 @@
       ],
       "extra_risks": [
         "R01"
-      ]
+      ],
+      "ref_key": "Pose des tuiles (terre cuite, béton), ardoises, bacs acier, plaques fibro-ciment (hors amiante)"
     },
     {
-      "label": "Pose des éléments de faîtage, rives, noues / dépose",
+      "label": "Pose / Dépose des éléments de faîtage, rives, noues",
       "model_code": "3.2",
       "group_label": "3. Pose des matériaux de couverture",
       "lots": [
         5
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose des éléments de faîtage, rives, noues"
     },
     {
-      "label": "Pose de solins d'étanchéité (zinc, plomb, PVC) / dépose",
+      "label": "Pose / Dépose de solins d'étanchéité (zinc, plomb, PVC)",
       "model_code": "4.1",
       "group_label": "4. Étanchéité et accessoires",
       "lots": [
         5
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose de solins d'étanchéité (zinc, plomb, PVC)"
     },
     {
       "label": "Réalisation des habillages de cheminée, fenêtres de toit, chéneaux",
@@ -1836,16 +1899,18 @@
       "lots": [
         5
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Réalisation des habillages de cheminée, fenêtres de toit, chéneaux"
     },
     {
-      "label": "Pose de gouttières, descentes d'eau pluviale et accessoires / dépose",
+      "label": "Pose / Dépose de gouttières, descentes d'eau pluviale et accessoires",
       "model_code": "4.3",
       "group_label": "4. Étanchéité et accessoires",
       "lots": [
         5
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose de gouttières, descentes d'eau pluviale et accessoires"
     },
     {
       "label": "Mise en place des protections contre la neige ou le vent (stop-neige, grillages)",
@@ -1854,7 +1919,8 @@
       "lots": [
         5
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Mise en place des protections contre la neige ou le vent (stop-neige, grillages)"
     },
     {
       "label": "Réparation de tuiles cassées ou déplacées",
@@ -1863,7 +1929,8 @@
       "lots": [
         5
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Réparation de tuiles cassées ou déplacées"
     },
     {
       "label": "Remplacement de liteaux ou éléments bois pourris",
@@ -1872,7 +1939,8 @@
       "lots": [
         5
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Remplacement de liteaux ou éléments bois pourris"
     },
     {
       "label": "Colmatage de fuites ou infiltrations",
@@ -1881,7 +1949,8 @@
       "lots": [
         5
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Colmatage de fuites ou infiltrations"
     },
     {
       "label": "Nettoyage de la toiture (débris, mousses, feuilles)",
@@ -1890,16 +1959,18 @@
       "lots": [
         5
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Nettoyage de la toiture (débris, mousses, feuilles)"
     },
     {
-      "label": "Pose de membranes bitumineuses (torchis, rouleaux) / dépose",
+      "label": "Pose / Dépose de membranes bitumineuses (torchis, rouleaux)",
       "model_code": "1.1",
       "group_label": "1. Mise en œuvre de l’étanchéité",
       "lots": [
         6
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose de membranes bitumineuses (torchis, rouleaux)"
     },
     {
       "label": "Application de résines liquides (polyuréthane, epoxy)",
@@ -1908,16 +1979,18 @@
       "lots": [
         6
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Application de résines liquides (polyuréthane, epoxy)"
     },
     {
-      "label": "Pose de feuilles synthétiques (PVC, EPDM) / dépose",
+      "label": "Pose / Dépose de feuilles synthétiques (PVC, EPDM)",
       "model_code": "1.3",
       "group_label": "1. Mise en œuvre de l’étanchéité",
       "lots": [
         6
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose de feuilles synthétiques (PVC, EPDM)"
     },
     {
       "label": "Traitement des points singuliers : relevés, angles, pénétrations",
@@ -1926,16 +1999,18 @@
       "lots": [
         6
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Traitement des points singuliers : relevés, angles, pénétrations"
     },
     {
-      "label": "Pose de protections mécaniques (dalles, gravillons, plaques) / dépose",
+      "label": "Pose / Dépose de protections mécaniques (dalles, gravillons, plaques)",
       "model_code": "2.1",
       "group_label": "2. Protection de l’étanchéité",
       "lots": [
         6
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose de protections mécaniques (dalles, gravillons, plaques)"
     },
     {
       "label": "Mise en place de protections végétales (toitures végétalisées)",
@@ -1946,7 +2021,8 @@
       ],
       "extra_risks": [
         "R13"
-      ]
+      ],
+      "ref_key": "Mise en place de protections végétales (toitures végétalisées)"
     },
     {
       "label": "Réalisation de protections contre les UV ou les agressions mécaniques",
@@ -1955,7 +2031,8 @@
       "lots": [
         6
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Réalisation de protections contre les UV ou les agressions mécaniques"
     },
     {
       "label": "Détection et réparation des infiltrations",
@@ -1964,7 +2041,8 @@
       "lots": [
         6
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Détection et réparation des infiltrations"
     },
     {
       "label": "Réfection partielle de membranes ou joints",
@@ -1973,7 +2051,8 @@
       "lots": [
         6
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Réfection partielle de membranes ou joints"
     },
     {
       "label": "Nettoyage des chéneaux, évacuations d'eau pluviale",
@@ -1982,7 +2061,8 @@
       "lots": [
         6
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Nettoyage des chéneaux, évacuations d'eau pluviale"
     },
     {
       "label": "Nettoyage des façades (haute pression, sablage, gommage, peeling selon nature du support)",
@@ -1993,7 +2073,8 @@
       ],
       "extra_risks": [
         "R03"
-      ]
+      ],
+      "ref_key": "Nettoyage des façades (haute pression, sablage, gommage, peeling selon nature du support)"
     },
     {
       "label": "Démoussage / traitement fongicide",
@@ -2002,7 +2083,8 @@
       "lots": [
         7
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Démoussage / traitement fongicide"
     },
     {
       "label": "Application d'un fixateur ou primaire d'accrochage (si requis)",
@@ -2011,7 +2093,8 @@
       "lots": [
         7
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Application d'un fixateur ou primaire d'accrochage (si requis)"
     },
     {
       "label": "Reprise de maçonneries (joints, éclats, fissures)",
@@ -2020,7 +2103,8 @@
       "lots": [
         7
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Reprise de maçonneries (joints, éclats, fissures)"
     },
     {
       "label": "Projection ou application manuelle",
@@ -2029,7 +2113,8 @@
       "lots": [
         7
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Projection ou application manuelle"
     },
     {
       "label": "Dressage et finition (taloché, gratté, écrasé, lissé…)",
@@ -2038,16 +2123,18 @@
       "lots": [
         7
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Dressage et finition (taloché, gratté, écrasé, lissé…)"
     },
     {
-      "label": "Pose d'un sous-enduit d'accrochage / dépose",
+      "label": "Pose / Dépose d'un sous-enduit d'accrochage",
       "model_code": "3.3",
       "group_label": "3. Application d’enduits",
       "lots": [
         7
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose d'un sous-enduit d'accrochage"
     },
     {
       "label": "Application manuelle ou mécanisée de la finition (acrylique, siloxane…)",
@@ -2056,7 +2143,8 @@
       "lots": [
         7
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Application manuelle ou mécanisée de la finition (acrylique, siloxane…)"
     },
     {
       "label": "Application d'un fixateur ou impression",
@@ -2065,7 +2153,8 @@
       "lots": [
         7
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Application d'un fixateur ou impression"
     },
     {
       "label": "Mise en œuvre de deux couches de peinture de façade (acrylique, siloxane, minérale…)",
@@ -2074,25 +2163,28 @@
       "lots": [
         7
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Mise en œuvre de deux couches de peinture de façade (acrylique, siloxane, minérale…)"
     },
     {
-      "label": "Pose / Dépose bardage bois en facade",
+      "label": "Pose / Dépose de bardage bois en façade",
       "model_code": "4.2",
       "group_label": "4. Ravalement avec peinture (si applicable)",
       "lots": [
         7
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose / Dépose bardage bois en facade"
     },
     {
-      "label": "Pose / Dépose panneau d'habillage en facade",
+      "label": "Pose / Dépose de panneaux d'habillage en façade",
       "model_code": "4.2",
       "group_label": "4. Ravalement avec peinture (si applicable)",
       "lots": [
         7
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose / Dépose panneau d'habillage en facade"
     },
     {
       "label": "Mise en place de l'isolation thermique, acoustique ou pare-vapeur dans les doublages ou cloisons",
@@ -2101,7 +2193,8 @@
       "lots": [
         8
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Mise en place de l'isolation thermique, acoustique ou pare-vapeur dans les doublages ou cloisons"
     },
     {
       "label": "Calfeutrement et ajustement",
@@ -2110,7 +2203,8 @@
       "lots": [
         8
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Calfeutrement et ajustement"
     },
     {
       "label": "Réalisation de cloisons (placo, BA13, etc.) sur ossature",
@@ -2119,7 +2213,8 @@
       "lots": [
         8
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Réalisation de cloisons (placo, BA13, etc.) sur ossature"
     },
     {
       "label": "Réalisation des faux plafonds (rails, dalles ou plaques)",
@@ -2128,7 +2223,8 @@
       "lots": [
         8
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Réalisation des faux plafonds (rails, dalles ou plaques)"
     },
     {
       "label": "Réalisation des réservations pour portes, fenêtres, gaines techniques",
@@ -2137,88 +2233,98 @@
       "lots": [
         8
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Réalisation des réservations pour portes, fenêtres, gaines techniques"
     },
     {
-      "label": "Pose des huisseries et encadrements / dépose",
+      "label": "Pose / Dépose des huisseries et encadrements",
       "model_code": "4.2",
       "group_label": "4. Ouvertures et accessoires",
       "lots": [
         8
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose des huisseries et encadrements"
     },
     {
-      "label": "POSE ITE : Pose d'isolant par collage ou fixation mécanique (chevilles à rosace) / dépose",
+      "label": "Pose / Dépose ITE : isolant par collage ou fixation mécanique (chevilles à rosace)",
       "model_code": "1.2",
       "group_label": "1. Isolation des murs (extérieure)",
       "lots": [
         9
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "POSE ITE : Pose d'isolant par collage ou fixation mécanique (chevilles à rosace)"
     },
     {
-      "label": "POSE ITI (ossature métallique, paneaux ou rouleaux isolants, BA13) / dépose",
+      "label": "Pose / Dépose ITI : ossature métallique, panneaux ou rouleaux isolants, BA13",
       "model_code": "2.1",
       "group_label": "2. Isolation des murs (intérieure)",
       "lots": [
         9
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "POSE ITI (ossature métallique, paneaux ou rouleaux isolants, BA13)"
     },
     {
-      "label": "POSE ITI (mise en place de pare-vapeur si nécessaire) / dépose",
+      "label": "Pose / Dépose ITI : pare-vapeur si nécessaire",
       "model_code": "2.3",
       "group_label": "2. Isolation des murs (intérieure)",
       "lots": [
         9
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "POSE ITI (mise en place de pare-vapeur si nécessaire)"
     },
     {
-      "label": "ISOLATION COMBLES PERDUS (Soufflage de laine minérale en vrac)",
+      "label": "Isolation des combles perdus par soufflage de laine minérale en vrac",
       "model_code": "3.1",
       "group_label": "3. Isolation des combles et toitures",
       "lots": [
         9
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "ISOLATION COMBLES PERDUS (Soufflage de laine minérale en vrac)"
     },
     {
-      "label": "ISOLATION COMBLES PERDUS (Pose de panneaux ou rouleaux sur le plancher) / dépose",
+      "label": "Pose / Dépose d'isolant en panneaux ou rouleaux sur plancher de combles perdus",
       "model_code": "3.2",
       "group_label": "3. Isolation des combles et toitures",
       "lots": [
         9
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "ISOLATION COMBLES PERDUS (Pose de panneaux ou rouleaux sur le plancher)"
     },
     {
-      "label": "ISOLATION RAMANTS DE TOITURE (Pose entre chevrons ou en double couche croisée) / dépose",
+      "label": "Pose / Dépose d'isolant entre chevrons ou en double couche croisée (ramants de toiture)",
       "model_code": "3.3",
       "group_label": "3. Isolation des combles et toitures",
       "lots": [
         9
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "ISOLATION RAMANTS DE TOITURE (Pose entre chevrons ou en double couche croisée)"
     },
     {
-      "label": "ISOLATION RAMANTS DE TOITURE (Pose éventuelle d'un pare-vapeur et d'un frein vapeur) / dépose",
+      "label": "Pose / Dépose d'un pare-vapeur et d'un frein vapeur (ramants de toiture)",
       "model_code": "3.4",
       "group_label": "3. Isolation des combles et toitures",
       "lots": [
         9
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "ISOLATION RAMANTS DE TOITURE (Pose éventuelle d'un pare-vapeur et d'un frein vapeur)"
     },
     {
-      "label": "Pose de panneaux rigides sur dalle ou sous chape (polystyrène, PU, laine minérale haute densité) / dépose",
+      "label": "Pose / Dépose de panneaux rigides sur dalle ou sous chape (polystyrène, PU, laine minérale haute densité)",
       "model_code": "4.1",
       "group_label": "4. Isolation des planchers et dalles",
       "lots": [
         9
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose de panneaux rigides sur dalle ou sous chape (polystyrène, PU, laine minérale haute densité)"
     },
     {
       "label": "Réalisation de chape flottante ou plancher chauffant sur isolant",
@@ -2227,7 +2333,8 @@
       "lots": [
         9
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Réalisation de chape flottante ou plancher chauffant sur isolant"
     },
     {
       "label": "Traitement des ponts thermiques en nez de dalle ou refends",
@@ -2236,19 +2343,21 @@
       "lots": [
         9
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Traitement des ponts thermiques en nez de dalle ou refends"
     },
     {
-      "label": "Pose des habillages divers (plinthes compris) / dépose",
+      "label": "Pose / Dépose des habillages divers (plinthes comprises)",
       "model_code": "1",
       "group_label": null,
       "lots": [
         10
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose des habillages divers (plinthes compris)"
     },
     {
-      "label": "Pose d'une porte intérieure / dépose",
+      "label": "Pose / Dépose d'une porte intérieure",
       "model_code": "2",
       "group_label": null,
       "lots": [
@@ -2258,29 +2367,32 @@
       "extra_risks": [
         "R08",
         "R06"
-      ]
+      ],
+      "ref_key": "Pose d'une porte intérieure"
     },
     {
-      "label": "Pose des gardes corps et/ou mains-courantes / dépose",
+      "label": "Pose / Dépose des gardes-corps et/ou mains courantes",
       "model_code": "3",
       "group_label": null,
       "lots": [
         10
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose des gardes corps et/ou mains-courantes"
     },
     {
-      "label": "Pose d'une menuiserie / dépose",
+      "label": "Pose / Dépose d'une menuiserie",
       "model_code": "3",
       "group_label": null,
       "lots": [
         10,
         11
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose d'une menuiserie"
     },
     {
-      "label": "Pose d'une portée d'entrée de bâtiment / dépose",
+      "label": "Pose / Dépose d'une porte d'entrée de bâtiment",
       "model_code": "1",
       "group_label": null,
       "lots": [
@@ -2291,70 +2403,78 @@
         "R04",
         "R08",
         "R06"
-      ]
+      ],
+      "ref_key": "Pose d'une portée d'entrée de bâtiment"
     },
     {
-      "label": "Pose d'un volet battant / dépose",
+      "label": "Pose / Dépose d'un volet battant",
       "model_code": "2",
       "group_label": null,
       "lots": [
         11
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose d'un volet battant"
     },
     {
-      "label": "Pose d'un volet roulant à tablier PVC / dépose",
+      "label": "Pose / Dépose d'un volet roulant à tablier PVC",
       "model_code": "4",
       "group_label": null,
       "lots": [
         11
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose d'un volet roulant à tablier PVC"
     },
     {
-      "label": "Pose d'une porte de garage extérieure / dépose",
+      "label": "Pose / Dépose d'une porte de garage extérieure",
       "model_code": "3",
       "group_label": null,
       "lots": [
         12
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose d'une porte de garage extérieure"
     },
     {
-      "label": "Pose d'un store / dépose",
+      "label": "Pose / Dépose d'un store",
       "model_code": "4",
       "group_label": null,
       "lots": [
         12
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose d'un store"
     },
     {
-      "label": "Pose d'un equipement motorisé pour parking (Porte, Portail, Barrière..) / dépose",
+      "label": "Pose / Dépose d'un équipement motorisé pour parking (porte, portail, barrière)",
       "model_code": "5",
       "group_label": null,
       "lots": [
         12
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose d'un equipement motorisé pour parking (Porte, Portail, Barrière..)"
     },
     {
-      "label": "Installation d'une barre de pivotement",
+      "label": "Pose d'une barre de pivotement",
       "model_code": "6",
       "group_label": null,
       "lots": [
         12
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Installation d'une barre de pivotement"
     },
     {
-      "label": "Poser une main courante en extérieur / dépose",
+      "label": "Pose / Dépose d'une main courante en extérieur",
       "model_code": "7",
       "group_label": null,
       "lots": [
         12
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Poser une main courante en extérieur"
     },
     {
       "label": "Application d'un primaire d'accrochage si nécessaire",
@@ -2363,52 +2483,58 @@
       "lots": [
         13
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Application d'un primaire d'accrochage si nécessaire"
     },
     {
-      "label": "Pose d'un système d'étanchéité (SPEC, SEL) dans zones humides / dépose",
+      "label": "Pose / Dépose d'un système d'étanchéité (SPEC, SEL) dans zones humides",
       "model_code": "1.2",
       "group_label": "1. Préparation du support",
       "lots": [
         13
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose d'un système d'étanchéité (SPEC, SEL) dans zones humides"
     },
     {
-      "label": "Pose du carrelage au sol / dépose",
+      "label": "Pose / Dépose du carrelage au sol",
       "model_code": "2.1",
       "group_label": "2. Pose du carrelage au sol",
       "lots": [
         13
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose du carrelage au sol"
     },
     {
-      "label": "Pose de plinthes carrelées ou à chant / dépose",
+      "label": "Pose / Dépose de plinthes carrelées ou à chant",
       "model_code": "2.2",
       "group_label": "2. Pose du carrelage au sol",
       "lots": [
         13
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose de plinthes carrelées ou à chant"
     },
     {
-      "label": "Pose des carreaux muraux (faïence, pâte de verre, mosaïque) / dépose",
+      "label": "Pose / Dépose des carreaux muraux (faïence, pâte de verre, mosaïque)",
       "model_code": "3.1",
       "group_label": "3. Pose de faïence murale",
       "lots": [
         13
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose des carreaux muraux (faïence, pâte de verre, mosaïque)"
     },
     {
-      "label": "Pose de profils de finition (cornières, angles sortants) / dépose",
+      "label": "Pose / Dépose de profils de finition (cornières, angles sortants)",
       "model_code": "3.2",
       "group_label": "3. Pose de faïence murale",
       "lots": [
         13
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose de profils de finition (cornières, angles sortants)"
     },
     {
       "label": "PEINTURE",
@@ -2417,7 +2543,8 @@
       "lots": [
         14
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "PEINTURE"
     },
     {
       "label": "Application des couches de peinture (primaire, finition)",
@@ -2426,7 +2553,8 @@
       "lots": [
         14
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Application des couches de peinture (primaire, finition)"
     },
     {
       "label": "Application d'une peinture de sol (garage, cave, locaux techniques)",
@@ -2435,7 +2563,8 @@
       "lots": [
         14
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Application d'une peinture de sol (garage, cave, locaux techniques)"
     },
     {
       "label": "Application d'une peinture technique (intumescente, anti-humidité, traitement moisissure)",
@@ -2444,7 +2573,8 @@
       "lots": [
         14
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Application d'une peinture technique (intumescente, anti-humidité, traitement moisissure)"
     },
     {
       "label": "REVETEMENT DE SOL",
@@ -2453,52 +2583,58 @@
       "lots": [
         14
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "REVETEMENT DE SOL"
     },
     {
-      "label": "REVETEMENT SOUPLE : Pose en lés ou en dalles (PVC, linoléum, caoutchouc…) / dépose",
+      "label": "Pose / Dépose de revêtement souple en lés ou en dalles (PVC, linoléum, caoutchouc…)",
       "model_code": "2.1",
       "group_label": "2. Pose du revêtement",
       "lots": [
         14
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "REVETEMENT SOUPLE : Pose en lés ou en dalles (PVC, linoléum, caoutchouc…)"
     },
     {
-      "label": "PARQUET : Pose flottante, collée ou clouée / dépose",
+      "label": "Pose / Dépose de parquet : flottant, collé ou cloué",
       "model_code": "2.4",
       "group_label": "2. Pose du revêtement",
       "lots": [
         14
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "PARQUET : Pose flottante, collée ou clouée"
     },
     {
-      "label": "PARQUET : Pose de sous-couche acoustique ou thermique / dépose",
+      "label": "Pose / Dépose de sous-couche acoustique ou thermique pour parquet",
       "model_code": "2.5",
       "group_label": "2. Pose du revêtement",
       "lots": [
         14
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "PARQUET : Pose de sous-couche acoustique ou thermique"
     },
     {
-      "label": "Pose de moquette / dépose",
+      "label": "Pose / Dépose de moquette",
       "model_code": "2.7",
       "group_label": "2. Pose du revêtement",
       "lots": [
         14
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose de moquette"
     },
     {
-      "label": "Pose de plinthes assorties ou de finition / dépose",
+      "label": "Pose / Dépose de plinthes assorties ou de finition",
       "model_code": "3.1",
       "group_label": "3. Finitions",
       "lots": [
         14
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose de plinthes assorties ou de finition"
     },
     {
       "label": "Barres de seuil et accessoires",
@@ -2507,7 +2643,8 @@
       "lots": [
         14
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Barres de seuil et accessoires"
     },
     {
       "label": "Joints de dilatation ou de fractionnement",
@@ -2516,10 +2653,11 @@
       "lots": [
         14
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Joints de dilatation ou de fractionnement"
     },
     {
-      "label": "Poser un réseau multicouche / dépose",
+      "label": "Pose / Dépose d'un réseau multicouche",
       "model_code": "1",
       "group_label": null,
       "lots": [
@@ -2527,73 +2665,81 @@
       ],
       "extra_risks": [
         "R09"
-      ]
+      ],
+      "ref_key": "Poser un réseau multicouche"
     },
     {
-      "label": "Poser une évacuation d'EU / dépose",
+      "label": "Pose / Dépose d'une évacuation d'eaux usées",
       "model_code": "2",
       "group_label": null,
       "lots": [
         15
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Poser une évacuation d'EU"
     },
     {
-      "label": "Poser une baignoire / dépose",
+      "label": "Pose / Dépose d'une baignoire",
       "model_code": "3",
       "group_label": null,
       "lots": [
         15
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Poser une baignoire"
     },
     {
-      "label": "Poser un receveur de douche / dépose",
+      "label": "Pose / Dépose d'un receveur de douche",
       "model_code": "4",
       "group_label": null,
       "lots": [
         15
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Poser un receveur de douche"
     },
     {
-      "label": "Poser un évier / dépose",
+      "label": "Pose / Dépose d'un évier",
       "model_code": "5",
       "group_label": null,
       "lots": [
         15
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Poser un évier"
     },
     {
-      "label": "Poser un lavabo / dépose",
+      "label": "Pose / Dépose d'un lavabo",
       "model_code": "6",
       "group_label": null,
       "lots": [
         15
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Poser un lavabo"
     },
     {
-      "label": "Poser un WC / dépose",
+      "label": "Pose / Dépose d'un WC",
       "model_code": "7",
       "group_label": null,
       "lots": [
         15
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Poser un WC"
     },
     {
-      "label": "Poser les conduites gaz / dépose",
+      "label": "Pose / Dépose des conduites de gaz",
       "model_code": "8",
       "group_label": null,
       "lots": [
         15
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Poser les conduites gaz"
     },
     {
-      "label": "Poser/Remplacer une canalisation EP / dépose",
+      "label": "Pose / Dépose d'une canalisation d'eaux pluviales",
       "model_code": "9",
       "group_label": null,
       "lots": [
@@ -2601,43 +2747,48 @@
       ],
       "extra_risks": [
         "R09"
-      ]
+      ],
+      "ref_key": "Poser/Remplacer une canalisation EP"
     },
     {
-      "label": "Poser des gaines de ventilation / dépose",
+      "label": "Pose / Dépose des gaines de ventilation",
       "model_code": "1",
       "group_label": null,
       "lots": [
         16
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Poser des gaines de ventilation"
     },
     {
-      "label": "Poser une VMC / dépose",
+      "label": "Pose / Dépose d'une VMC",
       "model_code": "2",
       "group_label": null,
       "lots": [
         16
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Poser une VMC"
     },
     {
-      "label": "Poser une centrale de traitement d'air / dépose",
+      "label": "Pose / Dépose d'une centrale de traitement d'air",
       "model_code": "3",
       "group_label": null,
       "lots": [
         16
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Poser une centrale de traitement d'air"
     },
     {
-      "label": "Installer un split mural",
+      "label": "Pose d'un split mural",
       "model_code": "4",
       "group_label": null,
       "lots": [
         16
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Installer un split mural"
     },
     {
       "label": "Remplacement d'une carte electronique de commande VMC",
@@ -2646,133 +2797,148 @@
       "lots": [
         16
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Remplacement d'une carte electronique de commande VMC"
     },
     {
-      "label": "Poser une chaudière gaz / dépose",
+      "label": "Pose / Dépose d'une chaudière gaz",
       "model_code": "1",
       "group_label": null,
       "lots": [
         17
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Poser une chaudière gaz"
     },
     {
-      "label": "Installer une pompe à chaleur",
+      "label": "Pose d'une pompe à chaleur",
       "model_code": "2",
       "group_label": null,
       "lots": [
         17
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Installer une pompe à chaleur"
     },
     {
-      "label": "Poser un chauffe-eau / dépose",
+      "label": "Pose / Dépose d'un chauffe-eau",
       "model_code": "3",
       "group_label": null,
       "lots": [
         17
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Poser un chauffe-eau"
     },
     {
-      "label": "Poser un radiateur / dépose",
+      "label": "Pose / Dépose d'un radiateur",
       "model_code": "4",
       "group_label": null,
       "lots": [
         17
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Poser un radiateur"
     },
     {
-      "label": "Poser un poêle à bois ou à pellets / dépose",
+      "label": "Pose / Dépose d'un poêle à bois ou à pellets",
       "model_code": "5",
       "group_label": null,
       "lots": [
         17
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Poser un poêle à bois ou à pellets"
     },
     {
-      "label": "Installer le réseau téléphonique",
+      "label": "Pose du réseau téléphonique",
       "model_code": "1",
       "group_label": null,
       "lots": [
         18
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Installer le réseau téléphonique"
     },
     {
-      "label": "Installer le réseau télévision",
+      "label": "Pose du réseau télévision",
       "model_code": "2",
       "group_label": null,
       "lots": [
         18
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Installer le réseau télévision"
     },
     {
-      "label": "Installer le réseau informatique",
+      "label": "Pose du réseau informatique",
       "model_code": "3",
       "group_label": null,
       "lots": [
         18
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Installer le réseau informatique"
     },
     {
-      "label": "Poser une installation électrique photovoltaïque / dépose",
+      "label": "Pose / Dépose d'une installation photovoltaïque",
       "model_code": "4",
       "group_label": null,
       "lots": [
         18
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Poser une installation électrique photovoltaïque"
     },
     {
-      "label": "Installation d'un équipement de contrôle d'accès/ d'Interphonie",
+      "label": "Pose d'un équipement de contrôle d'accès et d'interphonie",
       "model_code": "5",
       "group_label": null,
       "lots": [
         18
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Installation d'un équipement de contrôle d'accès/ d'Interphonie"
     },
     {
-      "label": "Installer un système de sécurité incendie",
+      "label": "Pose d'un système de sécurité incendie",
       "model_code": "6",
       "group_label": null,
       "lots": [
         18
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Installer un système de sécurité incendie"
     },
     {
-      "label": "Poser le réseau électique d'un logement / dépose",
+      "label": "Pose / Dépose du réseau électrique d'un logement",
       "model_code": "7",
       "group_label": null,
       "lots": [
         18
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Poser le réseau électique d'un logement"
     },
     {
-      "label": "Intervention sur Eclairage Extérieur (candelabre, borne,...)",
+      "label": "Intervention sur éclairage extérieur (candélabre, borne)",
       "model_code": "8",
       "group_label": null,
       "lots": [
         18
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Intervention sur Eclairage Extérieur (candelabre, borne,...)"
     },
     {
-      "label": "Installation d'un ascenceur",
+      "label": "Pose d'un ascenseur",
       "model_code": "1.1",
       "group_label": "1. Installation de l’ascenseur",
       "lots": [
         19
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Installation d'un ascenceur"
     },
     {
       "label": "Modernisation complète / remplacement d'un ascenseur",
@@ -2781,16 +2947,18 @@
       "lots": [
         19
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Modernisation complète / remplacement d'un ascenseur"
     },
     {
-      "label": "Pose du tableau de commande (armoire ou armoire compacte en gaine) / dépose",
+      "label": "Pose / Dépose du tableau de commande (armoire ou armoire compacte en gaine)",
       "model_code": "1.3",
       "group_label": "1. Installation de l’ascenseur",
       "lots": [
         19
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose du tableau de commande (armoire ou armoire compacte en gaine)"
     },
     {
       "label": "Audit des prestations d'entretien, de la sécurité et du bon fonctionnement des ascenseurs",
@@ -2799,7 +2967,8 @@
       "lots": [
         19
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Audit des prestations d'entretien, de la sécurité et du bon fonctionnement des ascenseurs"
     },
     {
       "label": "Contrôle technique réglementaire des ascenseurs selon les conditions imposées par le décret n° 2004-964 du 9 septembre 2004 et du décret n°2012-674 du 7 mai 2012.",
@@ -2808,7 +2977,8 @@
       "lots": [
         19
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Contrôle technique réglementaire des ascenseurs selon les conditions imposées par le décret n° 2004-964 du 9 septembre 2004 et du décret n°2012-674 du 7 mai 2012."
     },
     {
       "label": "Débroussaillage et défrichage",
@@ -2817,7 +2987,8 @@
       "lots": [
         20
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Débroussaillage et défrichage"
     },
     {
       "label": "Abattage et dessouchage d'arbres",
@@ -2826,7 +2997,8 @@
       "lots": [
         20
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Abattage et dessouchage d'arbres"
     },
     {
       "label": "Modelage du terrain (nivellement, création de talus, fossés, etc.)",
@@ -2835,7 +3007,8 @@
       "lots": [
         20
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Modelage du terrain (nivellement, création de talus, fossés, etc.)"
     },
     {
       "label": "Plantation (arbres, arbustes, haies)",
@@ -2844,7 +3017,8 @@
       "lots": [
         20
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Plantation (arbres, arbustes, haies)"
     },
     {
       "label": "Mise en place de gazon (semis ou pose de gazon en plaques)",
@@ -2855,7 +3029,8 @@
       ],
       "extra_risks": [
         "R08"
-      ]
+      ],
+      "ref_key": "Mise en place de gazon (semis ou pose de gazon en plaques)"
     },
     {
       "label": "Tonte de pelouses",
@@ -2864,7 +3039,8 @@
       "lots": [
         20
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Tonte de pelouses"
     },
     {
       "label": "Taille des haies et arbustes",
@@ -2873,7 +3049,8 @@
       "lots": [
         20
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Taille des haies et arbustes"
     },
     {
       "label": "Ramassage de feuilles",
@@ -2882,7 +3059,8 @@
       "lots": [
         20
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Ramassage de feuilles"
     },
     {
       "label": "Nettoyage et curage des fossés, bassins ou caniveaux",
@@ -2891,16 +3069,18 @@
       "lots": [
         20
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Nettoyage et curage des fossés, bassins ou caniveaux"
     },
     {
-      "label": "Pose de mobilier urbain (bancs, corbeilles, barrières) / dépose",
+      "label": "Pose / Dépose de mobilier urbain (bancs, corbeilles, barrières)",
       "model_code": "5.1",
       "group_label": "5. Aménagements paysagers",
       "lots": [
         20
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose de mobilier urbain (bancs, corbeilles, barrières)"
     },
     {
       "label": "Création d'allées piétonnes (graviers, pavés, enrobé)",
@@ -2909,16 +3089,18 @@
       "lots": [
         20
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Création d'allées piétonnes (graviers, pavés, enrobé)"
     },
     {
-      "label": "Installation de clôtures végétales ou rigides",
+      "label": "Pose de clôtures végétales ou rigides",
       "model_code": "5.3",
       "group_label": "5. Aménagements paysagers",
       "lots": [
         20
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Installation de clôtures végétales ou rigides"
     },
     {
       "label": "Création de murets paysagers, escaliers ou éléments décoratifs",
@@ -2927,7 +3109,8 @@
       "lots": [
         20
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Création de murets paysagers, escaliers ou éléments décoratifs"
     },
     {
       "label": "Mise en place de bordures, pas japonais, pergolas",
@@ -2936,7 +3119,8 @@
       "lots": [
         20
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Mise en place de bordures, pas japonais, pergolas"
     },
     {
       "label": "Excavation de tranchées, fouilles ou plateformes",
@@ -2945,7 +3129,8 @@
       "lots": [
         21
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Excavation de tranchées, fouilles ou plateformes"
     },
     {
       "label": "Réalisation des couches de forme",
@@ -2954,7 +3139,8 @@
       "lots": [
         21
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Réalisation des couches de forme"
     },
     {
       "label": "Mise en place de géotextiles ou géogrilles",
@@ -2963,7 +3149,8 @@
       "lots": [
         21
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Mise en place de géotextiles ou géogrilles"
     },
     {
       "label": "Réalisation des couches de fondation (GNT, graves, etc.)",
@@ -2972,25 +3159,28 @@
       "lots": [
         21
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Réalisation des couches de fondation (GNT, graves, etc.)"
     },
     {
-      "label": "Pose des bordures (CC1, CC2, T2, etc.) / dépose",
+      "label": "Pose / Dépose des bordures (CC1, CC2, T2, etc.)",
       "model_code": "2.4",
       "group_label": "2. Voirie (chaussées, trottoirs, cheminements)",
       "lots": [
         21
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose des bordures (CC1, CC2, T2, etc.)"
     },
     {
-      "label": "Pose de caniveaux (béton, fonte, etc.) / dépose",
+      "label": "Pose / Dépose de caniveaux (béton, fonte, etc.)",
       "model_code": "2.5",
       "group_label": "2. Voirie (chaussées, trottoirs, cheminements)",
       "lots": [
         21
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose de caniveaux (béton, fonte, etc.)"
     },
     {
       "label": "Réalisation de trottoirs, cheminements piétons (béton désactivé, pavés, enrobé, etc.)",
@@ -2999,7 +3189,8 @@
       "lots": [
         21
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Réalisation de trottoirs, cheminements piétons (béton désactivé, pavés, enrobé, etc.)"
     },
     {
       "label": "Réalisation de chaussées : enrobé, béton, pavés, bicouche, etc.",
@@ -3008,7 +3199,8 @@
       "lots": [
         21
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Réalisation de chaussées : enrobé, béton, pavés, bicouche, etc."
     },
     {
       "label": "Réseaux d'assainissement eaux usées (EU)",
@@ -3017,7 +3209,8 @@
       "lots": [
         21
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Réseaux d'assainissement eaux usées (EU)"
     },
     {
       "label": "Réseaux d'eaux pluviales (EP)",
@@ -3026,25 +3219,28 @@
       "lots": [
         21
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Réseaux d'eaux pluviales (EP)"
     },
     {
-      "label": "Pose de canalisations (PVC, béton, fonte, etc.) / dépose",
+      "label": "Pose / Dépose de canalisations (PVC, béton, fonte, etc.)",
       "model_code": "3.3",
       "group_label": "3. Réseaux humides",
       "lots": [
         21
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose de canalisations (PVC, béton, fonte, etc.)"
     },
     {
-      "label": "Pose de regards, avaloirs, grilles / dépose",
+      "label": "Pose / Dépose de regards, avaloirs, grilles",
       "model_code": "3.4",
       "group_label": "3. Réseaux humides",
       "lots": [
         21
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose de regards, avaloirs, grilles"
     },
     {
       "label": "Étanchéité et essais de réseaux",
@@ -3053,7 +3249,8 @@
       "lots": [
         21
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Étanchéité et essais de réseaux"
     },
     {
       "label": "Réseaux d'électricité (basse tension, éclairage public)",
@@ -3062,7 +3259,8 @@
       "lots": [
         21
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Réseaux d'électricité (basse tension, éclairage public)"
     },
     {
       "label": "Réseaux de télécommunications (fourreaux, chambres de tirage)",
@@ -3071,7 +3269,8 @@
       "lots": [
         21
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Réseaux de télécommunications (fourreaux, chambres de tirage)"
     },
     {
       "label": "Réseaux de gaz (avec entreprise agréée)",
@@ -3080,7 +3279,8 @@
       "lots": [
         21
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Réseaux de gaz (avec entreprise agréée)"
     },
     {
       "label": "Réseaux de fibre optique (fourreaux, boîtiers)",
@@ -3089,19 +3289,21 @@
       "lots": [
         21
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Réseaux de fibre optique (fourreaux, boîtiers)"
     },
     {
-      "label": "Pose de gaines, chambres, coffrets / dépose",
+      "label": "Pose / Dépose de gaines, chambres, coffrets",
       "model_code": "4.5",
       "group_label": "4. Réseaux secs",
       "lots": [
         21
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose de gaines, chambres, coffrets"
     },
     {
-      "label": "Pose de candélabres, bornes lumineuses / dépose",
+      "label": "Pose / Dépose de candélabres, bornes lumineuses",
       "model_code": "5.1",
       "group_label": "5. Éclairage public et mobilier urbain",
       "lots": [
@@ -3109,16 +3311,18 @@
       ],
       "extra_risks": [
         "R07"
-      ]
+      ],
+      "ref_key": "Pose de candélabres, bornes lumineuses"
     },
     {
-      "label": "Installation d'armoires de commande",
+      "label": "Pose d'armoires de commande",
       "model_code": "5.2",
       "group_label": "5. Éclairage public et mobilier urbain",
       "lots": [
         21
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Installation d'armoires de commande"
     },
     {
       "label": "Création de noues paysagères",
@@ -3127,7 +3331,8 @@
       "lots": [
         21
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Création de noues paysagères"
     },
     {
       "label": "Fossés drainants",
@@ -3136,7 +3341,8 @@
       "lots": [
         21
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Fossés drainants"
     },
     {
       "label": "Tranchées d'infiltration",
@@ -3145,7 +3351,8 @@
       "lots": [
         21
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Tranchées d'infiltration"
     },
     {
       "label": "Bassins de rétention ou d'infiltration",
@@ -3154,16 +3361,18 @@
       "lots": [
         21
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Bassins de rétention ou d'infiltration"
     },
     {
-      "label": "Pose de séparateurs hydrocarbures / dépose",
+      "label": "Pose / Dépose de séparateurs hydrocarbures",
       "model_code": "6.5",
       "group_label": "6. Gestion des eaux pluviales et infiltration",
       "lots": [
         21
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Pose de séparateurs hydrocarbures"
     },
     {
       "label": "Refection voirie et abords",
@@ -3172,7 +3381,8 @@
       "lots": [
         21
       ],
-      "extra_risks": []
+      "extra_risks": [],
+      "ref_key": "Refection voirie et abords"
     }
   ],
   "vocabulary": [

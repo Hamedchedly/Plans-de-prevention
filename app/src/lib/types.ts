@@ -11,7 +11,7 @@ export interface Profile {
 }
 
 export type ScopeStatus = 'IN_SCOPE' | 'OUT_OF_SCOPE'
-export type PlanStatus = 'NON_QUALIFIEE' | 'A_ENVOYER' | 'EN_ATTENTE_RETOUR' | 'ARCHIVEE'
+export type PlanStatus = 'NON_QUALIFIEE' | 'A_ENVOYER' | 'EN_ATTENTE_RETOUR' | 'ARCHIVEE' | 'ENVOYE_MANUELLEMENT'
 export type ScopeRequestStatus = 'AUCUNE' | 'EN_ATTENTE' | 'APPROUVEE' | 'REFUSEE'
 export type QualificationStatus = 'AUTO' | 'A_QUALIFIER' | 'QUALIFIED'
 

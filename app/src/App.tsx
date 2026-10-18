@@ -1,13 +1,22 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, Outlet, useRouterState } from '@tanstack/react-router'
 import { BarChart3, LayoutGrid, Settings2 } from 'lucide-react'
 import { useAuth } from './lib/auth'
 import { readImpersonation } from './lib/impersonation'
 import { Button, Card } from './components/ui'
 import { visibleAdminGroups } from './lib/adminNav'
+import { fetchAdminPending, type AdminPending } from './lib/adminPending'
 import Login from './pages/Login'
 import ProfileDialog from './components/ProfileDialog'
 import CompleteProfile from './components/CompleteProfile'
+
+/** Pastille du nombre d'actions à traiter (affichée seulement s'il y en a). */
+function PendingBadge({ n }: { n: number }) {
+  if (n <= 0) return null
+  return (
+    <span aria-label={`${n} à traiter`} className="ml-1.5 inline-flex min-w-[1.25rem] justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-semibold leading-5 text-white">{n}</span>
+  )
+}
 
 const NAV = [
   { to: '/commandes', label: 'Commandes', icon: LayoutGrid, managerOnly: false },
@@ -21,6 +30,18 @@ export function RootLayout() {
   const path = useRouterState({ select: (s) => s.location.pathname })
   const [profileOpen, setProfileOpen] = useState(false)
   const [userMenu, setUserMenu] = useState(false)
+  const [pending, setPending] = useState<AdminPending>({})
+  const userId = session?.user.id
+  const canAdmin = profile?.role === 'RESPONSABLE' || profile?.role === 'SUPER_ADMIN'
+  const inAdminPath = path.startsWith('/administration')
+
+  // Pastilles : nombre d'actions à traiter, relues à chaque entrée ou changement de page d'administration.
+  useEffect(() => {
+    if (!userId || !canAdmin || !inAdminPath) return
+    let alive = true
+    fetchAdminPending().then((p) => { if (alive) setPending(p) }).catch(() => {})
+    return () => { alive = false }
+  }, [userId, canAdmin, inAdminPath, path])
 
   if (loading) return <div className="p-8 text-sm text-muted-foreground">Chargement…</div>
   if (!session) return <Login />
@@ -42,7 +63,7 @@ export function RootLayout() {
 
   const isManager = profile.role === 'RESPONSABLE' || profile.role === 'SUPER_ADMIN'
   const adminGroups = visibleAdminGroups(profile.role === 'SUPER_ADMIN')
-  const inAdmin = path.startsWith('/administration')
+  const inAdmin = inAdminPath
   // Page d'administration ouverte : /administration/:section
   const adminKey = inAdmin ? path.split('/')[2] ?? '' : ''
   const currentGroup = adminGroups.find((g) => g.pages.some((p) => p.key === adminKey)) ?? adminGroups[0]
@@ -108,6 +129,7 @@ export function RootLayout() {
                 <Link key={g.label} to="/administration/$section" params={{ section: g.pages[0].key }}
                   aria-current={g === currentGroup ? 'page' : undefined} className={pill(g === currentGroup)}>
                   {g.label}
+                  <PendingBadge n={g.pages.reduce((sum, p) => sum + (pending[p.key] ?? 0), 0)} />
                 </Link>
               ))}
             </nav>
@@ -117,6 +139,7 @@ export function RootLayout() {
                   <Link key={p.key} to="/administration/$section" params={{ section: p.key }}
                     aria-current={p.key === adminKey ? 'page' : undefined} className={pill(p.key === adminKey, true)}>
                     {p.label}
+                    <PendingBadge n={pending[p.key] ?? 0} />
                   </Link>
                 ))}
               </nav>

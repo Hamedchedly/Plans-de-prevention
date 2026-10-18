@@ -15,7 +15,6 @@ export const ADMIN_GROUPS: AdminGroup[] = [
       { key: 'donnees', label: 'Base de données', superOnly: true },
       { key: 'perimetre', label: 'Périmètre', superOnly: true },
       { key: 'referentiels', label: 'Référentiels', superOnly: true },
-      { key: 'entreprises', label: 'Entreprises', superOnly: true },
     ],
   },
   {
@@ -23,6 +22,7 @@ export const ADMIN_GROUPS: AdminGroup[] = [
     pages: [
       { key: 'alertes', label: 'Alertes', superOnly: false },
       { key: 'validations', label: 'Validations', superOnly: true },
+      { key: 'entreprises', label: 'Entreprises', superOnly: true },
       { key: 'tracabilite', label: 'Traçabilité', superOnly: true },
     ],
   },

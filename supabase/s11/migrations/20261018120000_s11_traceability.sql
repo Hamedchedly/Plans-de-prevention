@@ -1,4 +1,6 @@
--- Traçabilité (journal d'activité, surbrillance Super Admin), ajustement des propositions, libellés « / dépose ».
+-- Traçabilité (journal d'activité, surbrillance Super Admin), ajustement des propositions NAAC.
+-- Règles de cette migration : pas de « create policy », pas de « delete » dans les fonctions.
+-- L'accès à la table de surbrillance se fait uniquement par fonctions « security definer » ; une surbrillance retirée est archivée (active = false).
 
 -- 1. Surbrillance d'une entrée du journal pour examen ultérieur
 create table if not exists plans_prevention.trace_highlights (
@@ -7,10 +9,12 @@ create table if not exists plans_prevention.trace_highlights (
   note text,
   created_at timestamptz not null default now()
 );
+alter table plans_prevention.trace_highlights add column if not exists active boolean not null default true;
 alter table plans_prevention.trace_highlights enable row level security;
-create policy trace_highlights_admin on plans_prevention.trace_highlights for all to authenticated
-  using (plans_prevention.is_super_admin()) with check (plans_prevention.is_super_admin());
-grant select, insert, update, delete on plans_prevention.trace_highlights to authenticated;
+-- La politique « trace_highlights_admin » (Super Admin seul), créée précédemment, reste en place :
+-- l'environnement d'exécution annule les « drop policy » comme les « create policy ».
+-- Elle n'ouvre rien aux autres rôles, et l'application passe par les fonctions ci-dessous.
+revoke all on plans_prevention.trace_highlights from public, anon;
 
 -- 2. Journal des événements observés par l'application (connexion, import, erreur)
 create or replace function plans_prevention.log_activity(p_action text, p_entity text, p_entity_id text, p_payload jsonb)
@@ -22,16 +26,15 @@ begin
   values (auth.uid(), p_action, left(coalesce(p_entity, ''), 100), left(coalesce(p_entity_id, ''), 200), coalesce(p_payload, '{}'::jsonb));
 end $$;
 
+-- Surbrillance : p_on = true la pose (ou la réactive), false l'archive. Aucune suppression.
 create or replace function plans_prevention.set_trace_highlight(p_entry bigint, p_on boolean, p_note text)
 returns void language plpgsql security definer set search_path = '' as $$
 begin
   if not plans_prevention.is_super_admin() then raise exception 'Réservé au Super Admin'; end if;
-  if p_on then
-    insert into plans_prevention.trace_highlights(entry_id, highlighted_by, note) values (p_entry, auth.uid(), p_note)
-    on conflict (entry_id) do update set note = excluded.note, highlighted_by = excluded.highlighted_by, created_at = now();
-  else
-    delete from plans_prevention.trace_highlights where entry_id = p_entry;
-  end if;
+  insert into plans_prevention.trace_highlights(entry_id, highlighted_by, note, active)
+  values (p_entry, auth.uid(), p_note, p_on)
+  on conflict (entry_id) do update
+    set active = excluded.active, note = excluded.note, highlighted_by = excluded.highlighted_by, created_at = now();
 end $$;
 
 -- 3. Traçabilité : toutes les entrées, catégorisées, filtrables
@@ -60,7 +63,7 @@ begin
       case
         when a.action = 'PLAN_SAVED' then 'Plan enregistré : ' || coalesce(n.label, 'proposition en attente')
         when a.action = 'PLAN_STATUS_CHANGED' then 'Statut ' || coalesce(a.payload->>'from', '') || ' → ' || coalesce(a.payload->>'to', '')
-        when a.action = 'ERROR' then coalesce(a.payload->>'message', 'Erreur')
+        when a.action = 'ERROR' then coalesce(a.payload->>'message', 'Erreur') || coalesce(' — ' || (a.payload->>'corps'), '') || coalesce(' (' || (a.payload->>'naac') || ')', '')
         when a.action = 'LOGIN' then 'Connexion'
         when a.action = 'IMPORT' then 'Import ' || coalesce(a.payload->>'file', '') || ' : ' || coalesce(a.payload->>'summary', '')
         when a.action like 'REFERENTIAL%' or a.action like 'CORPS_NAAC%' then
@@ -69,7 +72,7 @@ begin
         else a.action || ' ' || coalesce(a.entity_id, '')
       end as e_summary,
       a.payload as e_payload,
-      (h.entry_id is not null) as e_hl, h.note as e_note
+      coalesce(h.active, false) as e_hl, case when h.active then h.note end as e_note
     from plans_prevention.audit_logs a
     left join plans_prevention.profiles pr on pr.user_id = a.actor_user_id
     left join plans_prevention.natures n on (a.payload->>'nature_id') ~ '^[0-9]+$' and n.id = (a.payload->>'nature_id')::bigint

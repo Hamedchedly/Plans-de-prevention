@@ -8,7 +8,7 @@ import { Badge, Button, Card, Notice, fieldClass, errMsg } from '../components/u
 import CompanyDialog from '../components/CompanyDialog'
 import { fetchCompanies, type CompanyRow } from './AdminCompanies'
 
-type Tab = 'NON_QUALIFIEE' | 'A_ENVOYER' | 'EN_ATTENTE_RETOUR' | 'ARCHIVEE' | 'ENVOYE_MANUELLEMENT' | 'DEMANDES' | 'HORS_PERIMETRE'
+type Tab = 'NON_QUALIFIEE' | 'A_ENVOYER' | 'EN_ATTENTE_RETOUR' | 'ARCHIVEE' | 'ENVOYE_MANUELLEMENT' | 'DEMANDES'
 const TABS: { key: Tab; label: string }[] = [
   { key: 'NON_QUALIFIEE', label: 'À qualifier' },
   { key: 'A_ENVOYER', label: 'À envoyer' },
@@ -16,7 +16,6 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'ARCHIVEE', label: 'Archivées' },
   { key: 'ENVOYE_MANUELLEMENT', label: 'Envoyées manuellement' },
   { key: 'DEMANDES', label: 'Exclusions en attente' },
-  { key: 'HORS_PERIMETRE', label: 'Hors périmètre' },
 ]
 const PLAN_LABEL: Record<string, string> = {
   NON_QUALIFIEE: 'Non qualifiée', A_ENVOYER: 'À envoyer', EN_ATTENTE_RETOUR: 'En attente retour', ARCHIVEE: 'Archivée',
@@ -115,9 +114,8 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
   const hi = toDay ?? maxDay
 
   const inTab = (o: OrderRow, t: Tab) =>
-    t === 'HORS_PERIMETRE' ? o.scope_status === 'OUT_OF_SCOPE'
-      : t === 'DEMANDES' ? o.scope_request_status === 'EN_ATTENTE'
-        : o.scope_status === 'IN_SCOPE' && o.plan_status === t
+    t === 'DEMANDES' ? o.scope_request_status === 'EN_ATTENTE'
+      : o.scope_status === 'IN_SCOPE' && o.plan_status === t
 
   const terms = tokens(q)
   const matches = (o: OrderRow) => {
@@ -324,7 +322,6 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
                     <td className="px-3 py-2">{o.operator_code ?? '—'}</td>
                     <td className="px-3 py-2">
                       <div className="flex flex-wrap gap-1">
-                        <Badge tone={o.scope_status === 'IN_SCOPE' ? 'ok' : 'off'}>{o.scope_status === 'IN_SCOPE' ? 'Périmètre' : 'Hors périmètre'}</Badge>
                         {o.scope_override && <Badge tone="warn">Forcé</Badge>}
                         {o.scope_status === 'IN_SCOPE' && <Badge>{PLAN_LABEL[o.plan_status]}</Badge>}
                         {o.naac_code && <Badge>{o.naac_code}</Badge>}

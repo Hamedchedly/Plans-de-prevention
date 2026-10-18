@@ -89,18 +89,29 @@ export function searchNatures(
   const qFold = fold(query)
   const wantsDepose = /\bdepos/.test(qFold)
   const wantsPose = /\bpos(e|er)\b|\binstall/.test(qFold) && !wantsDepose
+  // poids IDF : un mot rare dans le référentiel (« interphone ») pèse plus qu'un mot courant (« pose »)
+  const labelTokens = natures.map((n) => tokens(n.label))
+  const weight = new Map<string, number>()
+  for (const w of qe) {
+    const df = labelTokens.filter((ks) => ks.some((kw) => wordScore(w, kw) >= 0.8)).length
+    weight.set(w, Math.log(1 + natures.length / (1 + df)))
+  }
+  const wSum = qe.reduce((acc, w) => acc + (weight.get(w) ?? 0), 0) || 1
   const hits: SearchHit[] = []
-  for (const n of natures) {
-    const kws = tokens(n.label)
+  for (let i = 0; i < natures.length; i++) {
+    const n = natures[i]
+    const kws = labelTokens[i]
     const labelFold = fold(n.label)
+    // score pondéré, ramené entre 0 et 1 (mots reconnus / poids total de la recherche)
     let s = 0
     for (const w of qe) {
       let best = 0
       for (const kw of kws) best = Math.max(best, wordScore(w, kw))
-      s += best
+      s += best * (weight.get(w) ?? 0)
     }
+    s /= wSum
     // phrase tapée presque telle quelle dans le libellé : signal fort
-    if (phrase.length >= 4 && labelFold.includes(phrase)) s += qt.length * 0.5
+    if (phrase.length >= 4 && labelFold.includes(phrase)) s += 0.5
     // le verbe demandé est porté par le libellé
     if (wantsDepose && labelFold.includes('depos')) s += 0.5
     if (wantsPose && /\bpose\b|^installation|\binstall/.test(labelFold)) s += 0.5
@@ -109,7 +120,7 @@ export function searchNatures(
       const lname = fold(lotNameByCode.get(lot) ?? '')
       for (const w of qe) if (w.length >= 4 && lname.includes(w)) s += 0.5
     }
-    if (s > 0) hits.push({ nature: n, score: s / qt.length })
+    if (s > 0) hits.push({ nature: n, score: s })
   }
   return hits.sort((a, b) => b.score - a.score).slice(0, limit)
 }

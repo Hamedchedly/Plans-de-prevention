@@ -1,24 +1,42 @@
-// Arbre des lots : groupes hiérarchiques pour la lecture (ordre et indentation). Les codes restent ceux du référentiel.
-export const LOT_GROUPS: { label: string; lots: number[] }[] = [
-  { label: 'Fermetures', lots: [11, 10, 12] },
-  { label: 'Espaces extérieurs', lots: [20, 21] },
-  { label: 'Enveloppe du bâtiment', lots: [5, 6, 7, 4, 9] },
-  { label: 'Structure et gros œuvre', lots: [1, 2, 3, 8] },
-  { label: 'Second œuvre', lots: [13, 14] },
-  { label: 'Techniques', lots: [15, 16, 17, 18, 19] },
-]
+// Arbre de lecture : famille NAAC (GT, GE, CP) > corps d'état > lot > natures.
+// Les codes de famille sont ceux du référentiel. Un lot peut apparaître sous plusieurs corps d'état :
+// l'arbre sert à parcourir, la sélection reste unique par lot.
 
-/** Ordre hiérarchique : groupe, puis lots du groupe ; les lots absents de l'arbre sont ajoutés à la fin. */
-export function orderLots<T extends { code: number }>(lots: T[]): { group: string; lot: T; indent: boolean }[] {
+export interface TreeLot { code: number; name: string }
+export interface TreeCorps { naac: string; label: string; lot: TreeLot | null }
+export interface TreeFamily { naac: string; corps: TreeCorps[] }
+export interface LotTree { families: TreeFamily[]; otherLots: TreeLot[] }
+
+const FAMILY_ORDER = ['GT', 'GE', 'CP']
+
+function familyRank(naac: string): number {
+  const i = FAMILY_ORDER.indexOf(naac)
+  return i === -1 ? 99 : i
+}
+
+/** Lettre du préfixe « (a) … » : ordre alphabétique des corps d'état. */
+function corpsKey(label: string): string {
+  return (label.match(/^\(([a-z])\)/i)?.[1] ?? '~').toLowerCase() + label
+}
+
+export function buildLotTree(
+  naacCorps: { naac: string; corpsLabel: string; lotCode: number | null }[],
+  lots: TreeLot[],
+): LotTree {
   const byCode = new Map(lots.map((l) => [l.code, l]))
-  const out: { group: string; lot: T; indent: boolean }[] = []
-  const used = new Set<number>()
-  for (const g of LOT_GROUPS) {
-    g.lots.forEach((code, i) => {
-      const lot = byCode.get(code)
-      if (lot) { out.push({ group: g.label, lot, indent: i > 0 }); used.add(code) }
-    })
+  const byFamily = new Map<string, TreeCorps[]>()
+  const attached = new Set<number>()
+  for (const c of naacCorps) {
+    const lot = c.lotCode != null ? byCode.get(c.lotCode) ?? null : null
+    if (lot) attached.add(lot.code)
+    byFamily.set(c.naac, [...(byFamily.get(c.naac) ?? []), { naac: c.naac, label: c.corpsLabel, lot }])
   }
-  for (const lot of lots) if (!used.has(lot.code)) out.push({ group: 'Autres', lot, indent: false })
-  return out
+  const families: TreeFamily[] = [...byFamily.entries()]
+    .sort(([a], [b]) => familyRank(a) - familyRank(b) || a.localeCompare(b))
+    .map(([naac, corps]) => ({
+      naac,
+      corps: corps.sort((x, y) => corpsKey(x.label).localeCompare(corpsKey(y.label))),
+    }))
+  const otherLots = lots.filter((l) => !attached.has(l.code))
+  return { families, otherLots }
 }

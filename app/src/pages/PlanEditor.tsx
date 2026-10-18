@@ -4,8 +4,8 @@ import { corpsMatch, getReferentiel, lotFromCorpsEtat, type Referentiel } from '
 import { computeMeasures, fold, proposeRisks, searchNatures, type NatureRef } from '../lib/rules'
 import type { OrderRow, PlanStatus } from '../lib/types'
 import { Badge, Button, Card, Notice, fieldClass, errMsg } from '../components/ui'
-import { logError } from '../lib/activity'
-import { orderLots } from '../lib/lotTree'
+import { logActivity, logError } from '../lib/activity'
+import { buildLotTree, type TreeLot } from '../lib/lotTree'
 
 type RiskState = { checked: boolean; origin: 'LOT_DEFAUT' | 'NATURE' | 'MANUEL' }
 type MeasureState = { checked: boolean; origin: 'AUTO' | 'MANUEL' }
@@ -21,6 +21,15 @@ interface Draft {
 const MIN_CHARS = 1
 /** Score minimal pour présélectionner une nature à partir du libellé source de la commande. */
 const SUGGEST_MIN_SCORE = 0.5
+
+/** Corps d'état sans lot : signalé une fois par commande et par corps d'état (journal des erreurs du Super Admin). */
+const reportedUnmatched = new Set<string>()
+function reportUnmatched(orderNumber: string, naac: string | null, corps: string) {
+  const key = `${orderNumber}|${corps}`
+  if (reportedUnmatched.has(key)) return
+  reportedUnmatched.add(key)
+  void logActivity('ERROR', 'orders', orderNumber, { message: 'Corps d’état non rattaché à un lot', naac, corps })
+}
 const EDITABLE: PlanStatus[] = ['NON_QUALIFIEE', 'A_ENVOYER']
 const STATUS_LABEL: Record<PlanStatus, string> = {
   NON_QUALIFIEE: 'Non qualifiée', A_ENVOYER: 'À envoyer', EN_ATTENTE_RETOUR: 'En attente retour entreprise', ARCHIVEE: 'Archivée',
@@ -60,7 +69,7 @@ export default function PlanEditor({ order, onBack }: { order: OrderRow; onBack:
   const [detected, setDetected] = useState<{ lot: number; source: 'AUTO_ANALYSIS' | 'BUDGET_TRACKING'; validated: boolean } | null>(null)
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
-  const [expanded, setExpanded] = useState<number | null>(null)
+  const [expanded, setExpanded] = useState<string | null>(null)
   const [showAdd, setShowAdd] = useState(false)
   const [lotQuery, setLotQuery] = useState('')
   const [removed, setRemoved] = useState<string[]>([])
@@ -98,6 +107,7 @@ export default function PlanEditor({ order, onBack }: { order: OrderRow; onBack:
           if (fz) det = { lot: fz.code, source: 'BUDGET_TRACKING', validated: false }
         }
         setDetected(det)
+        if (corpsLabel && !det) reportUnmatched(order.order_number, order.naac_code, corpsLabel)
 
         const hasNature = !!(order.nature_id || order.nature_proposal_id)
         let natures: NatureRef[] = hasNature
@@ -204,17 +214,64 @@ export default function PlanEditor({ order, onBack }: { order: OrderRow; onBack:
   const suggested = detected?.lot ?? null
   const myPending = useMemo(() => (ref ? ref.natures.filter((n) => n.pending) : []), [ref])
   const hitIds = useMemo(() => new Set(hits.map((h) => h.nature.id)), [hits])
-  // lots dans l'ordre hiérarchique (groupe, puis sous-lots indentés)
-  const lotOrder = useMemo(() => {
-    if (!ref) return []
-    return orderLots(ref.lots).filter((x) => !searching || groups.has(x.lot.code))
-  }, [ref, groups, searching])
+  // arbre : famille > corps d'état > lot > natures (parcours). Lots sans corps d'état en bas.
+  const tree = useMemo(() => (ref ? buildLotTree(ref.naacCorps, ref.lots) : null), [ref])
+  const browse = useMemo(() => {
+    if (!tree) return null
+    const keep = (lot: TreeLot | null) => !searching || (lot !== null && groups.has(lot.code))
+    return {
+      families: tree.families.map((f) => ({ ...f, corps: f.corps.filter((c) => keep(c.lot)) })).filter((f) => f.corps.length > 0),
+      otherLots: tree.otherLots.filter((l) => keep(l)),
+    }
+  }, [tree, groups, searching])
 
-  const filteredLots = useMemo(() => {
-    if (!ref) return []
+  // section 2 : une case par lot (le premier corps d'état qui le porte), filtrée par la recherche
+  const lotSection = useMemo(() => {
+    if (!tree) return null
     const t = fold(lotQuery)
-    return orderLots(ref.lots.filter((l) => !t || fold(l.name).includes(t)))
-  }, [ref, lotQuery])
+    const hit = (s: string) => !t || fold(s).includes(t)
+    const shown = new Set<number>()
+    const families = tree.families
+      .map((f) => ({
+        ...f,
+        corps: f.corps
+          .filter((c) => hit(c.label) || (c.lot !== null && hit(c.lot.name)))
+          .map((c) => {
+            const first = c.lot !== null && !shown.has(c.lot.code)
+            if (c.lot) shown.add(c.lot.code)
+            return { ...c, first }
+          }),
+      }))
+      .filter((f) => f.corps.length > 0)
+    const otherLots = tree.otherLots.filter((l) => hit(l.name))
+    return { families, otherLots }
+  }, [tree, lotQuery])
+
+  // une ligne de lot dans le parcours : clic = natures du lot
+  const lotRow = (lot: TreeLot, ctx: string, indentCls: string) => {
+    const key = `${ctx}|${lot.code}`
+    const list = groups.get(lot.code) ?? []
+    const isOpen = searching || expanded === key
+    return (
+      <div key={key} className="border-b border-border last:border-b-0">
+        <button className={`flex w-full items-center gap-2 py-2 pr-3 text-left text-sm hover:bg-muted ${indentCls}`}
+          onClick={() => setExpanded(expanded === key ? null : key)}>
+          <span className="flex-1 font-medium">{lotName(lot.code)}</span>
+          {lot.code === suggested && <Badge tone="ok">suggéré</Badge>}
+          <span className="text-xs text-muted-foreground">{list.length} nature(s)</span>
+          <span className="text-muted-foreground">{isOpen ? '▾' : '▸'}</span>
+        </button>
+        {isOpen && list.map((n) => (
+          <label key={`${key}-${n.id}`} className="flex items-center gap-2 px-10 py-1.5 text-sm hover:bg-muted">
+            <input type="checkbox" checked={draft?.natures.some((x) => x.id === n.id) ?? false} onChange={() => toggleNature(n)} />
+            <span className="flex-1">{n.label}</span>
+            {n.pending && <Badge tone="warn">en attente</Badge>}
+            {n.groupLabel && !n.pending && <span className="text-xs text-muted-foreground">{n.groupLabel}</span>}
+          </label>
+        ))}
+      </div>
+    )
+  }
 
   // ---- actions : proposition de nature, de règle, de correspondance NAAC
   const [newNature, setNewNature] = useState({ label: '', lots: [] as number[], reason: '' })
@@ -341,7 +398,12 @@ export default function PlanEditor({ order, onBack }: { order: OrderRow; onBack:
       <Card>
         <div className="grid gap-2 text-sm sm:grid-cols-3">
           <div><span className="text-muted-foreground">Code NAAC : </span><strong>{order.naac_code ?? '—'}</strong></div>
-          <div><span className="text-muted-foreground">Corps d’état : </span>{corps ?? '—'}</div>
+          <div className={!detected && corps ? 'rounded bg-amber-100 px-2 py-1 ring-2 ring-amber-400' : ''}>
+            <span className="text-muted-foreground">Corps d’état : </span>{corps ?? '—'}
+            {!detected && corps && (
+              <div className="mt-1 text-xs text-amber-900">Non rattaché à un lot : choisissez les lots à la main. Le Super Admin est alerté.</div>
+            )}
+          </div>
           <div>
             <span className="text-muted-foreground">Lot détecté : </span>
             {detected ? <strong>{lotName(detected.lot)}</strong> : '—'}
@@ -399,32 +461,26 @@ export default function PlanEditor({ order, onBack }: { order: OrderRow; onBack:
                 </div>
               )}
               {searching && groups.size === 0 && <p className="p-3 text-sm text-muted-foreground">Aucune nature trouvée. Vous pouvez en proposer une nouvelle ci-dessous.</p>}
-              {lotOrder.map(({ group, lot: lotItem, indent }, i) => {
-                const lot = lotItem.code
-                const list = groups.get(lot) ?? []
-                const isOpen = searching || expanded === lot
-                const newGroup = i === 0 || lotOrder[i - 1].group !== group
-                return (
-                  <div key={lot} className="border-b border-border last:border-b-0">
-                    {newGroup && <div className="bg-muted/40 px-3 pt-2 pb-1 text-xs font-semibold uppercase text-muted-foreground">{group}</div>}
-                    <button className={`flex w-full items-center gap-2 py-2 pr-3 text-left text-sm hover:bg-muted ${indent ? 'pl-7' : 'pl-3'}`}
-                      onClick={() => setExpanded(expanded === lot ? null : lot)}>
-                      <span className="flex-1 font-medium">{lotName(lot)}</span>
-                      {lot === suggested && <Badge tone="ok">suggéré</Badge>}
-                      <span className="text-xs text-muted-foreground">{list.length} nature(s)</span>
-                      <span className="text-muted-foreground">{isOpen ? '▾' : '▸'}</span>
-                    </button>
-                    {isOpen && list.map((n) => (
-                      <label key={`${lot}-${n.id}`} className="flex items-center gap-2 px-6 py-1.5 text-sm hover:bg-muted">
-                        <input type="checkbox" checked={draft.natures.some((x) => x.id === n.id)} onChange={() => toggleNature(n)} />
-                        <span className="flex-1">{n.label}</span>
-                        {n.pending && <Badge tone="warn">en attente</Badge>}
-                        {n.groupLabel && !n.pending && <span className="text-xs text-muted-foreground">{n.groupLabel}</span>}
-                      </label>
-                    ))}
-                  </div>
-                )
-              })}
+              {browse?.families.map((f) => (
+                <div key={f.naac} className="border-b border-border last:border-b-0">
+                  <div className="bg-muted/40 px-3 pt-2 pb-1 text-xs font-semibold uppercase text-muted-foreground">Famille {f.naac}</div>
+                  {f.corps.map((c) => (
+                    <div key={`${f.naac}|${c.label}`}>
+                      <div className="flex items-center gap-2 px-5 pt-1 text-xs text-muted-foreground">
+                        <span>{c.label}</span>
+                        {!c.lot && <Badge tone="warn">non rattaché à un lot</Badge>}
+                      </div>
+                      {c.lot && lotRow(c.lot, `${f.naac}|${c.label}`, 'pl-8')}
+                    </div>
+                  ))}
+                </div>
+              ))}
+              {browse && browse.otherLots.length > 0 && (
+                <div className="border-b border-border last:border-b-0">
+                  <div className="bg-muted/40 px-3 pt-2 pb-1 text-xs font-semibold uppercase text-muted-foreground">Autres lots</div>
+                  {browse.otherLots.map((l) => lotRow(l, 'autres', 'pl-5'))}
+                </div>
+              )}
             </div>
             <div className="border-t border-border p-3">
               {!showAdd ? (
@@ -478,21 +534,47 @@ export default function PlanEditor({ order, onBack }: { order: OrderRow; onBack:
         <h2 className="mb-2 font-semibold">2. Lots concernés <span className="text-xs font-normal text-muted-foreground">suggérés, modifiables</span></h2>
         <input className={fieldClass + ' mb-2'} value={lotQuery} onChange={(e) => setLotQuery(e.target.value)} placeholder="Rechercher un lot" disabled={!editable} />
         <div className="max-h-72 overflow-y-auto rounded-md border border-border">
-          {filteredLots.map(({ group, lot: l, indent }, i) => {
-            const st = draft.lots.get(l.code)
-            const newGroup = i === 0 || filteredLots[i - 1].group !== group
-            return (
-              <div key={l.code}>
-                {newGroup && <div className="bg-muted/40 px-3 pt-2 pb-1 text-xs font-semibold uppercase text-muted-foreground">{group}</div>}
-                <label className={`flex items-center gap-2 py-1 pr-3 text-sm hover:bg-muted ${indent ? 'pl-8' : 'pl-3'}`}>
-                  <input type="checkbox" checked={!!st} onChange={() => toggleLot(l.code)} disabled={!editable} />
-                  <span className="flex-1">{l.name}</span>
-                  {l.code === suggested && <Badge tone="ok">suggéré</Badge>}
-                  {st && <Badge>{sourceLabel(st.source)}</Badge>}
-                </label>
-              </div>
-            )
-          })}
+          {lotSection?.families.map((f) => (
+            <div key={f.naac} className="border-b border-border last:border-b-0">
+              <div className="bg-muted/40 px-3 pt-2 pb-1 text-xs font-semibold uppercase text-muted-foreground">Famille {f.naac}</div>
+              {f.corps.map((c) => {
+                const st = c.lot ? draft.lots.get(c.lot.code) : undefined
+                return (
+                  <div key={`${f.naac}|${c.label}`}>
+                    <div className="flex items-center gap-2 px-5 pt-1 text-xs text-muted-foreground">
+                      <span>{c.label}</span>
+                      {!c.lot && <Badge tone="warn">non rattaché à un lot</Badge>}
+                      {c.lot && !c.first && <span>→ {lotName(c.lot.code)} (affiché plus haut)</span>}
+                    </div>
+                    {c.lot && c.first && (
+                      <label className="flex items-center gap-2 py-1 pr-3 pl-8 text-sm hover:bg-muted">
+                        <input type="checkbox" checked={!!st} onChange={() => toggleLot(c.lot!.code)} disabled={!editable} />
+                        <span className="flex-1">{c.lot.name}</span>
+                        {c.lot.code === suggested && <Badge tone="ok">suggéré</Badge>}
+                        {st && <Badge>{sourceLabel(st.source)}</Badge>}
+                      </label>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          ))}
+          {lotSection && lotSection.otherLots.length > 0 && (
+            <div>
+              <div className="bg-muted/40 px-3 pt-2 pb-1 text-xs font-semibold uppercase text-muted-foreground">Autres lots</div>
+              {lotSection.otherLots.map((l) => {
+                const st = draft.lots.get(l.code)
+                return (
+                  <label key={l.code} className="flex items-center gap-2 py-1 pr-3 pl-5 text-sm hover:bg-muted">
+                    <input type="checkbox" checked={!!st} onChange={() => toggleLot(l.code)} disabled={!editable} />
+                    <span className="flex-1">{l.name}</span>
+                    {l.code === suggested && <Badge tone="ok">suggéré</Badge>}
+                    {st && <Badge>{sourceLabel(st.source)}</Badge>}
+                  </label>
+                )
+              })}
+            </div>
+          )}
         </div>
       </Card>
 

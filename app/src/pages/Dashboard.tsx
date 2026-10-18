@@ -10,7 +10,8 @@ import CompanyDialog from '../components/CompanyDialog'
 import BulkPlanWizard from '../components/BulkPlanWizard'
 import OrderActionDialog from '../components/OrderActionDialog'
 import { fetchCompanies, type CompanyRow } from './AdminCompanies'
-import { Ban, ArrowRightLeft, Info, RotateCcw, Trash2 } from 'lucide-react'
+import { Ban, ArrowRightLeft, Download, Eye, Info, Pencil, RotateCcw, SlidersHorizontal, Trash2 } from 'lucide-react'
+import { buildSheetPdf, buildSheetsZip, downloadBlob, fetchSavedLines, openPdf, redactorOf, planFileName, type Line } from '../lib/sheet'
 
 /** Bouton icône avec libellé accessible et infobulle. */
 function IconButton({ icon: Icon, label, onClick, disabled }: { icon: typeof Info; label: string; onClick: () => void; disabled?: boolean }) {
@@ -38,6 +39,8 @@ const PLAN_LABEL: Record<string, string> = {
   NON_QUALIFIEE: 'Non qualifiée', A_ENVOYER: 'À envoyer', EN_ATTENTE_RETOUR: 'En attente retour', ARCHIVEE: 'Archivée',
   ENVOYE_MANUELLEMENT: 'Envoyée manuellement',
 }
+// Statut affiché : une fiche enregistrée (A_ENVOYER) est une « Fiche créée », en attente d'envoi.
+const STATUS_LABEL: Record<string, string> = { ...PLAN_LABEL, A_ENVOYER: 'Fiche créée' }
 /** Onglets dont les commandes peuvent recevoir une fiche (sélection groupée). */
 const ACTIONABLE: Tab[] = ['NON_QUALIFIEE', 'A_ENVOYER']
 const PAGE = 15
@@ -104,7 +107,7 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
   const [limit, setLimit] = useState(PAGE)
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
-  const [wizardOrders, setWizardOrders] = useState<OrderRow[] | null>(null)
+  const [wizard, setWizard] = useState<{ orders: OrderRow[]; initial?: Map<string, Line>; mode: 'create' | 'edit' } | null>(null)
   const [actionOrder, setActionOrder] = useState<OrderRow | null>(null)
   const [companyFor, setCompanyFor] = useState<string | null>(null)
   const [fileTemplate, setFileTemplate] = useState('{entreprise}_{commande}_{secteur}_Plan de prévention')
@@ -218,6 +221,52 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
 
   const manualTab = tab === 'ENVOYE_MANUELLEMENT'
   const selectedOrders = rows.filter((o) => selected.has(o.order_number))
+  const companyNameOf = (isis: string | null) => (isis ? companies.get(isis)?.name || isis : '')
+
+  // Fiches enregistrées : prévisualiser, modifier, télécharger (données relues depuis la base)
+  const savedLine = async (o: OrderRow): Promise<Line> => {
+    if (!ref) throw new Error('Référentiel non chargé')
+    const map = await fetchSavedLines([o], ref)
+    const l = map.get(o.order_number)
+    if (!l) throw new Error('Fiche introuvable')
+    return l
+  }
+  const previewSheet = async (o: OrderRow) => {
+    if (!ref) return
+    try {
+      const l = await savedLine(o)
+      openPdf(await buildSheetPdf(l, o, ref, companyNameOf(o.isis_code), redactorOf(profile)))
+    } catch (e) { setErr(errMsg(e)) }
+  }
+  const downloadSheet = async (o: OrderRow) => {
+    if (!ref) return
+    try {
+      const l = await savedLine(o)
+      const bytes = await buildSheetPdf(l, o, ref, companyNameOf(o.isis_code), redactorOf(profile))
+      const name = planFileName(fileTemplate, { entreprise: companyNameOf(o.isis_code) || o.order_number, commande: o.order_number, secteur: o.sector_code ?? '' })
+      downloadBlob(new Blob([bytes as BlobPart], { type: 'application/pdf' }), name)
+    } catch (e) { setErr(errMsg(e)) }
+  }
+  const editSheet = async (o: OrderRow) => {
+    if (!ref) return
+    try {
+      const initial = await fetchSavedLines([o], ref)
+      setWizard({ orders: [o], initial, mode: 'edit' })
+    } catch (e) { setErr(errMsg(e)) }
+  }
+  const downloadSelectedZip = async () => {
+    if (!ref || !selectedOrders.length) return
+    setBusy(true); setErr(null)
+    try {
+      const map = await fetchSavedLines(selectedOrders, ref)
+      const lines = selectedOrders.map((o) => map.get(o.order_number)).filter((l): l is Line => !!l)
+      const byNumber = new Map(selectedOrders.map((o) => [o.order_number, o]))
+      const { blob, count, failures } = await buildSheetsZip(lines, byNumber, ref, companyNameOf, redactorOf(profile), fileTemplate, setNotice)
+      if (count > 0) downloadBlob(blob, `fiches_plans_prevention_${new Date().toISOString().slice(0, 10)}.zip`)
+      if (failures.length) setErr(`${failures.length} PDF non généré(s) :\n${failures.join('\n')}`)
+      else setNotice(`${count} PDF téléchargé(s).`)
+    } catch (e) { setErr(errMsg(e)) } finally { setBusy(false) }
+  }
 
   return (
     <div className="space-y-5">
@@ -315,7 +364,8 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
       {ACTIONABLE.includes(tab) && selected.size > 0 && (
         <div className="flex flex-wrap items-center gap-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
           <span className="font-medium">{selected.size} sélectionnée(s)</span>
-          <Button onClick={() => setWizardOrders(selectedOrders)} disabled={busy || !ref}>Créer les fiches</Button>
+          {tab === 'NON_QUALIFIEE' && <Button onClick={() => setWizard({ orders: selectedOrders, mode: 'create' })} disabled={busy || !ref}>Créer les fiches</Button>}
+          {tab === 'A_ENVOYER' && <Button onClick={() => void downloadSelectedZip()} disabled={busy || !ref}>Télécharger les PDF (ZIP)</Button>}
           <Button variant="ghost" onClick={() => sendManually([...selected])} disabled={busy}>Déjà envoyée manuellement</Button>
           <Button variant="ghost" onClick={() => setSelected(new Set())}>Tout désélectionner</Button>
         </div>
@@ -396,7 +446,7 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
                       <td className="px-3 py-2.5">
                         <div className="flex flex-wrap gap-1">
                           {isTrashView && <Badge tone="warn">Corbeille</Badge>}
-                          {o.scope_status === 'IN_SCOPE' && <Badge>{PLAN_LABEL[o.plan_status]}</Badge>}
+                          {o.scope_status === 'IN_SCOPE' && <Badge tone={o.plan_status === 'A_ENVOYER' ? 'ok' : 'default'}>{STATUS_LABEL[o.plan_status]}</Badge>}
                           {o.scope_status === 'OUT_OF_SCOPE' && <Badge tone="warn">Hors périmètre</Badge>}
                           {o.scope_override && <Badge tone="warn">Forcé</Badge>}
                           {o.scope_request_status === 'EN_ATTENTE' && <Badge tone="warn">Exclusion en attente</Badge>}
@@ -410,10 +460,15 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
                           ) : (
                             <>
                               {o.scope_status === 'IN_SCOPE' && o.plan_status === 'NON_QUALIFIEE' && (
-                                <Button onClick={() => setWizardOrders([o])} disabled={!ref}>Créer la fiche</Button>
+                                <Button onClick={() => setWizard({ orders: [o], mode: 'create' })} disabled={!ref}>Créer la fiche</Button>
                               )}
                               {o.scope_status === 'IN_SCOPE' && o.plan_status === 'A_ENVOYER' && (
-                                <Button onClick={() => onOpen(o)}>Modifier le plan</Button>
+                                <>
+                                  <IconButton icon={Eye} label="Prévisualiser la fiche" onClick={() => void previewSheet(o)} />
+                                  <IconButton icon={Pencil} label="Modifier la fiche" onClick={() => void editSheet(o)} disabled={busy || !ref} />
+                                  <IconButton icon={Download} label="Télécharger le PDF" onClick={() => void downloadSheet(o)} />
+                                  <IconButton icon={SlidersHorizontal} label="Éditeur avancé (natures, lots, mesures)" onClick={() => onOpen(o)} />
+                                </>
                               )}
                               {o.scope_status === 'IN_SCOPE' && (
                                 <IconButton icon={Ban} label="Demander l’exclusion" onClick={() => setActionOrder(o)} />
@@ -448,15 +503,17 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
         </div>
       )}
 
-      {wizardOrders && ref && (
+      {wizard && ref && (
         <BulkPlanWizard
-          orders={wizardOrders}
+          orders={wizard.orders}
+          initial={wizard.initial}
+          mode={wizard.mode}
           suggestions={suggestions}
           ref={ref}
           companies={companies}
           template={fileTemplate}
-          onClose={() => setWizardOrders(null)}
-          onDone={(m) => { setWizardOrders(null); setSelected(new Set()); setNotice(m); void load() }}
+          onClose={() => setWizard(null)}
+          onDone={(m) => { setWizard(null); setSelected(new Set()); setNotice(m); void load() }}
         />
       )}
       {actionOrder && (

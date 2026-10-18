@@ -71,6 +71,11 @@ export function expandQuery(query: string, vocab: VocabEntry[]): string[] {
   return [...out]
 }
 
+/** Mots de procédure ou de quantité, sans valeur pour distinguer une nature d'une autre. */
+const GENERIC_WORDS = new Set(
+  'remplacement remplacer remplace travaux travail reprise reprises remise remises fourniture fournir pose depose installation mise place creation realisation selon devis unite unites ensemble suite'.split(' '),
+)
+
 export interface SearchHit { nature: NatureRef; score: number }
 
 /** Recherche de natures : mots du descriptif + vocabulaire métier + nom du lot. */
@@ -94,6 +99,10 @@ export function searchNatures(
   const weight = new Map<string, number>()
   for (const w of qe) {
     const df = labelTokens.filter((ks) => ks.some((kw) => wordScore(w, kw) >= 0.8)).length
+    // mot inconnu du référentiel : il ne doit pas diluer le score des mots connus
+    if (df === 0) { weight.set(w, 0); continue }
+    // verbe générique (« remplacement », « travaux »…) : présent partout, il ne départage rien
+    if (GENERIC_WORDS.has(w)) { weight.set(w, 0); continue }
     weight.set(w, Math.log(1 + natures.length / (1 + df)))
   }
   const wSum = qe.reduce((acc, w) => acc + (weight.get(w) ?? 0), 0) || 1

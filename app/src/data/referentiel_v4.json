@@ -3916,6 +3916,43 @@
         "pluvial",
         "eaux"
       ]
+    },
+    {
+      "term": "fenetres",
+      "equivalents": [
+        "menuiserie",
+        "fenetre"
+      ]
+    },
+    {
+      "term": "visiophonie",
+      "equivalents": [
+        "interphonie",
+        "acces",
+        "controle"
+      ]
+    },
+    {
+      "term": "interphonie",
+      "equivalents": [
+        "interphonie",
+        "acces",
+        "controle"
+      ]
+    },
+    {
+      "term": "stop",
+      "equivalents": [
+        "stationnement",
+        "marquage",
+        "parking"
+      ]
+    },
+    {
+      "term": "volets",
+      "equivalents": [
+        "volet"
+      ]
     }
   ],
   "alerts": [

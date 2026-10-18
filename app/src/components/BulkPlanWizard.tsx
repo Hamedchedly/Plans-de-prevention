@@ -1,72 +1,45 @@
 import { useEffect, useMemo, useState } from 'react'
-import JSZip from 'jszip'
-import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import type { Referentiel } from '../lib/refdata'
-import { computeMeasures, proposeRisks, searchNatures, type NatureRef } from '../lib/rules'
-import { buildPlanPdf, planFileName } from '../lib/planPdf'
-import { defaultPeriod, fmtFr } from '../lib/period'
+import { computeMeasures, searchNatures, type NatureRef } from '../lib/rules'
+import { fmtFr, defaultPeriod } from '../lib/period'
 import { natureCandidates, type OrderSuggestion } from '../lib/natureSuggest'
+import { supabase } from '../lib/supabase'
+import { derive, identityIncomplete, measuresFor, periodLabel, redactorOf, savePlans, buildSheetsZip, downloadBlob, buildSheetPdf, unique, planFileName, type Line } from '../lib/sheet'
 import type { OrderRow } from '../lib/types'
 import type { CompanyRow } from '../pages/AdminCompanies'
 import { Badge, Button, Card, Notice, errMsg, fieldClass } from './ui'
 
-interface Period { start: string; end: string }
-interface Line {
-  orderNumber: string
-  natureId: number | null
-  lots: number[]
-  risks: string[]          // risques cochés
-  measures: string[]       // mesures cochées
-  companyFills: boolean    // date d'intervention à renseigner par l'entreprise
-  period: Period
-}
 interface CompanyEdit { name: string; os_email: string }
 
-const STEPS = ['Nature et lots', 'Risques et mesures', 'Entreprise et date', 'Aperçu et export']
+const STEPS = ['Nature et lots', 'Risques et mesures', 'Entreprise et date', 'Aperçu et validation']
 const OVERVIEW = STEPS.length - 1
 const BY_ORDER_STEPS = STEPS.length - 1
 
-const unique = <T,>(xs: T[]) => [...new Set(xs)]
-
-/** Risques proposés pour une nature et des lots, et mesures qui en découlent (mêmes règles que l'éditeur). */
-function derive(ref: Referentiel, natureId: number | null, lots: number[], previousMeasures: string[] = []) {
-  const nature = natureId != null ? ref.natures.find((n) => n.id === natureId) : undefined
-  const proposal = proposeRisks(ref.lotDefaults, lots, nature ? [nature] : [])
-  const risks = [...proposal.keys()]
-  return { risks, proposal, measures: measuresFor(ref, risks, previousMeasures) }
-}
-
-/** Mesures : calculées à partir des risques cochés, plus les mesures manuelles déjà cochées. */
-function measuresFor(ref: Referentiel, risks: string[], previous: string[]) {
-  const computed = computeMeasures(new Set(risks), ref.rules)
-  const manual = previous.filter((c) => ref.rules.find((r) => r.code === c)?.ruleType === 'MANUAL')
-  return unique([...computed, ...manual])
-}
-
 export default function BulkPlanWizard({
-  orders, suggestions, ref, companies, template, onClose, onDone,
+  orders, suggestions, ref, companies, template, initial, mode = 'create', onClose, onDone,
 }: {
   orders: OrderRow[]
   suggestions: Map<string, OrderSuggestion>
   ref: Referentiel
   companies: Map<string, CompanyRow>
   template: string
+  initial?: Map<string, Line>          // fiches déjà créées : modification
+  mode?: 'create' | 'edit'
   onClose: () => void
   onDone: (message: string) => void
 }) {
   const { profile } = useAuth()
-  const identityMissing = !profile || !profile.first_name?.trim() || !profile.last_name?.trim() || !profile.phone?.trim() || !(profile.contact_email?.trim() || profile.email?.trim())
-  const redactorOf = () => (profile ? {
-    name: [profile.first_name, profile.last_name].filter(Boolean).join(' ') || profile.full_name || '',
-    email: profile.contact_email || profile.email || '',
-    phone: profile.phone || '',
-  } : null)
+  const identityMissing = identityIncomplete(profile)
+  const redactor = redactorOf(profile)
+  const [created, setCreated] = useState(false)
 
   const byNumber = useMemo(() => new Map(orders.map((o) => [o.order_number, o])), [orders])
 
   // Préremplissage : nature seulement si la suggestion est fiable ; lots et risques/mesures en découlent.
   const [lines, setLines] = useState<Line[]>(() => orders.map((o) => {
+    const saved = initial?.get(o.order_number)
+    if (saved) return saved
     const sg = suggestions.get(o.order_number)
     const natureId = sg?.confident && sg.natureId != null ? sg.natureId : null
     const nature = natureId != null ? ref.natures.find((n) => n.id === natureId) : undefined
@@ -138,28 +111,7 @@ export default function BulkPlanWizard({
     } catch (e) { setErr(errMsg(e)) } finally { setBusy(false) }
   }
 
-  // ---- données de fiche (aperçu et export partagent la même construction)
-  const pdfInput = (l: Line, o: OrderRow) => {
-    const n = l.natureId != null ? ref.natures.find((x) => x.id === l.natureId) : undefined
-    return {
-      orderNumber: o.order_number,
-      lotNames: l.lots.map((c) => ref.lotNameByCode.get(c) ?? `Lot ${c}`),
-      taskLabel: n?.label ?? o.nature_text ?? '',
-      activity: o.nature_text ?? o.description ?? '',
-      zone: [o.address, o.city, o.tranche_name].filter(Boolean).join(' · '),
-      period: l.companyFills ? 'À renseigner par l’entreprise' : `${fmtFr(l.period.start)} au ${fmtFr(l.period.end)}`,
-      companyLabel: companyLabel(o.isis_code),
-      risks: l.risks.map((c) => ref.riskLabel.get(c) ?? c),
-      measures: l.measures.map((c) => ({
-        family: ref.measures.find((m) => m.code === c)?.family ?? 'Autres',
-        label: ref.measures.find((m) => m.code === c)?.label ?? c,
-      })),
-      redactor: redactorOf(),
-      date: new Date().toLocaleDateString('fr-FR'),
-    }
-  }
-
-  // ---- aperçu PDF (étape finale)
+  // ---- aperçu PDF (étape finale) : construit à partir des données de la fiche
   useEffect(() => {
     if (step !== OVERVIEW) return
     const l = lines[previewIndex]
@@ -169,9 +121,8 @@ export default function BulkPlanWizard({
     let alive = true
     ;(async () => {
       try {
-        const bytes = await buildPlanPdf(pdfInput(l, o))
-        const blob = new Blob([bytes as BlobPart], { type: 'application/pdf' })
-        url = URL.createObjectURL(blob)
+        const bytes = await buildSheetPdf(l, o, ref, companyLabel(o.isis_code), redactor)
+        url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'application/pdf' }))
         if (alive) setPreviewUrl(url); else URL.revokeObjectURL(url)
       } catch (e) { if (alive) setErr(errMsg(e)) }
     })()
@@ -179,70 +130,28 @@ export default function BulkPlanWizard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, previewIndex, lines, edits])
 
-  // ---- export : enregistrement de chaque fiche, PDF, ZIP
-  const exportAll = async () => {
+  // ---- validation : la fiche est créée (statut « Fiche créée ») même sans export
+  const validate = async () => {
     setBusy(true); setErr(null); setProgress(null)
-    const zip = new JSZip()
-    const used = new Map<string, number>()
-    const failures: string[] = []
-    let done = 0
-    for (let i = 0; i < lines.length; i++) {
-      const l = lines[i]
-      const o = byNumber.get(l.orderNumber)
-      if (!o) continue
-      setProgress(`Fiche ${i + 1} / ${lines.length} : ${l.orderNumber}`)
-      try {
-        const n = l.natureId != null ? ref.natures.find((x) => x.id === l.natureId) : undefined
-        const proposal = derive(ref, l.natureId, l.lots).proposal
-        const computed = new Set(computeMeasures(new Set(l.risks), ref.rules))
-        const { error } = await supabase.rpc('save_plan', {
-          p_order: o.order_number,
-          p_nature_id: n && !n.pending ? n.id : null,
-          p_proposal_id: n?.pending ? n.proposalId ?? null : null,
-          p_lots: l.lots.map((code) => ({
-            code, source: n?.lots.includes(code) ? 'NATURE' : 'AUTO_ANALYSIS', confidence: null,
-          })),
-          p_risks: l.risks.map((code) => ({ code, checked: true, origin: proposal.get(code) ?? 'MANUEL' })),
-          p_measures: l.measures.map((code) => ({ code, checked: true, origin: computed.has(code) ? 'AUTO' : 'MANUEL' })),
-        })
-        if (error) throw new Error(error.message)
-        const { error: pErr } = await supabase.rpc('set_plan_period', {
-          p_order: o.order_number,
-          p_start: l.companyFills ? null : l.period.start,
-          p_end: l.companyFills ? null : l.period.end,
-        })
-        if (pErr) throw new Error(pErr.message)
+    const failures = await savePlans(lines, byNumber, ref)
+    setBusy(false)
+    if (failures.length) { setErr(`${failures.length} fiche(s) non enregistrée(s) :\n${failures.join('\n')}`); return }
+    setCreated(true)
+    setProgress(`${lines.length} fiche(s) ${mode === 'edit' ? 'mise(s) à jour' : 'créée(s)'}. Vous pouvez prévisualiser, modifier ou télécharger les PDF.`)
+  }
 
-        const base = planFileName(template, {
-          entreprise: companyLabel(o.isis_code) || o.order_number,
-          commande: o.order_number,
-          secteur: o.sector_code ?? '',
-        })
-        const count = used.get(base) ?? 0
-        used.set(base, count + 1)
-        const name = count ? base.replace(/\.pdf$/, ` (${count + 1}).pdf`) : base
-
-        zip.file(name, await buildPlanPdf(pdfInput(l, o)))
-        done++
-      } catch (e) {
-        failures.push(`${l.orderNumber} : ${errMsg(e)}`)
-      }
-    }
+  // ---- téléchargement des PDF (ZIP) des fiches enregistrées
+  const download = async () => {
+    setBusy(true); setErr(null)
     try {
-      if (done > 0) {
-        const blob = await zip.generateAsync({ type: 'blob' })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `fiches_plans_prevention_${new Date().toISOString().slice(0, 10)}.zip`
-        document.body.appendChild(a); a.click(); a.remove()
-        setTimeout(() => URL.revokeObjectURL(url), 1000)
-      }
+      const { blob, count, failures } = await buildSheetsZip(lines, byNumber, ref, companyLabel, redactor, template, setProgress)
+      if (count > 0) downloadBlob(blob, `fiches_plans_prevention_${new Date().toISOString().slice(0, 10)}.zip`)
       setBusy(false)
-      if (failures.length) setErr(`${failures.length} fiche(s) non créée(s) :\n${failures.join('\n')}`)
-      if (done > 0) onDone(`${done} fiche(s) créée(s) et exportée(s).${failures.length ? ` ${failures.length} en erreur.` : ''}`)
+      if (failures.length) setErr(`${failures.length} PDF non généré(s) :\n${failures.join('\n')}`)
     } catch (e) { setBusy(false); setErr(errMsg(e)) }
   }
+
+  const finish = () => onDone(`${lines.length} fiche(s) ${mode === 'edit' ? 'mise(s) à jour' : 'créée(s)'}.`)
 
   // ---- navigation : étapes pour chaque commande, puis aperçu et export
   const goNext = () => {
@@ -535,9 +444,14 @@ export default function BulkPlanWizard({
                 {identityMissing && (
                   <Notice tone="error">Votre identité est incomplète : renseignez-la via « Mon profil ».</Notice>
                 )}
-                <Button onClick={() => void exportAll()} disabled={busy || !lines.length || identityMissing || lines.some((l) => l.natureId == null)}>
-                  {busy ? 'Création en cours…' : `Créer les ${lines.length} fiche(s) et exporter le ZIP`}
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button onClick={() => void validate()} disabled={busy || !lines.length || identityMissing || lines.some((l) => l.natureId == null)}>
+                    {busy ? 'Enregistrement…' : mode === 'edit' ? `Enregistrer les modifications (${lines.length})` : `Valider et créer ${lines.length > 1 ? `les ${lines.length} fiches` : 'la fiche'}`}
+                  </Button>
+                  <Button variant="ghost" onClick={() => void download()} disabled={busy || !created}>Télécharger les PDF (ZIP)</Button>
+                  {created && <Button variant="ghost" onClick={finish} disabled={busy}>Terminer</Button>}
+                </div>
+                {!created && <p className="text-xs text-muted-foreground">La fiche est créée dès la validation ; l’export PDF peut se faire ensuite depuis la liste.</p>}
               </div>
             )}
           </div>
@@ -551,7 +465,7 @@ export default function BulkPlanWizard({
           {step === 0 && !canNext && <span className="text-xs text-amber-700">Choisissez une nature pour continuer</span>}
           {step !== OVERVIEW && (
             <Button onClick={goNext} disabled={busy || !canNext}>
-              {step === BY_ORDER_STEPS - 1 && cur === lines.length - 1 ? 'Aperçu et export' : step === BY_ORDER_STEPS - 1 ? 'Commande suivante' : 'Suivant'}
+              {step === BY_ORDER_STEPS - 1 && cur === lines.length - 1 ? 'Aperçu et validation' : step === BY_ORDER_STEPS - 1 ? 'Commande suivante' : 'Suivant'}
             </Button>
           )}
         </div>

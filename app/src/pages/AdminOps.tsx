@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { Badge, Button, Card, EmptyState, Notice, errMsg, fieldClass } from '../components/ui'
+import { Badge, Button, Card, EmptyState, Notice, fieldClass } from '../components/ui'
 import { DEFAULT_ALERT, DEFAULT_FOOTER } from '../lib/planPdf'
 import { DEFAULT_MAIL_CORPS, DEFAULT_MAIL_OBJET } from '../lib/sheet'
 import { Download, UserCheck } from 'lucide-react'

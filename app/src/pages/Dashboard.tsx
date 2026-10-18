@@ -441,7 +441,7 @@ export default function Dashboard({ onOpen, view, setView }: {
   // Fiches enregistrées : prévisualiser, modifier, télécharger (données relues depuis la base)
   const savedLine = async (o: OrderRow): Promise<Line> => {
     if (!ref) throw new Error('Référentiel non chargé')
-    const map = await fetchSavedLines([o], ref)
+    const map = await fetchSavedLines([o])
     const l = map.get(o.order_number)
     if (!l) throw new Error('Fiche introuvable')
     return l
@@ -465,7 +465,7 @@ export default function Dashboard({ onOpen, view, setView }: {
   const editSheet = async (o: OrderRow) => {
     if (!ref) return
     try {
-      const initial = await fetchSavedLines([o], ref)
+      const initial = await fetchSavedLines([o])
       setWizard({ orders: [o], initial, mode: 'edit' })
     } catch (e) { setErr(errMsg(e)) }
   }
@@ -473,7 +473,7 @@ export default function Dashboard({ onOpen, view, setView }: {
     if (!ref || !selectedOrders.length) return
     setBusy(true); setErr(null)
     try {
-      const map = await fetchSavedLines(selectedOrders, ref)
+      const map = await fetchSavedLines(selectedOrders)
       const lines = selectedOrders.map((o) => map.get(o.order_number)).filter((l): l is Line => !!l)
       const byNumber = new Map(selectedOrders.map((o) => [o.order_number, o]))
       const { blob, count, failures } = await buildSheetsZip(lines, byNumber, ref, companyNameOf, (x) => contactFor(contacts, x), fileTemplate, setNotice)

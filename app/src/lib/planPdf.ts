@@ -43,7 +43,8 @@ const INK = rgb(27 / 255, 35 / 255, 48 / 255)
 const MUTED = rgb(122 / 255, 133 / 255, 148 / 255)
 
 /** WinAnsi (Helvetica) : les caractères hors jeu de police deviennent « ? ». */
-const clean = (s: string) => s.replace(/[^\x00-\xFFŒœ‘’“”–—€]/g, '?')
+/** Remplace par « ? » les caractères hors Latin-1 que la police standard du PDF ne sait pas écrire. */
+const clean = (s: string) => Array.from(s, (ch) => (ch.codePointAt(0) ?? 0) < 0x100 || '‘’“”–—€Œœ'.includes(ch) ? ch : '?').join('')
 
 function wrap(text: string, font: PDFFont, size: number, maxW: number): string[] {
   const out: string[] = []
@@ -254,9 +255,7 @@ async function renderPlan(d: PlanPdfData, logo: Uint8Array | null, k: number): P
   }
 
   // Bas de page à droite : nom de l'entreprise, puis « Signature » en gris clair
-  const SIG_W = 250
   const SIG_H = 70
-  const sigX = PAGE_W - MX - SIG_W
   const sigTop = CONTENT_BOTTOM - SIG_H
   if (top + 8 > sigTop) newPage()
   const nameW = bold.widthOfTextAtSize(clean(d.companyLabel || ' '), 10)

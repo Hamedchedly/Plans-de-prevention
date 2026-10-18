@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import type { OrderRow } from '../lib/types'
 import { fillTemplate, type Redactor } from '../lib/sheet'
 import { fmtFr } from '../lib/period'
-import { Button, Notice, errMsg, fieldClass } from './ui'
+import { Button, Notice, fieldClass } from './ui'
 
 /** Envoi du plan de prévention par messagerie (mailto) : le PDF se joint à la main, puis la commande passe « En attente retour ». */
 export default function MailDialog({

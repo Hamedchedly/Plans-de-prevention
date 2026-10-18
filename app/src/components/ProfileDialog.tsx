@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { Button, Notice, errMsg, fieldClass } from './ui'
+import { Button, Notice, fieldClass } from './ui'
 
 /** Identité d'un utilisateur : utilisée dans les fiches (rédacteur, personne à alerter). Chacun renseigne la sienne ; le Super Admin peut renseigner celle de tous. */
 export default function ProfileDialog({ userId, isSelf, onClose }: { userId: string; isSelf: boolean; onClose: () => void }) {

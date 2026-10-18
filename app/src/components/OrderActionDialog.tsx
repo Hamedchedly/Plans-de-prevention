@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { OrderRow } from '../lib/types'
-import { Button, Notice, errMsg, fieldClass } from './ui'
+import { Button, Notice, fieldClass } from './ui'
 
 type Choice = 'EXCLUSION' | 'REAFFECTER' | 'MANUEL'
 

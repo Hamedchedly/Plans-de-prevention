@@ -134,7 +134,7 @@ function ValidationsSection() {
     const a = adjustFor(p)
     let error: { message: string } | null = null
     if (p.kind === 'CORPS_NAAC') {
-      ;({ error } = await supabase.rpc('decide_corps_naac', { p_id: p.id, p_approve: approve, p_comment: c, p_lot: modified ? a.lot ?? null : null }))
+      ({ error } = await supabase.rpc('decide_corps_naac', { p_id: p.id, p_approve: approve, p_comment: c, p_lot: modified ? a.lot ?? null : null }))
     } else {
       const adjusted = modified && approve
         ? { ...p.payload, label: a.label.trim(), lots: a.lots }

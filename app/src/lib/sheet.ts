@@ -80,7 +80,7 @@ export function sheetPdfInput(l: Line, o: OrderRow, ref: Referentiel, companyNam
 }
 
 /** Fiche enregistrée relue depuis la base (pour prévisualiser ou modifier). */
-export async function fetchSavedLines(orders: OrderRow[], ref: Referentiel): Promise<Map<string, Line>> {
+export async function fetchSavedLines(orders: OrderRow[]): Promise<Map<string, Line>> {
   const numbers = orders.map((o) => o.order_number)
   const out = new Map<string, Line>()
   if (!numbers.length) return out

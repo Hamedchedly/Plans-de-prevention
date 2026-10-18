@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { Button, Notice, errMsg, fieldClass } from './ui'
+import { Button, Notice, fieldClass } from './ui'
 import { COMPANY_FIELDS, type CompanyRow } from '../pages/AdminCompanies'
 
 /** Saisie d'informations sur une entreprise : elles sont proposées, puis validées par le Super Admin. */

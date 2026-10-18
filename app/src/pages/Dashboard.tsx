@@ -46,6 +46,8 @@ const PRESETS: { label: string; days: number | null }[] = [
   { label: 'Tout', days: null },
 ]
 const DEFAULT_PRESET = 0
+/** En dessous de ce nombre dans l'onglet, la période est élargie automatiquement. */
+const MIN_VISIBLE = 3
 
 const dayOf = (iso: string) => Math.floor(Date.parse(iso) / 86400000)
 const todayDay = () => Math.floor(Date.now() / 86400000)
@@ -145,7 +147,7 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
     () => [...new Set([...suggestions.values()].filter((s) => s.confident).map((s) => s.group).filter(Boolean))] as string[],
     [suggestions])
 
-  const cutoff = PRESETS[preset].days == null ? null : todayDay() - (PRESETS[preset].days as number)
+  const cutoffOf = (p: number) => PRESETS[p].days == null ? null : todayDay() - (PRESETS[p].days as number)
 
   const inTab = (o: OrderRow, t: Tab) =>
     o.scope_status === 'IN_SCOPE' && o.plan_status === t
@@ -156,17 +158,30 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
     const hay = fold([o.order_number, o.address, o.city, o.tranche_name, o.nature_text, o.description, o.isis_code].filter(Boolean).join(' '))
     return terms.every((t) => hay.includes(t))
   }
-  const matchesFilters = (o: OrderRow) => {
+  const matchesFilters = (o: OrderRow, cut: number | null) => {
     const sg = suggestions.get(o.order_number)
     const lot = sg?.confident ? sg.lot : null
     if (lotFilter && String(lot ?? '') !== lotFilter && !(lotFilter === 'NONE' && lot == null)) return false
     if (groupFilter && (!sg?.confident || sg.group !== groupFilter)) return false
-    if (cutoff != null && (!o.order_date || dayOf(o.order_date) < cutoff)) return false
+    if (cut != null && (!o.order_date || dayOf(o.order_date) < cut)) return false
     return true
   }
 
-  const base = rows.filter((o) =>
-    (sector === 'TOUS' || o.sector_code === sector) && (!operator || o.operator_code === operator) && matches(o) && matchesFilters(o))
+  const passesFilters = (o: OrderRow, cut: number | null) =>
+    (sector === 'TOUS' || o.sector_code === sector) && (!operator || o.operator_code === operator) && matches(o) && matchesFilters(o, cut)
+
+  // Période : on élargit automatiquement jusqu'à MIN_VISIBLE commandes dans l'onglet courant (filtres inclus).
+  const pool = rows.filter((o) => passesFilters(o, null) && inTab(o, tab))
+  const countSince = (p: number) => {
+    const c = cutoffOf(p)
+    return c == null ? pool.length : pool.filter((o) => o.order_date && dayOf(o.order_date) >= c).length
+  }
+  let activePreset = preset
+  while (activePreset < PRESETS.length - 1 && countSince(activePreset) < MIN_VISIBLE) activePreset++
+  const cutoff = cutoffOf(activePreset)
+  const hiddenOld = pool.length - countSince(activePreset)
+
+  const base = rows.filter((o) => passesFilters(o, cutoff))
   const visible = base.filter((o) => inTab(o, tab))
   const isTrashView = tab === 'CORBEILLE'
   const list = isTrashView ? trashed.filter(matches) : visible
@@ -308,16 +323,16 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
       <Card className="space-y-3">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <p className="text-sm">
-            Commandes passées depuis <span className="font-semibold">{PRESETS[preset].label}</span>
+            Commandes passées depuis <span className="font-semibold">{PRESETS[activePreset].label}</span>
             {cutoff != null && <span className="text-muted-foreground"> · depuis le {fmtDay(cutoff)}</span>}
           </p>
         </div>
         <input type="range" aria-label="Période des commandes" className="w-full accent-primary" min={0} max={PRESETS.length - 1} step={1}
-          value={preset} onChange={(e) => setPreset(Number(e.target.value))} />
+          value={activePreset} onChange={(e) => setPreset(Number(e.target.value))} />
         <div className="flex justify-between text-xs text-muted-foreground">
           {PRESETS.map((p, i) => (
             <button key={p.label} type="button" onClick={() => setPreset(i)}
-              className={i === preset ? 'font-semibold text-foreground' : 'hover:text-foreground'}>{p.label}</button>
+              className={i === activePreset ? 'font-semibold text-foreground' : 'hover:text-foreground'}>{p.label}</button>
           ))}
         </div>
       </Card>
@@ -351,7 +366,7 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
       </div>
 
       {selected.size > 0 && (ACTIONABLE.includes(tab) || manualTab) && (
-        <div className="flex w-full flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+        <div className="inline-flex max-w-full flex-wrap items-center gap-2 self-start rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
           <span className="mr-auto font-medium">{selected.size} sélectionnée(s)</span>
           {tab === 'NON_QUALIFIEE' && <Button onClick={() => setWizard({ orders: selectedOrders, mode: 'create' })} disabled={busy || !ref}>Créer les fiches</Button>}
           {tab === 'A_ENVOYER' && <Button onClick={() => void downloadSelectedZip()} disabled={busy || !ref}>Télécharger les PDF (ZIP)</Button>}
@@ -363,6 +378,16 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
 
       {err && <Notice tone="error">{err}</Notice>}
       {notice && <Notice tone="ok">{notice}</Notice>}
+      {!isTrashView && cutoff != null && hiddenOld > 0 && (
+        <Notice tone="warn">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span>
+              {hiddenOld} commande{hiddenOld > 1 ? 's' : ''} plus ancienne{hiddenOld > 1 ? 's' : ''} que le filtre « {PRESETS[activePreset].label} » {hiddenOld > 1 ? 'sont masquées' : 'est masquée'}.
+            </span>
+            <Button variant="ghost" size="sm" onClick={() => setPreset(PRESETS.length - 1)}>Tout afficher</Button>
+          </div>
+        </Notice>
+      )}
 
       {loading ? <p className="text-sm text-muted-foreground">Chargement des commandes…</p> : list.length === 0 ? (
         <Card className="p-0">

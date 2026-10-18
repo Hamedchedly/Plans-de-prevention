@@ -8,14 +8,16 @@ Dernière mise à jour : 2026-10-18. Statut : **Fait** (codé et poussé sur `ma
 |---|---|---|
 | Import des commandes (Excel) | Fait | Import |
 | Périmètre (IN_SCOPE / OUT_OF_SCOPE), demande d'exclusion et décision | Fait | Commandes → « Demander l’exclusion » |
+| Périmètre GT, GE, CP, AC (HO exclu) ; commandes exclues à la main réintégrables | Fait | Commandes → menu « ⋯ » : Exclues manuellement, Hors périmètre (règle) |
 | Réaffectation à un autre chargé (journalisée) | Fait | Commandes → panneau d'actions |
 | Corbeille (aucune suppression physique), restauration | Fait | Commandes → Corbeille |
-| Qualification : nature (moteur de recherche + vocabulaire métier) et lots | Partiel | Assistant de fiche ; vocabulaire à enrichir |
-| Risques et mesures (proposés, modifiables) | Fait | Assistant de fiche, étape 2 |
-| Entreprise et date d'intervention (case « à renseigner par l’entreprise ») | Fait | Assistant de fiche, étape 3 |
+| Qualification : natures multiples par lot (liste, nature retenue en gras), recherche de lots, vocabulaire métier | Fait, non testé en navigateur | Assistant de fiche, étape 1 ; vocabulaire à enrichir |
+| Risques et mesures (proposés, modifiables, recherche et ajout) | Fait, non testé en navigateur | Assistant de fiche, étape 2 |
+| Entreprise (nom obligatoire) et date d'intervention (case « à renseigner par l’entreprise ») | Fait, non testé en navigateur | Assistant de fiche, étape 3 |
+| Corrections d'entreprise saisies par un chargé : envoyées au Super Admin, en surbrillance, valider / modifier / refuser | Fait, non testé en navigateur | Administration › Entreprises |
 | Validation : la fiche est créée (statut « Fiche créée ») même sans export | Fait | Assistant → « Valider et créer » |
 | Prévisualisation, modification, téléchargement PDF d'une fiche créée | Fait | Commandes → icônes |
-| Fiche PDF au modèle : logo du bailleur, couleurs, tableaux, risques et mesures cochés, bas de page (entreprise, signature) | Fait, à valider en impression | Export PDF et ZIP |
+| Fiche PDF au modèle : logo du bailleur, couleurs, tableaux, risques et mesures cochés sur 4 colonnes, une seule page, bas de page (entreprise, signature) | Fait, à valider en impression | Export PDF et ZIP |
 | Export ZIP groupé (nom selon le modèle défini par le Super Admin) | Fait | Commandes → sélection → ZIP |
 | Éditeur avancé (natures, lots, mesures détaillées) | Fait | Commandes → icône « Éditeur avancé » |
 | Envoi par mailto (objet et corps modifiables, PDF joint à la main) | Fait, non testé en navigateur | Commandes → « Envoyer par mail » |
@@ -46,6 +48,7 @@ Dernière mise à jour : 2026-10-18. Statut : **Fait** (codé et poussé sur `ma
 | Inviter un utilisateur (lien à envoyer, premier accès avec mot de passe et identité) | Fait, non testé en navigateur |
 | Modèle du nom de fichier PDF | Fait |
 | Modèles de mail et de PDF modifiables (Super Admin) | Fait, non testé en navigateur |
+| Vérifier mes infos (checklist d'identité), alerte tableau de bord si contact incomplet, exports CSV (chargés, indicateurs) | Fait, non testé en navigateur |
 | Tableaux de bord KPI (responsable, Super Admin) | Fait, non testé en navigateur |
 | Journal des connexions (une entrée par session de navigateur) | Fait pour les connexions futures ; historique antérieur absent |
 | Périodes prédéfinies (2 semaines, 1 mois … 1 an, tout) | Fait |
@@ -55,11 +58,12 @@ Dernière mise à jour : 2026-10-18. Statut : **Fait** (codé et poussé sur `ma
 | Sujet | Statut |
 |---|---|
 | Vérification de type et build à chaque livraison | Fait |
-| Tests de parcours (navigateur) : création, modification, export, impersonation, invitation | À faire (aucun parcours vérifié à l'écran) |
+| Tests de parcours (navigateur) : création, modification, export, impersonation, invitation | Partiel : page de connexion OK (mobile et ordinateur) ; parcours connectés à faire |
 | Stabilisation et tests automatisés | À faire |
 | Version V2 : portail entreprise | À faire |
 
 ## Questions ouvertes
+- Base et code alignés : migration 20261018250000 appliquée (version de la branche claude/s11-natures-scope, commit d56fcb8). Branche stable : stable/s11-main-d56fcb8 ; précédente : stable/s11-b70aaaf.
 - Contact « Personne à alerter » du PDF : c'est le chargé qui a créé la commande. Vingt chargés créateurs ne sont pas encore inscrits : tant qu'ils ne le sont pas, le PDF affiche « Responsable d’intervention ».
 - Périmètre : cinq commandes (dont 5132524 et 5132234 exclues manuellement) sont hors périmètre depuis la règle GT/GE/CP du 18/10 ; décision à prendre.
 - Arbre NAAC : validation du verdict (une même famille de corps d'état, la famille de la commande décide).

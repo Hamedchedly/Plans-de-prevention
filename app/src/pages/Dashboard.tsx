@@ -7,6 +7,7 @@ import type { OrderRow } from '../lib/types'
 import { Badge, Button, Card, Notice, fieldClass, errMsg } from '../components/ui'
 import CompanyDialog from '../components/CompanyDialog'
 import { fetchCompanies, type CompanyRow } from './AdminCompanies'
+import BulkPlanWizard from '../components/BulkPlanWizard'
 
 type Tab = 'NON_QUALIFIEE' | 'A_ENVOYER' | 'EN_ATTENTE_RETOUR' | 'ARCHIVEE' | 'ENVOYE_MANUELLEMENT' | 'DEMANDES'
 const TABS: { key: Tab; label: string }[] = [
@@ -26,7 +27,7 @@ const ACTIONABLE: Tab[] = ['NON_QUALIFIEE', 'A_ENVOYER']
 const dayOf = (iso: string) => Math.floor(Date.parse(iso) / 86400000)
 const fmtDay = (n: number) => new Date(n * 86400000).toLocaleDateString('fr-FR')
 
-interface Suggestion { nature: string | null; group: string | null; lot: number | null; lotName: string | null }
+interface Suggestion { nature: string | null; natureId: number | null; group: string | null; lot: number | null; lotName: string | null }
 
 async function fetchAllOrders(): Promise<OrderRow[]> {
   const page = 1000
@@ -59,6 +60,13 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
   const [toDay, setToDay] = useState<number | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [busy, setBusy] = useState(false)
+  const [bulkOpen, setBulkOpen] = useState(false)
+  const [fileTemplate, setFileTemplate] = useState('{entreprise}_{commande}_{secteur}_Plan de prévention')
+  useEffect(() => {
+    void supabase.rpc('app_setting_get', { p_key: 'file_name_template' }).then(({ data }) => {
+      if (typeof data === 'string' && data.trim()) setFileTemplate(data)
+    })
+  }, [])
   const [companies, setCompanies] = useState<Map<string, CompanyRow>>(new Map())
   const [companyFor, setCompanyFor] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -85,7 +93,7 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
       const assigned = o.nature_id != null ? natureById.get(o.nature_id) : undefined
       if (assigned) {
         const lot = assigned.lots[0] ?? null
-        out.set(o.order_number, { nature: assigned.label, group: assigned.groupLabel, lot, lotName: lot != null ? ref.lotNameByCode.get(lot) ?? null : null })
+        out.set(o.order_number, { nature: assigned.label, natureId: assigned.id, group: assigned.groupLabel, lot, lotName: lot != null ? ref.lotNameByCode.get(lot) ?? null : null })
         continue
       }
       const text = [o.nature_text, o.description].filter(Boolean).join(' ')
@@ -93,6 +101,7 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
       const lot = hit?.nature.lots[0] ?? null
       out.set(o.order_number, {
         nature: hit?.nature.label ?? null,
+        natureId: hit?.nature.id ?? null,
         group: hit?.nature.groupLabel ?? null,
         lot,
         lotName: lot != null ? ref.lotNameByCode.get(lot) ?? null : null,
@@ -255,6 +264,11 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
         <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
           <span className="text-muted-foreground">{selected.size} sélectionnée(s)</span>
           {ACTIONABLE.includes(tab) && (
+            <Button onClick={() => setBulkOpen(true)} disabled={!selected.size || busy || !ref}>
+              Créer les fiches
+            </Button>
+          )}
+          {ACTIONABLE.includes(tab) && (
             <Button onClick={() => void sendManually()} disabled={!selected.size || busy}>
               Déjà envoyée manuellement
             </Button>
@@ -351,6 +365,17 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
         </div>
       )}
       {notice && <Notice tone="ok">{notice}</Notice>}
+      {bulkOpen && ref && (
+        <BulkPlanWizard
+          orders={rows.filter((o) => selected.has(o.order_number))}
+          suggestions={suggestions}
+          ref={ref}
+          companies={companies}
+          template={fileTemplate}
+          onClose={() => setBulkOpen(false)}
+          onDone={(m) => { setBulkOpen(false); setSelected(new Set()); setNotice(m); void load() }}
+        />
+      )}
       {companyFor && (
         <CompanyDialog isis={companyFor} current={companies.get(companyFor)} onClose={() => setCompanyFor(null)}
           onSent={() => { setCompanyFor(null); setNotice('Informations proposées : elles seront validées par le Super Admin.') }} />

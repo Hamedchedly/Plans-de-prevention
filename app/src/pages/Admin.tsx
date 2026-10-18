@@ -9,7 +9,7 @@ import { CompaniesSection, CompanyProposalsSection } from './AdminCompanies'
 import { DataSection } from './AdminData'
 import { startImpersonation } from '../lib/impersonation'
 
-type Section = 'validations' | 'tracabilite' | 'perimetre' | 'referentiels' | 'entreprises' | 'donnees' | 'alertes' | 'utilisateurs'
+type Section = 'validations' | 'tracabilite' | 'perimetre' | 'referentiels' | 'entreprises' | 'donnees' | 'alertes' | 'utilisateurs' | 'fichiers'
 
 const SECTIONS: { key: Section; label: string; superOnly: boolean }[] = [
   { key: 'alertes', label: 'Alertes', superOnly: false },
@@ -20,6 +20,7 @@ const SECTIONS: { key: Section; label: string; superOnly: boolean }[] = [
   { key: 'entreprises', label: 'Entreprises', superOnly: true },
   { key: 'donnees', label: 'Base de données', superOnly: true },
   { key: 'utilisateurs', label: 'Utilisateurs', superOnly: true },
+  { key: 'fichiers', label: 'Fichiers de fiches', superOnly: true },
 ]
 
 export default function Admin() {
@@ -42,6 +43,7 @@ export default function Admin() {
       {section === 'entreprises' && isSuper && <CompaniesSection />}
       {section === 'donnees' && isSuper && <DataSection />}
       {section === 'utilisateurs' && isSuper && <UsersSection />}
+      {section === 'fichiers' && isSuper && <FileNameSection />}
     </div>
   )
 }
@@ -422,6 +424,51 @@ function ReferentielSection({ userId }: { userId: string }) {
       {err && <Notice tone="error">{err}</Notice>}
       {msg && <Notice tone="ok">{msg}</Notice>}
       <Button onClick={() => void run()} disabled={busy}>{busy ? 'Chargement…' : 'Charger / recharger le référentiel'}</Button>
+    </Card>
+  )
+}
+
+const FILE_NAME_DEFAULT = '{entreprise}_{commande}_{secteur}_Plan de prévention'
+
+/** Modèle de nom des fichiers PDF exportés (variables : {entreprise}, {commande}, {secteur}). */
+function FileNameSection() {
+  const [template, setTemplate] = useState(FILE_NAME_DEFAULT)
+  const [err, setErr] = useState<string | null>(null)
+  const [msg, setMsg] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    void supabase.rpc('app_setting_get', { p_key: 'file_name_template' }).then(({ data, error }) => {
+      if (error) setErr(error.message)
+      else if (typeof data === 'string' && data.trim()) setTemplate(data)
+    })
+  }, [])
+
+  const save = async () => {
+    setBusy(true); setErr(null); setMsg(null)
+    const { error } = await supabase.rpc('app_setting_set', { p_key: 'file_name_template', p_value: template })
+    setBusy(false)
+    if (error) setErr(error.message); else setMsg('Modèle enregistré. Il s’applique aux prochains exports.')
+  }
+
+  const example = template
+    .split('{entreprise}').join('SERRURIER TEST')
+    .split('{commande}').join('5132550')
+    .split('{secteur}').join('S11') + '.pdf'
+
+  return (
+    <Card>
+      <h2 className="mb-2 font-semibold">Nom des fichiers de fiches</h2>
+      <p className="mb-3 text-sm text-muted-foreground">
+        Variables : <code>{'{entreprise}'}</code> (nom, ou numéro si le nom est absent), <code>{'{commande}'}</code>, <code>{'{secteur}'}</code>.
+      </p>
+      {err && <Notice tone="error">{err}</Notice>}
+      {msg && <Notice tone="ok">{msg}</Notice>}
+      <div className="space-y-2">
+        <input className={fieldClass} value={template} onChange={(e) => setTemplate(e.target.value)} />
+        <p className="text-xs text-muted-foreground">Exemple : {example}</p>
+        <Button onClick={() => void save()} disabled={busy || !template.trim()}>Enregistrer le modèle</Button>
+      </div>
     </Card>
   )
 }

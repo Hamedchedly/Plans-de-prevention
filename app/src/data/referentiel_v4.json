@@ -1,3805 +1,3805 @@
 {
- "version": "V4 — proposé, non validé",
- "lots": [
-  {
-   "code": 1,
-   "name": "DESAMIANTAGE"
-  },
-  {
-   "code": 2,
-   "name": "DEMOLITION"
-  },
-  {
-   "code": 3,
-   "name": "GROS ŒUVRE"
-  },
-  {
-   "code": 4,
-   "name": "CHARPENTE"
-  },
-  {
-   "code": 5,
-   "name": "COUVERTURE"
-  },
-  {
-   "code": 6,
-   "name": "ETANCHEITE"
-  },
-  {
-   "code": 7,
-   "name": "RAVALEMENT DE FACADE / ENDUIT"
-  },
-  {
-   "code": 8,
-   "name": "DOUBLAGE / FAUX PLAFOND / CLOISONS"
-  },
-  {
-   "code": 9,
-   "name": "ISOLATION"
-  },
-  {
-   "code": 10,
-   "name": "MENUISERIES INTERIEURES"
-  },
-  {
-   "code": 11,
-   "name": "MENUISERIES EXTERIEURES"
-  },
-  {
-   "code": 12,
-   "name": "SERRURERIE"
-  },
-  {
-   "code": 13,
-   "name": "CARRELAGE ET FAIENCE"
-  },
-  {
-   "code": 14,
-   "name": "PEINTURE / REVETEMENTS DE SOL"
-  },
-  {
-   "code": 15,
-   "name": "PLOMBERIE"
-  },
-  {
-   "code": 16,
-   "name": "VENTILATION"
-  },
-  {
-   "code": 17,
-   "name": "CHAUFFAGE"
-  },
-  {
-   "code": 18,
-   "name": "ELECTRICITE"
-  },
-  {
-   "code": 19,
-   "name": "ASCENCEURS"
-  },
-  {
-   "code": 20,
-   "name": "ESPACES VERTS"
-  },
-  {
-   "code": 21,
-   "name": "VOIRIES ET RESEAUX DIVERS"
-  }
- ],
- "risks": [
-  {
-   "code": "R01",
-   "label": "Amiante/plomb",
-   "family": "Chimique / amiante"
-  },
-  {
-   "code": "R02",
-   "label": "Coupure/sectionnement",
-   "family": "Corps / mécanique"
-  },
-  {
-   "code": "R03",
-   "label": "Vibration",
-   "family": "Corps / mécanique"
-  },
-  {
-   "code": "R04",
-   "label": "Bruit",
-   "family": "Ambiance physique"
-  },
-  {
-   "code": "R05",
-   "label": "Heurt",
-   "family": "Corps / mécanique"
-  },
-  {
-   "code": "R06",
-   "label": "Risque électrique",
-   "family": "Électrique / incendie"
-  },
-  {
-   "code": "R07",
-   "label": "Chute de hauteur",
-   "family": "Chutes"
-  },
-  {
-   "code": "R08",
-   "label": "Incendie/explosion",
-   "family": "Électrique / incendie"
-  },
-  {
-   "code": "R09",
-   "label": "Risque routier",
-   "family": "Routier"
-  },
-  {
-   "code": "R10",
-   "label": "Chute de plain-pied",
-   "family": "Chutes"
-  },
-  {
-   "code": "R11",
-   "label": "Troubles musculosquelettiques",
-   "family": "Corps / mécanique"
-  },
-  {
-   "code": "R12",
-   "label": "Forte chaleur",
-   "family": "Ambiance physique"
-  },
-  {
-   "code": "R13",
-   "label": "Chute d'objet",
-   "family": "Chutes"
-  },
-  {
-   "code": "R14",
-   "label": "Produit chimique",
-   "family": "Chimique / amiante"
-  }
- ],
- "measures": [
-  {
-   "code": "M01",
-   "label": "Casque de sécurité",
-   "family": "Protection individuelle",
-   "rule_type": "ANY_RISK",
-   "risks": [
-    "R13",
-    "R05"
-   ]
-  },
-  {
-   "code": "M02",
-   "label": "Chaussure de sécurité",
-   "family": "Protection individuelle",
-   "rule_type": "ALL_RISKS",
-   "risks": []
-  },
-  {
-   "code": "M03",
-   "label": "Gants",
-   "family": "Protection individuelle",
-   "rule_type": "ANY_RISK",
-   "risks": [
-    "R02",
-    "R14",
-    "R03"
-   ]
-  },
-  {
-   "code": "M04",
-   "label": "Lunettes / visière de protection",
-   "family": "Protection individuelle",
-   "rule_type": "ANY_RISK",
-   "risks": [
-    "R02",
-    "R13",
-    "R14"
-   ]
-  },
-  {
-   "code": "M05",
-   "label": "Masque",
-   "family": "Protection individuelle",
-   "rule_type": "ANY_RISK",
-   "risks": [
-    "R01",
-    "R14"
-   ]
-  },
-  {
-   "code": "M06",
-   "label": "Tenue de protection",
-   "family": "Protection individuelle",
-   "rule_type": "ANY_RISK",
-   "risks": [
-    "R01",
-    "R02"
-   ]
-  },
-  {
-   "code": "M07",
-   "label": "Harnais antichute",
-   "family": "Protection individuelle",
-   "rule_type": "ANY_RISK",
-   "risks": [
-    "R07"
-   ]
-  },
-  {
-   "code": "M08",
-   "label": "Protection auditive",
-   "family": "Protection individuelle",
-   "rule_type": "ANY_RISK",
-   "risks": [
-    "R04"
-   ]
-  },
-  {
-   "code": "M09",
-   "label": "Vêtements haute visibilité",
-   "family": "Protection individuelle",
-   "rule_type": "ANY_RISK",
-   "risks": [
-    "R05",
-    "R09"
-   ]
-  },
-  {
-   "code": "M10",
-   "label": "Garde corps / filet antichute",
-   "family": "Protection collective hauteur",
-   "rule_type": "ANY_RISK",
-   "risks": [
-    "R07"
-   ]
-  },
-  {
-   "code": "M11",
-   "label": "Echafaudages",
-   "family": "Protection collective hauteur",
-   "rule_type": "ANY_RISK",
-   "risks": [
-    "R07"
-   ]
-  },
-  {
-   "code": "M12",
-   "label": "Protection des trémies et ouvertures",
-   "family": "Protection collective hauteur",
-   "rule_type": "ANY_RISK",
-   "risks": [
-    "R13",
-    "R07"
-   ]
-  },
-  {
-   "code": "M13",
-   "label": "Procédure de travail en hauteur sécurisée",
-   "family": "Protection collective hauteur",
-   "rule_type": "ANY_RISK",
-   "risks": [
-    "R07"
-   ]
-  },
-  {
-   "code": "M14",
-   "label": "Mise à la terre des équipements",
-   "family": "Électrique",
-   "rule_type": "ANY_RISK",
-   "risks": [
-    "R06"
-   ]
-  },
-  {
-   "code": "M15",
-   "label": "Matériel électrique conforme et vérifié",
-   "family": "Électrique",
-   "rule_type": "ANY_RISK",
-   "risks": [
-    "R06"
-   ]
-  },
-  {
-   "code": "M16",
-   "label": "Protection des câbles",
-   "family": "Électrique",
-   "rule_type": "ANY_RISK",
-   "risks": [
-    "R06"
-   ]
-  },
-  {
-   "code": "M17",
-   "label": "Permis feu si travail par flamme (soudure, meulage)",
-   "family": "Incendie",
-   "rule_type": "ANY_RISK",
-   "risks": [
-    "R08"
-   ]
-  },
-  {
-   "code": "M18",
-   "label": "Extincteurs disponibles et vérifiés",
-   "family": "Incendie",
-   "rule_type": "ANY_RISK",
-   "risks": [
-    "R08"
-   ]
-  },
-  {
-   "code": "M19",
-   "label": "Stockage sécurisé des matériaux / produit dangereux",
-   "family": "Produits et amiante",
-   "rule_type": "ANY_RISK",
-   "risks": [
-    "R14"
-   ]
-  },
-  {
-   "code": "M20",
-   "label": "Plan de prévention amiantes / plomb",
-   "family": "Produits et amiante",
-   "rule_type": "ANY_RISK",
-   "risks": [
-    "R01"
-   ]
-  },
-  {
-   "code": "M21",
-   "label": "Rangement et nettoyage régulier",
-   "family": "Organisation et ambiance",
-   "rule_type": "ALL_RISKS",
-   "risks": []
-  },
-  {
-   "code": "M22",
-   "label": "Eclairage suffisant du chantier",
-   "family": "Organisation et ambiance",
-   "rule_type": "MANUAL",
-   "risks": []
-  },
-  {
-   "code": "M23",
-   "label": "Temps de pause lors de tâches pénibles",
-   "family": "Organisation et ambiance",
-   "rule_type": "ANY_RISK",
-   "risks": [
-    "R11",
-    "R03"
-   ]
-  },
-  {
-   "code": "M24",
-   "label": "Pauses fraicheurs (hydratation)",
-   "family": "Organisation et ambiance",
-   "rule_type": "ANY_RISK",
-   "risks": [
-    "R12"
-   ]
-  },
-  {
-   "code": "M25",
-   "label": "Formation et autorisation pour engins",
-   "family": "Organisation et ambiance",
-   "rule_type": "ANY_RISK",
-   "risks": [
-    "R09"
-   ]
-  },
-  {
-   "code": "M26",
-   "label": "Trousse de premiers secours sur place",
-   "family": "Secours",
-   "rule_type": "ALL_RISKS",
-   "risks": []
-  },
-  {
-   "code": "M27",
-   "label": "Personnel formés aux gestes de premiers secours",
-   "family": "Secours",
-   "rule_type": "MANUAL",
-   "risks": []
-  }
- ],
- "lot_risks": [
-  {
-   "lot": 1,
-   "risk": "R01",
-   "is_default": true
-  },
-  {
-   "lot": 1,
-   "risk": "R04",
-   "is_default": true
-  },
-  {
-   "lot": 1,
-   "risk": "R07",
-   "is_default": true
-  },
-  {
-   "lot": 1,
-   "risk": "R10",
-   "is_default": true
-  },
-  {
-   "lot": 1,
-   "risk": "R13",
-   "is_default": true
-  },
-  {
-   "lot": 1,
-   "risk": "R14",
-   "is_default": true
-  },
-  {
-   "lot": 1,
-   "risk": "R08",
-   "is_default": false
-  },
-  {
-   "lot": 2,
-   "risk": "R01",
-   "is_default": true
-  },
-  {
-   "lot": 2,
-   "risk": "R02",
-   "is_default": true
-  },
-  {
-   "lot": 2,
-   "risk": "R03",
-   "is_default": true
-  },
-  {
-   "lot": 2,
-   "risk": "R04",
-   "is_default": true
-  },
-  {
-   "lot": 2,
-   "risk": "R05",
-   "is_default": true
-  },
-  {
-   "lot": 2,
-   "risk": "R07",
-   "is_default": true
-  },
-  {
-   "lot": 2,
-   "risk": "R08",
-   "is_default": true
-  },
-  {
-   "lot": 2,
-   "risk": "R10",
-   "is_default": true
-  },
-  {
-   "lot": 2,
-   "risk": "R11",
-   "is_default": true
-  },
-  {
-   "lot": 2,
-   "risk": "R13",
-   "is_default": true
-  },
-  {
-   "lot": 2,
-   "risk": "R06",
-   "is_default": false
-  },
-  {
-   "lot": 2,
-   "risk": "R09",
-   "is_default": false
-  },
-  {
-   "lot": 3,
-   "risk": "R02",
-   "is_default": true
-  },
-  {
-   "lot": 3,
-   "risk": "R03",
-   "is_default": true
-  },
-  {
-   "lot": 3,
-   "risk": "R04",
-   "is_default": true
-  },
-  {
-   "lot": 3,
-   "risk": "R05",
-   "is_default": true
-  },
-  {
-   "lot": 3,
-   "risk": "R07",
-   "is_default": true
-  },
-  {
-   "lot": 3,
-   "risk": "R10",
-   "is_default": true
-  },
-  {
-   "lot": 3,
-   "risk": "R11",
-   "is_default": true
-  },
-  {
-   "lot": 3,
-   "risk": "R13",
-   "is_default": true
-  },
-  {
-   "lot": 3,
-   "risk": "R14",
-   "is_default": false
-  },
-  {
-   "lot": 3,
-   "risk": "R08",
-   "is_default": false
-  },
-  {
-   "lot": 3,
-   "risk": "R09",
-   "is_default": false
-  },
-  {
-   "lot": 4,
-   "risk": "R02",
-   "is_default": true
-  },
-  {
-   "lot": 4,
-   "risk": "R04",
-   "is_default": true
-  },
-  {
-   "lot": 4,
-   "risk": "R05",
-   "is_default": true
-  },
-  {
-   "lot": 4,
-   "risk": "R07",
-   "is_default": true
-  },
-  {
-   "lot": 4,
-   "risk": "R10",
-   "is_default": true
-  },
-  {
-   "lot": 4,
-   "risk": "R11",
-   "is_default": true
-  },
-  {
-   "lot": 4,
-   "risk": "R13",
-   "is_default": true
-  },
-  {
-   "lot": 4,
-   "risk": "R14",
-   "is_default": true
-  },
-  {
-   "lot": 4,
-   "risk": "R08",
-   "is_default": false
-  },
-  {
-   "lot": 5,
-   "risk": "R02",
-   "is_default": true
-  },
-  {
-   "lot": 5,
-   "risk": "R04",
-   "is_default": true
-  },
-  {
-   "lot": 5,
-   "risk": "R05",
-   "is_default": true
-  },
-  {
-   "lot": 5,
-   "risk": "R07",
-   "is_default": true
-  },
-  {
-   "lot": 5,
-   "risk": "R10",
-   "is_default": true
-  },
-  {
-   "lot": 5,
-   "risk": "R11",
-   "is_default": true
-  },
-  {
-   "lot": 5,
-   "risk": "R13",
-   "is_default": true
-  },
-  {
-   "lot": 5,
-   "risk": "R14",
-   "is_default": true
-  },
-  {
-   "lot": 5,
-   "risk": "R01",
-   "is_default": false
-  },
-  {
-   "lot": 6,
-   "risk": "R02",
-   "is_default": true
-  },
-  {
-   "lot": 6,
-   "risk": "R04",
-   "is_default": true
-  },
-  {
-   "lot": 6,
-   "risk": "R07",
-   "is_default": true
-  },
-  {
-   "lot": 6,
-   "risk": "R08",
-   "is_default": true
-  },
-  {
-   "lot": 6,
-   "risk": "R10",
-   "is_default": true
-  },
-  {
-   "lot": 6,
-   "risk": "R11",
-   "is_default": true
-  },
-  {
-   "lot": 6,
-   "risk": "R14",
-   "is_default": true
-  },
-  {
-   "lot": 6,
-   "risk": "R13",
-   "is_default": false
-  },
-  {
-   "lot": 7,
-   "risk": "R04",
-   "is_default": true
-  },
-  {
-   "lot": 7,
-   "risk": "R05",
-   "is_default": true
-  },
-  {
-   "lot": 7,
-   "risk": "R07",
-   "is_default": true
-  },
-  {
-   "lot": 7,
-   "risk": "R10",
-   "is_default": true
-  },
-  {
-   "lot": 7,
-   "risk": "R11",
-   "is_default": true
-  },
-  {
-   "lot": 7,
-   "risk": "R13",
-   "is_default": true
-  },
-  {
-   "lot": 7,
-   "risk": "R14",
-   "is_default": true
-  },
-  {
-   "lot": 7,
-   "risk": "R03",
-   "is_default": false
-  },
-  {
-   "lot": 8,
-   "risk": "R02",
-   "is_default": true
-  },
-  {
-   "lot": 8,
-   "risk": "R04",
-   "is_default": true
-  },
-  {
-   "lot": 8,
-   "risk": "R07",
-   "is_default": true
-  },
-  {
-   "lot": 8,
-   "risk": "R10",
-   "is_default": true
-  },
-  {
-   "lot": 8,
-   "risk": "R11",
-   "is_default": true
-  },
-  {
-   "lot": 8,
-   "risk": "R13",
-   "is_default": true
-  },
-  {
-   "lot": 8,
-   "risk": "R14",
-   "is_default": true
-  },
-  {
-   "lot": 9,
-   "risk": "R04",
-   "is_default": true
-  },
-  {
-   "lot": 9,
-   "risk": "R07",
-   "is_default": true
-  },
-  {
-   "lot": 9,
-   "risk": "R10",
-   "is_default": true
-  },
-  {
-   "lot": 9,
-   "risk": "R11",
-   "is_default": true
-  },
-  {
-   "lot": 9,
-   "risk": "R13",
-   "is_default": true
-  },
-  {
-   "lot": 9,
-   "risk": "R14",
-   "is_default": true
-  },
-  {
-   "lot": 10,
-   "risk": "R02",
-   "is_default": true
-  },
-  {
-   "lot": 10,
-   "risk": "R04",
-   "is_default": true
-  },
-  {
-   "lot": 10,
-   "risk": "R05",
-   "is_default": true
-  },
-  {
-   "lot": 10,
-   "risk": "R07",
-   "is_default": true
-  },
-  {
-   "lot": 10,
-   "risk": "R10",
-   "is_default": true
-  },
-  {
-   "lot": 10,
-   "risk": "R11",
-   "is_default": true
-  },
-  {
-   "lot": 10,
-   "risk": "R13",
-   "is_default": true
-  },
-  {
-   "lot": 11,
-   "risk": "R02",
-   "is_default": true
-  },
-  {
-   "lot": 11,
-   "risk": "R05",
-   "is_default": true
-  },
-  {
-   "lot": 11,
-   "risk": "R07",
-   "is_default": true
-  },
-  {
-   "lot": 11,
-   "risk": "R10",
-   "is_default": true
-  },
-  {
-   "lot": 11,
-   "risk": "R11",
-   "is_default": true
-  },
-  {
-   "lot": 11,
-   "risk": "R13",
-   "is_default": true
-  },
-  {
-   "lot": 12,
-   "risk": "R02",
-   "is_default": true
-  },
-  {
-   "lot": 12,
-   "risk": "R04",
-   "is_default": true
-  },
-  {
-   "lot": 12,
-   "risk": "R05",
-   "is_default": true
-  },
-  {
-   "lot": 12,
-   "risk": "R06",
-   "is_default": true
-  },
-  {
-   "lot": 12,
-   "risk": "R07",
-   "is_default": true
-  },
-  {
-   "lot": 12,
-   "risk": "R08",
-   "is_default": true
-  },
-  {
-   "lot": 12,
-   "risk": "R10",
-   "is_default": true
-  },
-  {
-   "lot": 12,
-   "risk": "R11",
-   "is_default": true
-  },
-  {
-   "lot": 12,
-   "risk": "R13",
-   "is_default": true
-  },
-  {
-   "lot": 13,
-   "risk": "R02",
-   "is_default": true
-  },
-  {
-   "lot": 13,
-   "risk": "R04",
-   "is_default": true
-  },
-  {
-   "lot": 13,
-   "risk": "R10",
-   "is_default": true
-  },
-  {
-   "lot": 13,
-   "risk": "R11",
-   "is_default": true
-  },
-  {
-   "lot": 13,
-   "risk": "R14",
-   "is_default": true
-  },
-  {
-   "lot": 14,
-   "risk": "R02",
-   "is_default": true
-  },
-  {
-   "lot": 14,
-   "risk": "R04",
-   "is_default": true
-  },
-  {
-   "lot": 14,
-   "risk": "R10",
-   "is_default": true
-  },
-  {
-   "lot": 14,
-   "risk": "R11",
-   "is_default": true
-  },
-  {
-   "lot": 14,
-   "risk": "R14",
-   "is_default": true
-  },
-  {
-   "lot": 15,
-   "risk": "R02",
-   "is_default": true
-  },
-  {
-   "lot": 15,
-   "risk": "R05",
-   "is_default": true
-  },
-  {
-   "lot": 15,
-   "risk": "R06",
-   "is_default": true
-  },
-  {
-   "lot": 15,
-   "risk": "R08",
-   "is_default": true
-  },
-  {
-   "lot": 15,
-   "risk": "R10",
-   "is_default": true
-  },
-  {
-   "lot": 15,
-   "risk": "R11",
-   "is_default": true
-  },
-  {
-   "lot": 15,
-   "risk": "R14",
-   "is_default": true
-  },
-  {
-   "lot": 15,
-   "risk": "R09",
-   "is_default": false
-  },
-  {
-   "lot": 16,
-   "risk": "R02",
-   "is_default": true
-  },
-  {
-   "lot": 16,
-   "risk": "R06",
-   "is_default": true
-  },
-  {
-   "lot": 16,
-   "risk": "R07",
-   "is_default": true
-  },
-  {
-   "lot": 16,
-   "risk": "R10",
-   "is_default": true
-  },
-  {
-   "lot": 16,
-   "risk": "R11",
-   "is_default": true
-  },
-  {
-   "lot": 16,
-   "risk": "R13",
-   "is_default": true
-  },
-  {
-   "lot": 16,
-   "risk": "R14",
-   "is_default": true
-  },
-  {
-   "lot": 17,
-   "risk": "R02",
-   "is_default": true
-  },
-  {
-   "lot": 17,
-   "risk": "R06",
-   "is_default": true
-  },
-  {
-   "lot": 17,
-   "risk": "R08",
-   "is_default": true
-  },
-  {
-   "lot": 17,
-   "risk": "R10",
-   "is_default": true
-  },
-  {
-   "lot": 17,
-   "risk": "R11",
-   "is_default": true
-  },
-  {
-   "lot": 17,
-   "risk": "R14",
-   "is_default": true
-  },
-  {
-   "lot": 18,
-   "risk": "R02",
-   "is_default": true
-  },
-  {
-   "lot": 18,
-   "risk": "R04",
-   "is_default": true
-  },
-  {
-   "lot": 18,
-   "risk": "R06",
-   "is_default": true
-  },
-  {
-   "lot": 18,
-   "risk": "R07",
-   "is_default": true
-  },
-  {
-   "lot": 18,
-   "risk": "R08",
-   "is_default": true
-  },
-  {
-   "lot": 18,
-   "risk": "R10",
-   "is_default": true
-  },
-  {
-   "lot": 18,
-   "risk": "R11",
-   "is_default": true
-  },
-  {
-   "lot": 18,
-   "risk": "R13",
-   "is_default": true
-  },
-  {
-   "lot": 18,
-   "risk": "R09",
-   "is_default": true
-  },
-  {
-   "lot": 19,
-   "risk": "R02",
-   "is_default": true
-  },
-  {
-   "lot": 19,
-   "risk": "R05",
-   "is_default": true
-  },
-  {
-   "lot": 19,
-   "risk": "R06",
-   "is_default": true
-  },
-  {
-   "lot": 19,
-   "risk": "R07",
-   "is_default": true
-  },
-  {
-   "lot": 19,
-   "risk": "R10",
-   "is_default": true
-  },
-  {
-   "lot": 19,
-   "risk": "R11",
-   "is_default": true
-  },
-  {
-   "lot": 19,
-   "risk": "R13",
-   "is_default": true
-  },
-  {
-   "lot": 20,
-   "risk": "R02",
-   "is_default": true
-  },
-  {
-   "lot": 20,
-   "risk": "R03",
-   "is_default": true
-  },
-  {
-   "lot": 20,
-   "risk": "R04",
-   "is_default": true
-  },
-  {
-   "lot": 20,
-   "risk": "R05",
-   "is_default": true
-  },
-  {
-   "lot": 20,
-   "risk": "R09",
-   "is_default": true
-  },
-  {
-   "lot": 20,
-   "risk": "R10",
-   "is_default": true
-  },
-  {
-   "lot": 20,
-   "risk": "R11",
-   "is_default": true
-  },
-  {
-   "lot": 20,
-   "risk": "R12",
-   "is_default": true
-  },
-  {
-   "lot": 20,
-   "risk": "R13",
-   "is_default": true
-  },
-  {
-   "lot": 20,
-   "risk": "R14",
-   "is_default": true
-  },
-  {
-   "lot": 20,
-   "risk": "R08",
-   "is_default": false
-  },
-  {
-   "lot": 21,
-   "risk": "R02",
-   "is_default": true
-  },
-  {
-   "lot": 21,
-   "risk": "R03",
-   "is_default": true
-  },
-  {
-   "lot": 21,
-   "risk": "R04",
-   "is_default": true
-  },
-  {
-   "lot": 21,
-   "risk": "R05",
-   "is_default": true
-  },
-  {
-   "lot": 21,
-   "risk": "R06",
-   "is_default": true
-  },
-  {
-   "lot": 21,
-   "risk": "R08",
-   "is_default": true
-  },
-  {
-   "lot": 21,
-   "risk": "R09",
-   "is_default": true
-  },
-  {
-   "lot": 21,
-   "risk": "R10",
-   "is_default": true
-  },
-  {
-   "lot": 21,
-   "risk": "R11",
-   "is_default": true
-  },
-  {
-   "lot": 21,
-   "risk": "R13",
-   "is_default": true
-  },
-  {
-   "lot": 21,
-   "risk": "R07",
-   "is_default": false
-  }
- ],
- "natures": [
-  {
-   "label": "Dépose de plaques ou éléments en amiante-ciment (toiture, conduits, bardage)",
-   "model_code": "1.1",
-   "group_label": "1. Retrait ou traitement de l’amiante",
-   "lots": [
-    1
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Retrait de flocages, calorifugeages ou matériaux friables (procédure lourde avec confinement)",
-   "model_code": "1.2",
-   "group_label": "1. Retrait ou traitement de l’amiante",
-   "lots": [
-    1
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Retrait de dalles de sol ou colle amiantée",
-   "model_code": "1.3",
-   "group_label": "1. Retrait ou traitement de l’amiante",
-   "lots": [
-    1
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Aspiration ou raclage des poussières amiantées",
-   "model_code": "1.4",
-   "group_label": "1. Retrait ou traitement de l’amiante",
-   "lots": [
-    1
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Encapsulage si conservation du support (application de fixateur ou résine)",
-   "model_code": "1.5",
-   "group_label": "1. Retrait ou traitement de l’amiante",
-   "lots": [
-    1
-   ],
-   "extra_risks": [
-    "R08"
-   ]
-  },
-  {
-   "label": "Aspiration de la zone avec aspirateur à filtration absolue (THE)",
-   "model_code": "2.1",
-   "group_label": "2. Nettoyage et décontamination",
-   "lots": [
-    1
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Lavage humide des surfaces si nécessaire",
-   "model_code": "2.2",
-   "group_label": "2. Nettoyage et décontamination",
-   "lots": [
-    1
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Dépose des éléments non porteurs : cloisons, plafonds, doublages",
-   "model_code": "1.1",
-   "group_label": "1. Curage préalable",
-   "lots": [
-    2
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Dépose des équipements techniques : luminaires, radiateurs, sanitaires",
-   "model_code": "1.2",
-   "group_label": "1. Curage préalable",
-   "lots": [
-    2
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Dépose des menuiseries (portes, fenêtres)",
-   "model_code": "1.3",
-   "group_label": "1. Curage préalable",
-   "lots": [
-    2
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Dépose des revêtements : sols souples, carrelages, faïences",
-   "model_code": "1.4",
-   "group_label": "1. Curage préalable",
-   "lots": [
-    2
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Dépose des réseaux intérieurs (plomberie, électricité, VMC)",
-   "model_code": "1.5",
-   "group_label": "1. Curage préalable",
-   "lots": [
-    2
-   ],
-   "extra_risks": [
-    "R09",
-    "R06"
-   ]
-  },
-  {
-   "label": "Démolition de murs non porteurs à la masse, burineur",
-   "model_code": "2.1",
-   "group_label": "2. Démolition des éléments bâtis",
-   "lots": [
-    2
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Démolition de petits ouvrages (escaliers, murets, appuis)",
-   "model_code": "2.2",
-   "group_label": "2. Démolition des éléments bâtis",
-   "lots": [
-    2
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Reprise ponctuelle de dalles ou planchers",
-   "model_code": "2.3",
-   "group_label": "2. Démolition des éléments bâtis",
-   "lots": [
-    2
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Démolition de murs porteurs au BRH (brise-roche hydraulique)",
-   "model_code": "2.4",
-   "group_label": "2. Démolition des éléments bâtis",
-   "lots": [
-    2
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Démolition de planchers béton ou structures métalliques",
-   "model_code": "2.5",
-   "group_label": "2. Démolition des éléments bâtis",
-   "lots": [
-    2
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Abattage de bâtiment (grignotage ou abattage à la pelle)",
-   "model_code": "2.6",
-   "group_label": "2. Démolition des éléments bâtis",
-   "lots": [
-    2
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Sciage et carottage de béton (création de trémies ou réservations)",
-   "model_code": "2.7",
-   "group_label": "2. Démolition des éléments bâtis",
-   "lots": [
-    2
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Démolition de cheminées ou souches en toiture",
-   "model_code": "3.1",
-   "group_label": "3. Cas particuliers",
-   "lots": [
-    2
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Dépose de fondations superficielles",
-   "model_code": "3.2",
-   "group_label": "3. Cas particuliers",
-   "lots": [
-    2
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Sciage de dalles ou murs en milieux contraints",
-   "model_code": "3.3",
-   "group_label": "3. Cas particuliers",
-   "lots": [
-    2
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Intervention en site occupé (zones horaires, protections renforcées)",
-   "model_code": "3.4",
-   "group_label": "3. Cas particuliers",
-   "lots": [
-    2
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Travaux en milieu urbain / bâtiment mitoyen (procédures spécifiques)",
-   "model_code": "3.5",
-   "group_label": "3. Cas particuliers",
-   "lots": [
-    2
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Réalisation de semelles filantes ou isolées en béton armé",
-   "model_code": "1.1",
-   "group_label": "1. Fondations",
-   "lots": [
-    3
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Création de longrines, plots ou radiers",
-   "model_code": "1.2",
-   "group_label": "1. Fondations",
-   "lots": [
-    3
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Réalisation de fondations profondes (pieux, micropieux si sous-traité)",
-   "model_code": "1.3",
-   "group_label": "1. Fondations",
-   "lots": [
-    3
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose de blocs béton (parpaings), briques, agglos cellulaires",
-   "model_code": "2.1",
-   "group_label": "2. Élévations en maçonnerie",
-   "lots": [
-    3
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Montage de murs porteurs ou non porteurs",
-   "model_code": "2.2",
-   "group_label": "2. Élévations en maçonnerie",
-   "lots": [
-    3
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Réalisation de chaînages horizontaux et verticaux",
-   "model_code": "2.3",
-   "group_label": "2. Élévations en maçonnerie",
-   "lots": [
-    3
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Réalisation d'ouvertures : réservations, linteaux, seuils",
-   "model_code": "2.4",
-   "group_label": "2. Élévations en maçonnerie",
-   "lots": [
-    3
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Remplissage de murs (en rénovation)",
-   "model_code": "2.5",
-   "group_label": "2. Élévations en maçonnerie",
-   "lots": [
-    3
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Coffrage traditionnel ou modulaire (panneaux métalliques, bois)",
-   "model_code": "3.1",
-   "group_label": "3. Béton armé (banché ou préfabriqué)",
-   "lots": [
-    3
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Coulage des voiles et poteaux béton (avec contrôle vibrage et cure)",
-   "model_code": "3.2",
-   "group_label": "3. Béton armé (banché ou préfabriqué)",
-   "lots": [
-    3
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose de prédalles, poutrelles, hourdis",
-   "model_code": "3.3",
-   "group_label": "3. Béton armé (banché ou préfabriqué)",
-   "lots": [
-    3
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Coulage de dalles pleine, sur coffrage, ou sur entrevous",
-   "model_code": "3.4",
-   "group_label": "3. Béton armé (banché ou préfabriqué)",
-   "lots": [
-    3
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Réalisation de trémies, gaines, cages d'escalier",
-   "model_code": "3.5",
-   "group_label": "3. Béton armé (banché ou préfabriqué)",
-   "lots": [
-    3
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Ouverture de murs porteurs (avec pose de linteaux ou poutres métalliques)",
-   "model_code": "4.1",
-   "group_label": "4. Reprises en sous-œuvre / renforcement",
-   "lots": [
-    3
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Renforcement de planchers (résines, fibres, béton armé complémentaire)",
-   "model_code": "4.2",
-   "group_label": "4. Reprises en sous-œuvre / renforcement",
-   "lots": [
-    3
-   ],
-   "extra_risks": [
-    "R08",
-    "R14"
-   ]
-  },
-  {
-   "label": "Réalisation de massifs ou socles pour équipements techniques",
-   "model_code": "4.3",
-   "group_label": "4. Reprises en sous-œuvre / renforcement",
-   "lots": [
-    3
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Injecteurs / coulis pour consolidation si zone sensible",
-   "model_code": "4.4",
-   "group_label": "4. Reprises en sous-œuvre / renforcement",
-   "lots": [
-    3
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Réservations pour réseaux techniques (gaines, traversées)",
-   "model_code": "5.1",
-   "group_label": "5. Réservation, intégration, coordination",
-   "lots": [
-    3
-   ],
-   "extra_risks": [
-    "R09"
-   ]
-  },
-  {
-   "label": "Pose de membranes d'étanchéité sous dallage",
-   "model_code": "6.1",
-   "group_label": "6. Étanchéité et traitement des bétons",
-   "lots": [
-    3
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Traitement des joints de dilatation ou de construction",
-   "model_code": "6.2",
-   "group_label": "6. Étanchéité et traitement des bétons",
-   "lots": [
-    3
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Application de produit de cure, hydrofuge, ou traitement anti-carbonatation",
-   "model_code": "6.3",
-   "group_label": "6. Étanchéité et traitement des bétons",
-   "lots": [
-    3
-   ],
-   "extra_risks": [
-    "R14"
-   ]
-  },
-  {
-   "label": "Dépose de l'ancienne charpente ou de parties défectueuses",
-   "model_code": "1.1",
-   "group_label": "1. Dépose (en cas de rénovation)",
-   "lots": [
-    4
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Démontage sécurisé en toiture occupée",
-   "model_code": "1.2",
-   "group_label": "1. Dépose (en cas de rénovation)",
-   "lots": [
-    4
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Traitement ou renforcement ponctuel des appuis (murs, poutres)",
-   "model_code": "1.4",
-   "group_label": "1. Dépose (en cas de rénovation)",
-   "lots": [
-    4
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose d'une chapente bois",
-   "model_code": "2.1",
-   "group_label": "2. Pose de charpente bois",
-   "lots": [
-    4
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose d'une charpente métallique (portiques, poutres, etc.)",
-   "model_code": "3.1",
-   "group_label": "3. Pose de charpente métallique",
-   "lots": [
-    4
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Traitement anti-corrosion sur zones de coupe ou soudures",
-   "model_code": "3.2",
-   "group_label": "3. Pose de charpente métallique",
-   "lots": [
-    4
-   ],
-   "extra_risks": [
-    "R08"
-   ]
-  },
-  {
-   "label": "Application de traitement fongicide, insecticide ou ignifuge sur bois",
-   "model_code": "4.1",
-   "group_label": "4. Traitement et protection",
-   "lots": [
-    4
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Peinture antirouille ou galvanisation sur éléments métalliques",
-   "model_code": "4.2",
-   "group_label": "4. Traitement et protection",
-   "lots": [
-    4
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose de pare-vapeur ou pare-pluie en sous-toiture si nécessaire",
-   "model_code": "4.3",
-   "group_label": "4. Traitement et protection",
-   "lots": [
-    4
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Remplacement d'éléments de charpente affaiblis",
-   "model_code": "5.1",
-   "group_label": "5. Maintenance (le cas échéant)",
-   "lots": [
-    4
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose de pièces de renfort (potelet, sabot, doublage)",
-   "model_code": "5.2",
-   "group_label": "5. Maintenance (le cas échéant)",
-   "lots": [
-    4
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Traitement curatif de bois attaqué (champignons, insectes)",
-   "model_code": "5.3",
-   "group_label": "5. Maintenance (le cas échéant)",
-   "lots": [
-    4
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Dépose des éléments de couverture (tuiles, ardoises, bac acier)",
-   "model_code": "1.1",
-   "group_label": "1. Dépose de la couverture existante",
-   "lots": [
-    5
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Retrait des liteaux ou voliges abîmés",
-   "model_code": "1.2",
-   "group_label": "1. Dépose de la couverture existante",
-   "lots": [
-    5
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Mise en place de l'écran de sous-toiture (pare-pluie, pare-vapeur)",
-   "model_code": "2.1",
-   "group_label": "2. Pose de l’écran sous-toiture",
-   "lots": [
-    5
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose des tuiles (terre cuite, béton), ardoises, bacs acier, plaques fibro-ciment (hors amiante)",
-   "model_code": "3.1",
-   "group_label": "3. Pose des matériaux de couverture",
-   "lots": [
-    5
-   ],
-   "extra_risks": [
-    "R01"
-   ]
-  },
-  {
-   "label": "Pose des éléments de faîtage, rives, noues",
-   "model_code": "3.2",
-   "group_label": "3. Pose des matériaux de couverture",
-   "lots": [
-    5
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose de solins d'étanchéité (zinc, plomb, PVC)",
-   "model_code": "4.1",
-   "group_label": "4. Étanchéité et accessoires",
-   "lots": [
-    5
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Réalisation des habillages de cheminée, fenêtres de toit, chéneaux",
-   "model_code": "4.2",
-   "group_label": "4. Étanchéité et accessoires",
-   "lots": [
-    5
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose de gouttières, descentes d'eau pluviale et accessoires",
-   "model_code": "4.3",
-   "group_label": "4. Étanchéité et accessoires",
-   "lots": [
-    5
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Mise en place des protections contre la neige ou le vent (stop-neige, grillages)",
-   "model_code": "4.4",
-   "group_label": "4. Étanchéité et accessoires",
-   "lots": [
-    5
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Réparation de tuiles cassées ou déplacées",
-   "model_code": "6.1",
-   "group_label": "6. Réparations et maintenance",
-   "lots": [
-    5
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Remplacement de liteaux ou éléments bois pourris",
-   "model_code": "6.2",
-   "group_label": "6. Réparations et maintenance",
-   "lots": [
-    5
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Colmatage de fuites ou infiltrations",
-   "model_code": "6.3",
-   "group_label": "6. Réparations et maintenance",
-   "lots": [
-    5
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Nettoyage de la toiture (débris, mousses, feuilles)",
-   "model_code": "6.4",
-   "group_label": "6. Réparations et maintenance",
-   "lots": [
-    5
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose de membranes bitumineuses (torchis, rouleaux)",
-   "model_code": "1.1",
-   "group_label": "1. Mise en œuvre de l’étanchéité",
-   "lots": [
-    6
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Application de résines liquides (polyuréthane, epoxy)",
-   "model_code": "1.2",
-   "group_label": "1. Mise en œuvre de l’étanchéité",
-   "lots": [
-    6
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose de feuilles synthétiques (PVC, EPDM)",
-   "model_code": "1.3",
-   "group_label": "1. Mise en œuvre de l’étanchéité",
-   "lots": [
-    6
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Traitement des points singuliers : relevés, angles, pénétrations",
-   "model_code": "1.4",
-   "group_label": "1. Mise en œuvre de l’étanchéité",
-   "lots": [
-    6
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose de protections mécaniques (dalles, gravillons, plaques)",
-   "model_code": "2.1",
-   "group_label": "2. Protection de l’étanchéité",
-   "lots": [
-    6
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Mise en place de protections végétales (toitures végétalisées)",
-   "model_code": "2.2",
-   "group_label": "2. Protection de l’étanchéité",
-   "lots": [
-    6
-   ],
-   "extra_risks": [
-    "R13"
-   ]
-  },
-  {
-   "label": "Réalisation de protections contre les UV ou les agressions mécaniques",
-   "model_code": "2.3",
-   "group_label": "2. Protection de l’étanchéité",
-   "lots": [
-    6
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Détection et réparation des infiltrations",
-   "model_code": "3.1",
-   "group_label": "3. Réparations et entretien",
-   "lots": [
-    6
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Réfection partielle de membranes ou joints",
-   "model_code": "3.2",
-   "group_label": "3. Réparations et entretien",
-   "lots": [
-    6
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Nettoyage des chéneaux, évacuations d'eau pluviale",
-   "model_code": "3.3",
-   "group_label": "3. Réparations et entretien",
-   "lots": [
-    6
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Nettoyage des façades (haute pression, sablage, gommage, peeling selon nature du support)",
-   "model_code": "1.1",
-   "group_label": "1. Préparation des supports",
-   "lots": [
-    7
-   ],
-   "extra_risks": [
-    "R03"
-   ]
-  },
-  {
-   "label": "Démoussage / traitement fongicide",
-   "model_code": "1.2",
-   "group_label": "1. Préparation des supports",
-   "lots": [
-    7
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Application d'un fixateur ou primaire d'accrochage (si requis)",
-   "model_code": "1.3",
-   "group_label": "1. Préparation des supports",
-   "lots": [
-    7
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Reprise de maçonneries (joints, éclats, fissures)",
-   "model_code": "2.1",
-   "group_label": "2. Réparations ponctuelles",
-   "lots": [
-    7
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Projection ou application manuelle",
-   "model_code": "3.1",
-   "group_label": "3. Application d’enduits",
-   "lots": [
-    7
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Dressage et finition (taloché, gratté, écrasé, lissé…)",
-   "model_code": "3.2",
-   "group_label": "3. Application d’enduits",
-   "lots": [
-    7
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose d'un sous-enduit d'accrochage",
-   "model_code": "3.3",
-   "group_label": "3. Application d’enduits",
-   "lots": [
-    7
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Application manuelle ou mécanisée de la finition (acrylique, siloxane…)",
-   "model_code": "3.4",
-   "group_label": "3. Application d’enduits",
-   "lots": [
-    7
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Application d'un fixateur ou impression",
-   "model_code": "4.1",
-   "group_label": "4. Ravalement avec peinture (si applicable)",
-   "lots": [
-    7
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Mise en œuvre de deux couches de peinture de façade (acrylique, siloxane, minérale…)",
-   "model_code": "4.2",
-   "group_label": "4. Ravalement avec peinture (si applicable)",
-   "lots": [
-    7
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose / Dépose bardage bois en facade",
-   "model_code": "4.2",
-   "group_label": "4. Ravalement avec peinture (si applicable)",
-   "lots": [
-    7
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose / Dépose panneau d'habillage en facade",
-   "model_code": "4.2",
-   "group_label": "4. Ravalement avec peinture (si applicable)",
-   "lots": [
-    7
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Mise en place de l'isolation thermique, acoustique ou pare-vapeur dans les doublages ou cloisons",
-   "model_code": "1.1",
-   "group_label": "1. Pose des isolants",
-   "lots": [
-    8
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Calfeutrement et ajustement",
-   "model_code": "1.2",
-   "group_label": "1. Pose des isolants",
-   "lots": [
-    8
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Réalisation de cloisons (placo, BA13, etc.) sur ossature",
-   "model_code": "2.1",
-   "group_label": "2. Réalisation de cloisons",
-   "lots": [
-    8
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Réalisation des faux plafonds (rails, dalles ou plaques)",
-   "model_code": "3.1",
-   "group_label": "3. Réalisation des faux plafonds",
-   "lots": [
-    8
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Réalisation des réservations pour portes, fenêtres, gaines techniques",
-   "model_code": "4.1",
-   "group_label": "4. Ouvertures et accessoires",
-   "lots": [
-    8
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose des huisseries et encadrements",
-   "model_code": "4.2",
-   "group_label": "4. Ouvertures et accessoires",
-   "lots": [
-    8
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "POSE ITE : Pose d'isolant par collage ou fixation mécanique (chevilles à rosace)",
-   "model_code": "1.2",
-   "group_label": "1. Isolation des murs (extérieure)",
-   "lots": [
-    9
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "POSE ITI (ossature métallique, paneaux ou rouleaux isolants, BA13)",
-   "model_code": "2.1",
-   "group_label": "2. Isolation des murs (intérieure)",
-   "lots": [
-    9
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "POSE ITI (mise en place de pare-vapeur si nécessaire)",
-   "model_code": "2.3",
-   "group_label": "2. Isolation des murs (intérieure)",
-   "lots": [
-    9
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "ISOLATION COMBLES PERDUS (Soufflage de laine minérale en vrac)",
-   "model_code": "3.1",
-   "group_label": "3. Isolation des combles et toitures",
-   "lots": [
-    9
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "ISOLATION COMBLES PERDUS (Pose de panneaux ou rouleaux sur le plancher)",
-   "model_code": "3.2",
-   "group_label": "3. Isolation des combles et toitures",
-   "lots": [
-    9
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "ISOLATION RAMANTS DE TOITURE (Pose entre chevrons ou en double couche croisée)",
-   "model_code": "3.3",
-   "group_label": "3. Isolation des combles et toitures",
-   "lots": [
-    9
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "ISOLATION RAMANTS DE TOITURE (Pose éventuelle d'un pare-vapeur et d'un frein vapeur)",
-   "model_code": "3.4",
-   "group_label": "3. Isolation des combles et toitures",
-   "lots": [
-    9
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose de panneaux rigides sur dalle ou sous chape (polystyrène, PU, laine minérale haute densité)",
-   "model_code": "4.1",
-   "group_label": "4. Isolation des planchers et dalles",
-   "lots": [
-    9
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Réalisation de chape flottante ou plancher chauffant sur isolant",
-   "model_code": "4.2",
-   "group_label": "4. Isolation des planchers et dalles",
-   "lots": [
-    9
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Traitement des ponts thermiques en nez de dalle ou refends",
-   "model_code": "5.1",
-   "group_label": "5. Isolation des plafonds / sous-faces",
-   "lots": [
-    9
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose des habillages divers (plinthes compris)",
-   "model_code": "1",
-   "group_label": null,
-   "lots": [
-    10
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose d'une porte intérieure",
-   "model_code": "2",
-   "group_label": null,
-   "lots": [
-    10,
-    12
-   ],
-   "extra_risks": [
-    "R08",
-    "R06"
-   ]
-  },
-  {
-   "label": "Pose des gardes corps et/ou mains-courantes",
-   "model_code": "3",
-   "group_label": null,
-   "lots": [
-    10
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose d'une menuiserie",
-   "model_code": "3",
-   "group_label": null,
-   "lots": [
-    10,
-    11
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose d'une portée d'entrée de bâtiment",
-   "model_code": "1",
-   "group_label": null,
-   "lots": [
-    11,
-    12
-   ],
-   "extra_risks": [
-    "R04",
-    "R08",
-    "R06"
-   ]
-  },
-  {
-   "label": "Pose d'un volet battant",
-   "model_code": "2",
-   "group_label": null,
-   "lots": [
-    11
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose d'un volet roulant à tablier PVC",
-   "model_code": "4",
-   "group_label": null,
-   "lots": [
-    11
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose d'une porte de garage extérieure",
-   "model_code": "3",
-   "group_label": null,
-   "lots": [
-    12
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose d'un store",
-   "model_code": "4",
-   "group_label": null,
-   "lots": [
-    12
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose d'un equipement motorisé pour parking (Porte, Portail, Barrière..)",
-   "model_code": "5",
-   "group_label": null,
-   "lots": [
-    12
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Installation d'une barre de pivotement",
-   "model_code": "6",
-   "group_label": null,
-   "lots": [
-    12
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Poser une main courante en extérieur",
-   "model_code": "7",
-   "group_label": null,
-   "lots": [
-    12
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Application d'un primaire d'accrochage si nécessaire",
-   "model_code": "1.1",
-   "group_label": "1. Préparation du support",
-   "lots": [
-    13
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose d'un système d'étanchéité (SPEC, SEL) dans zones humides",
-   "model_code": "1.2",
-   "group_label": "1. Préparation du support",
-   "lots": [
-    13
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose du carrelage au sol",
-   "model_code": "2.1",
-   "group_label": "2. Pose du carrelage au sol",
-   "lots": [
-    13
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose de plinthes carrelées ou à chant",
-   "model_code": "2.2",
-   "group_label": "2. Pose du carrelage au sol",
-   "lots": [
-    13
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose des carreaux muraux (faïence, pâte de verre, mosaïque)",
-   "model_code": "3.1",
-   "group_label": "3. Pose de faïence murale",
-   "lots": [
-    13
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose de profils de finition (cornières, angles sortants)",
-   "model_code": "3.2",
-   "group_label": "3. Pose de faïence murale",
-   "lots": [
-    13
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "PEINTURE",
-   "model_code": null,
-   "group_label": null,
-   "lots": [
-    14
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Application des couches de peinture (primaire, finition)",
-   "model_code": "2.1",
-   "group_label": "2. Application des couches de peinture",
-   "lots": [
-    14
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Application d'une peinture de sol (garage, cave, locaux techniques)",
-   "model_code": "3.1",
-   "group_label": "3. Travaux spécifiques",
-   "lots": [
-    14
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Application d'une peinture technique (intumescente, anti-humidité, traitement moisissure)",
-   "model_code": "3.2",
-   "group_label": "3. Travaux spécifiques",
-   "lots": [
-    14
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "REVETEMENT DE SOL",
-   "model_code": null,
-   "group_label": null,
-   "lots": [
-    14
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "REVETEMENT SOUPLE : Pose en lés ou en dalles (PVC, linoléum, caoutchouc…)",
-   "model_code": "2.1",
-   "group_label": "2. Pose du revêtement",
-   "lots": [
-    14
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "PARQUET : Pose flottante, collée ou clouée",
-   "model_code": "2.4",
-   "group_label": "2. Pose du revêtement",
-   "lots": [
-    14
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "PARQUET : Pose de sous-couche acoustique ou thermique",
-   "model_code": "2.5",
-   "group_label": "2. Pose du revêtement",
-   "lots": [
-    14
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose de moquette",
-   "model_code": "2.7",
-   "group_label": "2. Pose du revêtement",
-   "lots": [
-    14
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose de plinthes assorties ou de finition",
-   "model_code": "3.1",
-   "group_label": "3. Finitions",
-   "lots": [
-    14
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Barres de seuil et accessoires",
-   "model_code": "3.2",
-   "group_label": "3. Finitions",
-   "lots": [
-    14
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Joints de dilatation ou de fractionnement",
-   "model_code": "3.3",
-   "group_label": "3. Finitions",
-   "lots": [
-    14
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Poser un réseau multicouche",
-   "model_code": "1",
-   "group_label": null,
-   "lots": [
-    15
-   ],
-   "extra_risks": [
-    "R09"
-   ]
-  },
-  {
-   "label": "Poser une évacuation d'EU",
-   "model_code": "2",
-   "group_label": null,
-   "lots": [
-    15
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Poser une baignoire",
-   "model_code": "3",
-   "group_label": null,
-   "lots": [
-    15
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Poser un receveur de douche",
-   "model_code": "4",
-   "group_label": null,
-   "lots": [
-    15
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Poser un évier",
-   "model_code": "5",
-   "group_label": null,
-   "lots": [
-    15
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Poser un lavabo",
-   "model_code": "6",
-   "group_label": null,
-   "lots": [
-    15
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Poser un WC",
-   "model_code": "7",
-   "group_label": null,
-   "lots": [
-    15
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Poser les conduites gaz",
-   "model_code": "8",
-   "group_label": null,
-   "lots": [
-    15
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Poser/Remplacer une canalisation EP",
-   "model_code": "9",
-   "group_label": null,
-   "lots": [
-    15
-   ],
-   "extra_risks": [
-    "R09"
-   ]
-  },
-  {
-   "label": "Poser des gaines de ventilation",
-   "model_code": "1",
-   "group_label": null,
-   "lots": [
-    16
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Poser une VMC",
-   "model_code": "2",
-   "group_label": null,
-   "lots": [
-    16
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Poser une centrale de traitement d'air",
-   "model_code": "3",
-   "group_label": null,
-   "lots": [
-    16
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Installer un split mural",
-   "model_code": "4",
-   "group_label": null,
-   "lots": [
-    16
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Remplacement d'une carte electronique de commande VMC",
-   "model_code": "5",
-   "group_label": null,
-   "lots": [
-    16
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Poser une chaudière gaz",
-   "model_code": "1",
-   "group_label": null,
-   "lots": [
-    17
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Installer une pompe à chaleur",
-   "model_code": "2",
-   "group_label": null,
-   "lots": [
-    17
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Poser un chauffe-eau",
-   "model_code": "3",
-   "group_label": null,
-   "lots": [
-    17
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Poser un radiateur",
-   "model_code": "4",
-   "group_label": null,
-   "lots": [
-    17
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Poser un poêle à bois ou à pellets",
-   "model_code": "5",
-   "group_label": null,
-   "lots": [
-    17
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Installer le réseau téléphonique",
-   "model_code": "1",
-   "group_label": null,
-   "lots": [
-    18
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Installer le réseau télévision",
-   "model_code": "2",
-   "group_label": null,
-   "lots": [
-    18
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Installer le réseau informatique",
-   "model_code": "3",
-   "group_label": null,
-   "lots": [
-    18
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Poser une installation électrique photovoltaïque",
-   "model_code": "4",
-   "group_label": null,
-   "lots": [
-    18
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Installation d'un équipement de contrôle d'accès/ d'Interphonie",
-   "model_code": "5",
-   "group_label": null,
-   "lots": [
-    18
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Installer un système de sécurité incendie",
-   "model_code": "6",
-   "group_label": null,
-   "lots": [
-    18
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Poser le réseau électique d'un logement",
-   "model_code": "7",
-   "group_label": null,
-   "lots": [
-    18
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Intervention sur Eclairage Extérieur (candelabre, borne,...)",
-   "model_code": "8",
-   "group_label": null,
-   "lots": [
-    18
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Installation d'un ascenceur",
-   "model_code": "1.1",
-   "group_label": "1. Installation de l’ascenseur",
-   "lots": [
-    19
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Modernisation complète / remplacement d'un ascenseur",
-   "model_code": "1.2",
-   "group_label": "1. Installation de l’ascenseur",
-   "lots": [
-    19
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose du tableau de commande (armoire ou armoire compacte en gaine)",
-   "model_code": "1.3",
-   "group_label": "1. Installation de l’ascenseur",
-   "lots": [
-    19
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Audit des prestations d'entretien, de la sécurité et du bon fonctionnement des ascenseurs",
-   "model_code": "2.1",
-   "group_label": "2. Audit et contrôle",
-   "lots": [
-    19
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Contrôle technique réglementaire des ascenseurs selon les conditions imposées par le décret n° 2004-964 du 9 septembre 2004 et du décret n°2012-674 du 7 mai 2012.",
-   "model_code": "2.2",
-   "group_label": "2. Audit et contrôle",
-   "lots": [
-    19
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Débroussaillage et défrichage",
-   "model_code": "1.1",
-   "group_label": "1. Terrassement et préparation des sols",
-   "lots": [
-    20
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Abattage et dessouchage d'arbres",
-   "model_code": "1.2",
-   "group_label": "1. Terrassement et préparation des sols",
-   "lots": [
-    20
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Modelage du terrain (nivellement, création de talus, fossés, etc.)",
-   "model_code": "1.3",
-   "group_label": "1. Terrassement et préparation des sols",
-   "lots": [
-    20
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Plantation (arbres, arbustes, haies)",
-   "model_code": "2.1",
-   "group_label": "2. Plantation",
-   "lots": [
-    20
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Mise en place de gazon (semis ou pose de gazon en plaques)",
-   "model_code": "2.2",
-   "group_label": "2. Plantation",
-   "lots": [
-    20
-   ],
-   "extra_risks": [
-    "R08"
-   ]
-  },
-  {
-   "label": "Tonte de pelouses",
-   "model_code": "4.1",
-   "group_label": "4. Entretien courant (si marché de maintenance)",
-   "lots": [
-    20
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Taille des haies et arbustes",
-   "model_code": "4.2",
-   "group_label": "4. Entretien courant (si marché de maintenance)",
-   "lots": [
-    20
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Ramassage de feuilles",
-   "model_code": "4.3",
-   "group_label": "4. Entretien courant (si marché de maintenance)",
-   "lots": [
-    20
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Nettoyage et curage des fossés, bassins ou caniveaux",
-   "model_code": "4.4",
-   "group_label": "4. Entretien courant (si marché de maintenance)",
-   "lots": [
-    20
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose de mobilier urbain (bancs, corbeilles, barrières)",
-   "model_code": "5.1",
-   "group_label": "5. Aménagements paysagers",
-   "lots": [
-    20
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Création d'allées piétonnes (graviers, pavés, enrobé)",
-   "model_code": "5.2",
-   "group_label": "5. Aménagements paysagers",
-   "lots": [
-    20
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Installation de clôtures végétales ou rigides",
-   "model_code": "5.3",
-   "group_label": "5. Aménagements paysagers",
-   "lots": [
-    20
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Création de murets paysagers, escaliers ou éléments décoratifs",
-   "model_code": "5.4",
-   "group_label": "5. Aménagements paysagers",
-   "lots": [
-    20
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Mise en place de bordures, pas japonais, pergolas",
-   "model_code": "5.5",
-   "group_label": "5. Aménagements paysagers",
-   "lots": [
-    20
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Excavation de tranchées, fouilles ou plateformes",
-   "model_code": "1.1",
-   "group_label": "1. Terrassements généraux",
-   "lots": [
-    21
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Réalisation des couches de forme",
-   "model_code": "2.1",
-   "group_label": "2. Voirie (chaussées, trottoirs, cheminements)",
-   "lots": [
-    21
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Mise en place de géotextiles ou géogrilles",
-   "model_code": "2.2",
-   "group_label": "2. Voirie (chaussées, trottoirs, cheminements)",
-   "lots": [
-    21
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Réalisation des couches de fondation (GNT, graves, etc.)",
-   "model_code": "2.3",
-   "group_label": "2. Voirie (chaussées, trottoirs, cheminements)",
-   "lots": [
-    21
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose des bordures (CC1, CC2, T2, etc.)",
-   "model_code": "2.4",
-   "group_label": "2. Voirie (chaussées, trottoirs, cheminements)",
-   "lots": [
-    21
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose de caniveaux (béton, fonte, etc.)",
-   "model_code": "2.5",
-   "group_label": "2. Voirie (chaussées, trottoirs, cheminements)",
-   "lots": [
-    21
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Réalisation de trottoirs, cheminements piétons (béton désactivé, pavés, enrobé, etc.)",
-   "model_code": "2.6",
-   "group_label": "2. Voirie (chaussées, trottoirs, cheminements)",
-   "lots": [
-    21
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Réalisation de chaussées : enrobé, béton, pavés, bicouche, etc.",
-   "model_code": "2.7",
-   "group_label": "2. Voirie (chaussées, trottoirs, cheminements)",
-   "lots": [
-    21
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Réseaux d'assainissement eaux usées (EU)",
-   "model_code": "3.1",
-   "group_label": "3. Réseaux humides",
-   "lots": [
-    21
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Réseaux d'eaux pluviales (EP)",
-   "model_code": "3.2",
-   "group_label": "3. Réseaux humides",
-   "lots": [
-    21
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose de canalisations (PVC, béton, fonte, etc.)",
-   "model_code": "3.3",
-   "group_label": "3. Réseaux humides",
-   "lots": [
-    21
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose de regards, avaloirs, grilles",
-   "model_code": "3.4",
-   "group_label": "3. Réseaux humides",
-   "lots": [
-    21
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Étanchéité et essais de réseaux",
-   "model_code": "3.5",
-   "group_label": "3. Réseaux humides",
-   "lots": [
-    21
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Réseaux d'électricité (basse tension, éclairage public)",
-   "model_code": "4.1",
-   "group_label": "4. Réseaux secs",
-   "lots": [
-    21
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Réseaux de télécommunications (fourreaux, chambres de tirage)",
-   "model_code": "4.2",
-   "group_label": "4. Réseaux secs",
-   "lots": [
-    21
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Réseaux de gaz (avec entreprise agréée)",
-   "model_code": "4.3",
-   "group_label": "4. Réseaux secs",
-   "lots": [
-    21
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Réseaux de fibre optique (fourreaux, boîtiers)",
-   "model_code": "4.4",
-   "group_label": "4. Réseaux secs",
-   "lots": [
-    21
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose de gaines, chambres, coffrets",
-   "model_code": "4.5",
-   "group_label": "4. Réseaux secs",
-   "lots": [
-    21
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose de candélabres, bornes lumineuses",
-   "model_code": "5.1",
-   "group_label": "5. Éclairage public et mobilier urbain",
-   "lots": [
-    21
-   ],
-   "extra_risks": [
-    "R07"
-   ]
-  },
-  {
-   "label": "Installation d'armoires de commande",
-   "model_code": "5.2",
-   "group_label": "5. Éclairage public et mobilier urbain",
-   "lots": [
-    21
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Création de noues paysagères",
-   "model_code": "6.1",
-   "group_label": "6. Gestion des eaux pluviales et infiltration",
-   "lots": [
-    21
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Fossés drainants",
-   "model_code": "6.2",
-   "group_label": "6. Gestion des eaux pluviales et infiltration",
-   "lots": [
-    21
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Tranchées d'infiltration",
-   "model_code": "6.3",
-   "group_label": "6. Gestion des eaux pluviales et infiltration",
-   "lots": [
-    21
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Bassins de rétention ou d'infiltration",
-   "model_code": "6.4",
-   "group_label": "6. Gestion des eaux pluviales et infiltration",
-   "lots": [
-    21
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Pose de séparateurs hydrocarbures",
-   "model_code": "6.5",
-   "group_label": "6. Gestion des eaux pluviales et infiltration",
-   "lots": [
-    21
-   ],
-   "extra_risks": []
-  },
-  {
-   "label": "Refection voirie et abords",
-   "model_code": null,
-   "group_label": null,
-   "lots": [
-    21
-   ],
-   "extra_risks": []
-  }
- ],
- "vocabulary": [
-  {
-   "term": "robinet",
-   "equivalents": [
-    "robinetterie",
-    "plomberie",
-    "eau"
-   ]
-  },
-  {
-   "term": "fuite",
-   "equivalents": [
-    "plomberie",
-    "eau",
-    "etancheite"
-   ]
-  },
-  {
-   "term": "lavabo",
-   "equivalents": [
-    "lavabo",
-    "plomberie"
-   ]
-  },
-  {
-   "term": "wc",
-   "equivalents": [
-    "plomberie",
-    "evacuation"
-   ]
-  },
-  {
-   "term": "douche",
-   "equivalents": [
-    "plomberie",
-    "receveur"
-   ]
-  },
-  {
-   "term": "chauffe",
-   "equivalents": [
-    "plomberie",
-    "ecs",
-    "eau"
-   ]
-  },
-  {
-   "term": "toiture",
-   "equivalents": [
-    "couverture",
-    "charpente",
-    "toiture"
-   ]
-  },
-  {
-   "term": "tuile",
-   "equivalents": [
-    "couverture"
-   ]
-  },
-  {
-   "term": "gouttiere",
-   "equivalents": [
-    "descente",
-    "pluvial"
-   ]
-  },
-  {
-   "term": "cloison",
-   "equivalents": [
-    "cloisons",
-    "doublage",
-    "placo"
-   ]
-  },
-  {
-   "term": "placo",
-   "equivalents": [
-    "doublage",
-    "cloisons",
-    "plaque"
-   ]
-  },
-  {
-   "term": "plafond",
-   "equivalents": [
-    "faux",
-    "plafond",
-    "doublage"
-   ]
-  },
-  {
-   "term": "peindre",
-   "equivalents": [
-    "peinture"
-   ]
-  },
-  {
-   "term": "peinture",
-   "equivalents": [
-    "peinture"
-   ]
-  },
-  {
-   "term": "mur",
-   "equivalents": [
-    "maconnerie",
-    "mur",
-    "murs"
-   ]
-  },
-  {
-   "term": "demolir",
-   "equivalents": [
-    "demolition",
-    "demolir"
-   ]
-  },
-  {
-   "term": "demolition",
-   "equivalents": [
-    "demolition"
-   ]
-  },
-  {
-   "term": "sol",
-   "equivalents": [
-    "revetement",
-    "carrelage",
-    "sol"
-   ]
-  },
-  {
-   "term": "carrelage",
-   "equivalents": [
-    "carrelage"
-   ]
-  },
-  {
-   "term": "faience",
-   "equivalents": [
-    "faience"
-   ]
-  },
-  {
-   "term": "fenetre",
-   "equivalents": [
-    "fenetre",
-    "menuiseries"
-   ]
-  },
-  {
-   "term": "volet",
-   "equivalents": [
-    "volet",
-    "fermetures"
-   ]
-  },
-  {
-   "term": "porte",
-   "equivalents": [
-    "porte",
-    "portes"
-   ]
-  },
-  {
-   "term": "serrure",
-   "equivalents": [
-    "serrurerie"
-   ]
-  },
-  {
-   "term": "electrique",
-   "equivalents": [
-    "electricite",
-    "electrique"
-   ]
-  },
-  {
-   "term": "electricite",
-   "equivalents": [
-    "electricite"
-   ]
-  },
-  {
-   "term": "radiateur",
-   "equivalents": [
-    "chauffage",
-    "radiateur"
-   ]
-  },
-  {
-   "term": "chauffage",
-   "equivalents": [
-    "chauffage"
-   ]
-  },
-  {
-   "term": "ascenseur",
-   "equivalents": [
-    "ascenseur"
-   ]
-  },
-  {
-   "term": "jardin",
-   "equivalents": [
-    "espaces",
-    "verts",
-    "abords"
-   ]
-  },
-  {
-   "term": "parking",
-   "equivalents": [
-    "parking",
-    "portail",
-    "barriere"
-   ]
-  },
-  {
-   "term": "portail",
-   "equivalents": [
-    "portail"
-   ]
-  },
-  {
-   "term": "ventilation",
-   "equivalents": [
-    "ventilation",
-    "vmc"
-   ]
-  },
-  {
-   "term": "vmc",
-   "equivalents": [
-    "vmc",
-    "ventilation"
-   ]
-  },
-  {
-   "term": "amiante",
-   "equivalents": [
-    "amiante"
-   ]
-  },
-  {
-   "term": "isolation",
-   "equivalents": [
-    "isolation",
-    "isolant"
-   ]
-  },
-  {
-   "term": "facade",
-   "equivalents": [
-    "facade",
-    "ravalement"
-   ]
-  },
-  {
-   "term": "balcon",
-   "equivalents": [
-    "balcon",
-    "etancheite"
-   ]
-  },
-  {
-   "term": "escalier",
-   "equivalents": [
-    "escalier",
-    "cage"
-   ]
-  },
-  {
-   "term": "eaux",
-   "equivalents": [
-    "pluvial",
-    "eaux"
-   ]
-  }
- ],
- "alerts": [
-  {
-   "code": "A01",
-   "type": "Décision appliquée",
-   "object": "Protection des trémies et ouvertures",
-   "finding": "Liée à « Chute d'objet » seulement dans le modèle.",
-   "proposal": "Liée à « Chute d'objet » ET « Chute de hauteur » (réponse 1 : les deux).",
-   "status": "APPLIQUE_A_VALIDER"
-  },
-  {
-   "code": "A02",
-   "type": "Décision appliquée",
-   "object": "Gants",
-   "finding": "Pas liés aux vibrations dans le modèle.",
-   "proposal": "Ajout de « Vibration » (réponse 2).",
-   "status": "APPLIQUE_A_VALIDER"
-  },
-  {
-   "code": "A03",
-   "type": "Décision appliquée",
-   "object": "Lunettes / visière de protection",
-   "finding": "Liées à la coupure seulement.",
-   "proposal": "Ajout de « Chute d'objet » et « Produit chimique » pour les projections et éclaboussures (réponse 3). À ajuster si vous ne voulez que les projections.",
-   "status": "APPLIQUE_A_VALIDER"
-  },
-  {
-   "code": "A04",
-   "type": "Décision appliquée",
-   "object": "PEINTURE, REVETEMENT DE SOL",
-   "finding": "Absentes du modèle.",
-   "proposal": "Rattachées au lot 14 PEINTURE / REVETEMENTS DE SOL (réponse 5).",
-   "status": "APPLIQUE_A_VALIDER"
-  },
-  {
-   "code": "A05",
-   "type": "Décision appliquée",
-   "object": "Refection voirie et abords",
-   "finding": "Absente du modèle.",
-   "proposal": "Rattachée au lot 21 VOIRIES / RESEAUX DIVERS (réponse 5).",
-   "status": "APPLIQUE_A_VALIDER"
-  },
-  {
-   "code": "A06",
-   "type": "Doublon modèle",
-   "object": "Pose d'une porte intérieure ; Pose d'une menuiserie ; Pose d'une portée d'entrée de bâtiment",
-   "finding": "Ces natures apparaissent dans plusieurs lots du modèle.",
-   "proposal": "Fusion ou conservation multi-lots (réponse 5 : OK). Vérifier le lot par défaut de chacune.",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A07",
-   "type": "Règle à confirmer",
-   "object": "Chaussure de sécurité",
-   "finding": "Cochée dès qu'un risque est présent (règle « tous risques » du modèle).",
-   "proposal": "Garder, ou limiter à certains lots.",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A08",
-   "type": "Règle à confirmer",
-   "object": "Rangement et nettoyage régulier",
-   "finding": "Cochée dès qu'un risque est présent.",
-   "proposal": "Garder comme mesure transversale, ou limiter.",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A09",
-   "type": "Règle à confirmer",
-   "object": "Trousse de premiers secours sur place",
-   "finding": "Cochée dès qu'un risque est présent.",
-   "proposal": "Garder comme mesure transversale.",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A10",
-   "type": "Saisie manuelle",
-   "object": "Eclairage suffisant du chantier",
-   "finding": "Valeur fixe dans le modèle, jamais automatique.",
-   "proposal": "Garder en saisie manuelle, ou ajouter une règle.",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A11",
-   "type": "Saisie manuelle",
-   "object": "Personnel formés aux gestes de premiers secours",
-   "finding": "Valeur fixe dans le modèle.",
-   "proposal": "Garder en saisie manuelle, ou ajouter une règle.",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A12",
-   "type": "Écart matrice / règles",
-   "object": "Eclairage suffisant du chantier",
-   "finding": "matrice seule : 213 tâches sur 213.",
-   "proposal": "Décider : garder la règle, ou ajouter un lien risque → mesure.",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A13",
-   "type": "Écart matrice / règles",
-   "object": "Chaussure de sécurité",
-   "finding": "règle seule : 213 tâches sur 213.",
-   "proposal": "Décider : garder la règle, ou ajouter un lien risque → mesure.",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A14",
-   "type": "Écart matrice / règles",
-   "object": "Trousse de premiers secours sur place",
-   "finding": "règle seule : 213 tâches sur 213.",
-   "proposal": "Décider : garder la règle, ou ajouter un lien risque → mesure.",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A15",
-   "type": "Écart matrice / règles",
-   "object": "Protection des trémies et ouvertures",
-   "finding": "règle seule : 181 tâches sur 213.",
-   "proposal": "Décider : garder la règle, ou ajouter un lien risque → mesure.",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A16",
-   "type": "Écart matrice / règles",
-   "object": "Echafaudages",
-   "finding": "règle seule : 142 tâches sur 213.",
-   "proposal": "Décider : garder la règle, ou ajouter un lien risque → mesure.",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A17",
-   "type": "Écart matrice / règles",
-   "object": "Stockage sécurisé des matériaux / produit dangereux",
-   "finding": "matrice seule : 90 tâches sur 213.",
-   "proposal": "Décider : garder la règle, ou ajouter un lien risque → mesure.",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A18",
-   "type": "Écart matrice / règles",
-   "object": "Tenue de protection",
-   "finding": "règle seule : 73 tâches sur 213.",
-   "proposal": "Décider : garder la règle, ou ajouter un lien risque → mesure.",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A19",
-   "type": "Écart matrice / règles",
-   "object": "Mise à la terre des équipements",
-   "finding": "règle seule : 66 tâches sur 213.",
-   "proposal": "Décider : garder la règle, ou ajouter un lien risque → mesure.",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A20",
-   "type": "Écart matrice / règles",
-   "object": "Formation et autorisation pour engins",
-   "finding": "règle seule : 48 tâches sur 213.",
-   "proposal": "Décider : garder la règle, ou ajouter un lien risque → mesure.",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A21",
-   "type": "Écart matrice / règles",
-   "object": "Gants",
-   "finding": "règle seule : 29 tâches sur 213.",
-   "proposal": "Décider : garder la règle, ou ajouter un lien risque → mesure.",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A22",
-   "type": "Écart matrice / règles",
-   "object": "Tenue de protection",
-   "finding": "matrice seule : 22 tâches sur 213.",
-   "proposal": "Décider : garder la règle, ou ajouter un lien risque → mesure.",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A23",
-   "type": "Défaut de lot à valider",
-   "object": "DESAMIANTAGE",
-   "finding": "7 natures. Mesures communes (socle) : 16.",
-   "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A24",
-   "type": "Défaut de lot à valider",
-   "object": "DEMOLITION",
-   "finding": "17 natures. Mesures communes (socle) : 19.",
-   "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A25",
-   "type": "Défaut de lot à valider",
-   "object": "GROS ŒUVRE",
-   "finding": "21 natures. Mesures communes (socle) : 15.",
-   "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A26",
-   "type": "Défaut de lot à valider",
-   "object": "CHARPENTE",
-   "finding": "12 natures. Mesures communes (socle) : 17.",
-   "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A27",
-   "type": "Défaut de lot à valider",
-   "object": "COUVERTURE",
-   "finding": "13 natures. Mesures communes (socle) : 17.",
-   "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A28",
-   "type": "Défaut de lot à valider",
-   "object": "ETANCHEITE",
-   "finding": "10 natures. Mesures communes (socle) : 17.",
-   "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A29",
-   "type": "Défaut de lot à valider",
-   "object": "RAVALEMENT / ENDUIT",
-   "finding": "12 natures. Mesures communes (socle) : 16.",
-   "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A30",
-   "type": "Défaut de lot à valider",
-   "object": "DOUBLAGE / FAUX PLAFOND / CLOISONS",
-   "finding": "6 natures. Mesures communes (socle) : 16.",
-   "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A31",
-   "type": "Défaut de lot à valider",
-   "object": "ISOLATION",
-   "finding": "10 natures. Mesures communes (socle) : 15.",
-   "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A32",
-   "type": "Défaut de lot à valider",
-   "object": "MENUISERIES INTERIEURES",
-   "finding": "4 natures. Mesures communes (socle) : 15.",
-   "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A33",
-   "type": "Défaut de lot à valider",
-   "object": "SERRURERIE",
-   "finding": "7 natures. Mesures communes (socle) : 20.",
-   "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A34",
-   "type": "Défaut de lot à valider",
-   "object": "MENUISERIES EXTERIEURES",
-   "finding": "4 natures. Mesures communes (socle) : 14.",
-   "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A35",
-   "type": "Défaut de lot à valider",
-   "object": "CARRELAGE / FAIENCE",
-   "finding": "6 natures. Mesures communes (socle) : 10.",
-   "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A36",
-   "type": "Défaut de lot à valider",
-   "object": "PEINTURE / REVETEMENTS DE SOL",
-   "finding": "12 natures. Mesures communes (socle) : 10.",
-   "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A37",
-   "type": "Défaut de lot à valider",
-   "object": "PLOMBERIE",
-   "finding": "9 natures. Mesures communes (socle) : 16.",
-   "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A38",
-   "type": "Défaut de lot à valider",
-   "object": "VENTILATION",
-   "finding": "5 natures. Mesures communes (socle) : 18.",
-   "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A39",
-   "type": "Défaut de lot à valider",
-   "object": "CHAUFFAGE",
-   "finding": "5 natures. Mesures communes (socle) : 14.",
-   "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A40",
-   "type": "Défaut de lot à valider",
-   "object": "ELECTRICITE",
-   "finding": "8 natures. Mesures communes (socle) : 19.",
-   "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A41",
-   "type": "Défaut de lot à valider",
-   "object": "ASCENSEURS",
-   "finding": "5 natures. Mesures communes (socle) : 17.",
-   "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A42",
-   "type": "Défaut de lot à valider",
-   "object": "ESPACES VERTS",
-   "finding": "14 natures. Mesures communes (socle) : 15.",
-   "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
-   "status": "A_VALIDER"
-  },
-  {
-   "code": "A43",
-   "type": "Défaut de lot à valider",
-   "object": "VOIRIES / RESEAUX DIVERS",
-   "finding": "26 natures. Mesures communes (socle) : 17.",
-   "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
-   "status": "A_VALIDER"
-  }
- ]
+  "version": "V4 — proposé, non validé",
+  "lots": [
+    {
+      "code": 1,
+      "name": "DESAMIANTAGE"
+    },
+    {
+      "code": 2,
+      "name": "DEMOLITION"
+    },
+    {
+      "code": 3,
+      "name": "GROS ŒUVRE"
+    },
+    {
+      "code": 4,
+      "name": "CHARPENTE"
+    },
+    {
+      "code": 5,
+      "name": "COUVERTURE"
+    },
+    {
+      "code": 6,
+      "name": "ETANCHEITE"
+    },
+    {
+      "code": 7,
+      "name": "RAVALEMENT DE FACADE / ENDUIT"
+    },
+    {
+      "code": 8,
+      "name": "DOUBLAGE / FAUX PLAFOND / CLOISONS"
+    },
+    {
+      "code": 9,
+      "name": "ISOLATION"
+    },
+    {
+      "code": 10,
+      "name": "MENUISERIES INTERIEURES"
+    },
+    {
+      "code": 11,
+      "name": "MENUISERIES EXTERIEURES"
+    },
+    {
+      "code": 12,
+      "name": "SERRURERIE"
+    },
+    {
+      "code": 13,
+      "name": "CARRELAGE ET FAIENCE"
+    },
+    {
+      "code": 14,
+      "name": "PEINTURE / REVETEMENTS DE SOL"
+    },
+    {
+      "code": 15,
+      "name": "PLOMBERIE"
+    },
+    {
+      "code": 16,
+      "name": "VENTILATION"
+    },
+    {
+      "code": 17,
+      "name": "CHAUFFAGE"
+    },
+    {
+      "code": 18,
+      "name": "ELECTRICITE"
+    },
+    {
+      "code": 19,
+      "name": "ASCENCEURS"
+    },
+    {
+      "code": 20,
+      "name": "ESPACES VERTS"
+    },
+    {
+      "code": 21,
+      "name": "VOIRIES ET RESEAUX DIVERS"
+    }
+  ],
+  "risks": [
+    {
+      "code": "R01",
+      "label": "Amiante/plomb",
+      "family": "Chimique / amiante"
+    },
+    {
+      "code": "R02",
+      "label": "Coupure/sectionnement",
+      "family": "Corps / mécanique"
+    },
+    {
+      "code": "R03",
+      "label": "Vibration",
+      "family": "Corps / mécanique"
+    },
+    {
+      "code": "R04",
+      "label": "Bruit",
+      "family": "Ambiance physique"
+    },
+    {
+      "code": "R05",
+      "label": "Heurt",
+      "family": "Corps / mécanique"
+    },
+    {
+      "code": "R06",
+      "label": "Risque électrique",
+      "family": "Électrique / incendie"
+    },
+    {
+      "code": "R07",
+      "label": "Chute de hauteur",
+      "family": "Chutes"
+    },
+    {
+      "code": "R08",
+      "label": "Incendie/explosion",
+      "family": "Électrique / incendie"
+    },
+    {
+      "code": "R09",
+      "label": "Risque routier",
+      "family": "Routier"
+    },
+    {
+      "code": "R10",
+      "label": "Chute de plain-pied",
+      "family": "Chutes"
+    },
+    {
+      "code": "R11",
+      "label": "Troubles musculosquelettiques",
+      "family": "Corps / mécanique"
+    },
+    {
+      "code": "R12",
+      "label": "Forte chaleur",
+      "family": "Ambiance physique"
+    },
+    {
+      "code": "R13",
+      "label": "Chute d'objet",
+      "family": "Chutes"
+    },
+    {
+      "code": "R14",
+      "label": "Produit chimique",
+      "family": "Chimique / amiante"
+    }
+  ],
+  "measures": [
+    {
+      "code": "M01",
+      "label": "Casque de sécurité",
+      "family": "Protection individuelle",
+      "rule_type": "ANY_RISK",
+      "risks": [
+        "R13",
+        "R05"
+      ]
+    },
+    {
+      "code": "M02",
+      "label": "Chaussure de sécurité",
+      "family": "Protection individuelle",
+      "rule_type": "ALL_RISKS",
+      "risks": []
+    },
+    {
+      "code": "M03",
+      "label": "Gants",
+      "family": "Protection individuelle",
+      "rule_type": "ANY_RISK",
+      "risks": [
+        "R02",
+        "R14",
+        "R03"
+      ]
+    },
+    {
+      "code": "M04",
+      "label": "Lunettes / visière de protection",
+      "family": "Protection individuelle",
+      "rule_type": "ANY_RISK",
+      "risks": [
+        "R02",
+        "R13",
+        "R14"
+      ]
+    },
+    {
+      "code": "M05",
+      "label": "Masque",
+      "family": "Protection individuelle",
+      "rule_type": "ANY_RISK",
+      "risks": [
+        "R01",
+        "R14"
+      ]
+    },
+    {
+      "code": "M06",
+      "label": "Tenue de protection",
+      "family": "Protection individuelle",
+      "rule_type": "ANY_RISK",
+      "risks": [
+        "R01",
+        "R02"
+      ]
+    },
+    {
+      "code": "M07",
+      "label": "Harnais antichute",
+      "family": "Protection individuelle",
+      "rule_type": "ANY_RISK",
+      "risks": [
+        "R07"
+      ]
+    },
+    {
+      "code": "M08",
+      "label": "Protection auditive",
+      "family": "Protection individuelle",
+      "rule_type": "ANY_RISK",
+      "risks": [
+        "R04"
+      ]
+    },
+    {
+      "code": "M09",
+      "label": "Vêtements haute visibilité",
+      "family": "Protection individuelle",
+      "rule_type": "ANY_RISK",
+      "risks": [
+        "R05",
+        "R09"
+      ]
+    },
+    {
+      "code": "M10",
+      "label": "Garde corps / filet antichute",
+      "family": "Protection collective hauteur",
+      "rule_type": "ANY_RISK",
+      "risks": [
+        "R07"
+      ]
+    },
+    {
+      "code": "M11",
+      "label": "Echafaudages",
+      "family": "Protection collective hauteur",
+      "rule_type": "ANY_RISK",
+      "risks": [
+        "R07"
+      ]
+    },
+    {
+      "code": "M12",
+      "label": "Protection des trémies et ouvertures",
+      "family": "Protection collective hauteur",
+      "rule_type": "ANY_RISK",
+      "risks": [
+        "R13",
+        "R07"
+      ]
+    },
+    {
+      "code": "M13",
+      "label": "Procédure de travail en hauteur sécurisée",
+      "family": "Protection collective hauteur",
+      "rule_type": "ANY_RISK",
+      "risks": [
+        "R07"
+      ]
+    },
+    {
+      "code": "M14",
+      "label": "Mise à la terre des équipements",
+      "family": "Électrique",
+      "rule_type": "ANY_RISK",
+      "risks": [
+        "R06"
+      ]
+    },
+    {
+      "code": "M15",
+      "label": "Matériel électrique conforme et vérifié",
+      "family": "Électrique",
+      "rule_type": "ANY_RISK",
+      "risks": [
+        "R06"
+      ]
+    },
+    {
+      "code": "M16",
+      "label": "Protection des câbles",
+      "family": "Électrique",
+      "rule_type": "ANY_RISK",
+      "risks": [
+        "R06"
+      ]
+    },
+    {
+      "code": "M17",
+      "label": "Permis feu si travail par flamme (soudure, meulage)",
+      "family": "Incendie",
+      "rule_type": "ANY_RISK",
+      "risks": [
+        "R08"
+      ]
+    },
+    {
+      "code": "M18",
+      "label": "Extincteurs disponibles et vérifiés",
+      "family": "Incendie",
+      "rule_type": "ANY_RISK",
+      "risks": [
+        "R08"
+      ]
+    },
+    {
+      "code": "M19",
+      "label": "Stockage sécurisé des matériaux / produit dangereux",
+      "family": "Produits et amiante",
+      "rule_type": "ANY_RISK",
+      "risks": [
+        "R14"
+      ]
+    },
+    {
+      "code": "M20",
+      "label": "Plan de prévention amiantes / plomb",
+      "family": "Produits et amiante",
+      "rule_type": "ANY_RISK",
+      "risks": [
+        "R01"
+      ]
+    },
+    {
+      "code": "M21",
+      "label": "Rangement et nettoyage régulier",
+      "family": "Organisation et ambiance",
+      "rule_type": "ALL_RISKS",
+      "risks": []
+    },
+    {
+      "code": "M22",
+      "label": "Eclairage suffisant du chantier",
+      "family": "Organisation et ambiance",
+      "rule_type": "MANUAL",
+      "risks": []
+    },
+    {
+      "code": "M23",
+      "label": "Temps de pause lors de tâches pénibles",
+      "family": "Organisation et ambiance",
+      "rule_type": "ANY_RISK",
+      "risks": [
+        "R11",
+        "R03"
+      ]
+    },
+    {
+      "code": "M24",
+      "label": "Pauses fraicheurs (hydratation)",
+      "family": "Organisation et ambiance",
+      "rule_type": "ANY_RISK",
+      "risks": [
+        "R12"
+      ]
+    },
+    {
+      "code": "M25",
+      "label": "Formation et autorisation pour engins",
+      "family": "Organisation et ambiance",
+      "rule_type": "ANY_RISK",
+      "risks": [
+        "R09"
+      ]
+    },
+    {
+      "code": "M26",
+      "label": "Trousse de premiers secours sur place",
+      "family": "Secours",
+      "rule_type": "ALL_RISKS",
+      "risks": []
+    },
+    {
+      "code": "M27",
+      "label": "Personnel formés aux gestes de premiers secours",
+      "family": "Secours",
+      "rule_type": "MANUAL",
+      "risks": []
+    }
+  ],
+  "lot_risks": [
+    {
+      "lot": 1,
+      "risk": "R01",
+      "is_default": true
+    },
+    {
+      "lot": 1,
+      "risk": "R04",
+      "is_default": true
+    },
+    {
+      "lot": 1,
+      "risk": "R07",
+      "is_default": true
+    },
+    {
+      "lot": 1,
+      "risk": "R10",
+      "is_default": true
+    },
+    {
+      "lot": 1,
+      "risk": "R13",
+      "is_default": true
+    },
+    {
+      "lot": 1,
+      "risk": "R14",
+      "is_default": true
+    },
+    {
+      "lot": 1,
+      "risk": "R08",
+      "is_default": false
+    },
+    {
+      "lot": 2,
+      "risk": "R01",
+      "is_default": true
+    },
+    {
+      "lot": 2,
+      "risk": "R02",
+      "is_default": true
+    },
+    {
+      "lot": 2,
+      "risk": "R03",
+      "is_default": true
+    },
+    {
+      "lot": 2,
+      "risk": "R04",
+      "is_default": true
+    },
+    {
+      "lot": 2,
+      "risk": "R05",
+      "is_default": true
+    },
+    {
+      "lot": 2,
+      "risk": "R07",
+      "is_default": true
+    },
+    {
+      "lot": 2,
+      "risk": "R08",
+      "is_default": true
+    },
+    {
+      "lot": 2,
+      "risk": "R10",
+      "is_default": true
+    },
+    {
+      "lot": 2,
+      "risk": "R11",
+      "is_default": true
+    },
+    {
+      "lot": 2,
+      "risk": "R13",
+      "is_default": true
+    },
+    {
+      "lot": 2,
+      "risk": "R06",
+      "is_default": false
+    },
+    {
+      "lot": 2,
+      "risk": "R09",
+      "is_default": false
+    },
+    {
+      "lot": 3,
+      "risk": "R02",
+      "is_default": true
+    },
+    {
+      "lot": 3,
+      "risk": "R03",
+      "is_default": true
+    },
+    {
+      "lot": 3,
+      "risk": "R04",
+      "is_default": true
+    },
+    {
+      "lot": 3,
+      "risk": "R05",
+      "is_default": true
+    },
+    {
+      "lot": 3,
+      "risk": "R07",
+      "is_default": true
+    },
+    {
+      "lot": 3,
+      "risk": "R10",
+      "is_default": true
+    },
+    {
+      "lot": 3,
+      "risk": "R11",
+      "is_default": true
+    },
+    {
+      "lot": 3,
+      "risk": "R13",
+      "is_default": true
+    },
+    {
+      "lot": 3,
+      "risk": "R14",
+      "is_default": false
+    },
+    {
+      "lot": 3,
+      "risk": "R08",
+      "is_default": false
+    },
+    {
+      "lot": 3,
+      "risk": "R09",
+      "is_default": false
+    },
+    {
+      "lot": 4,
+      "risk": "R02",
+      "is_default": true
+    },
+    {
+      "lot": 4,
+      "risk": "R04",
+      "is_default": true
+    },
+    {
+      "lot": 4,
+      "risk": "R05",
+      "is_default": true
+    },
+    {
+      "lot": 4,
+      "risk": "R07",
+      "is_default": true
+    },
+    {
+      "lot": 4,
+      "risk": "R10",
+      "is_default": true
+    },
+    {
+      "lot": 4,
+      "risk": "R11",
+      "is_default": true
+    },
+    {
+      "lot": 4,
+      "risk": "R13",
+      "is_default": true
+    },
+    {
+      "lot": 4,
+      "risk": "R14",
+      "is_default": true
+    },
+    {
+      "lot": 4,
+      "risk": "R08",
+      "is_default": false
+    },
+    {
+      "lot": 5,
+      "risk": "R02",
+      "is_default": true
+    },
+    {
+      "lot": 5,
+      "risk": "R04",
+      "is_default": true
+    },
+    {
+      "lot": 5,
+      "risk": "R05",
+      "is_default": true
+    },
+    {
+      "lot": 5,
+      "risk": "R07",
+      "is_default": true
+    },
+    {
+      "lot": 5,
+      "risk": "R10",
+      "is_default": true
+    },
+    {
+      "lot": 5,
+      "risk": "R11",
+      "is_default": true
+    },
+    {
+      "lot": 5,
+      "risk": "R13",
+      "is_default": true
+    },
+    {
+      "lot": 5,
+      "risk": "R14",
+      "is_default": true
+    },
+    {
+      "lot": 5,
+      "risk": "R01",
+      "is_default": false
+    },
+    {
+      "lot": 6,
+      "risk": "R02",
+      "is_default": true
+    },
+    {
+      "lot": 6,
+      "risk": "R04",
+      "is_default": true
+    },
+    {
+      "lot": 6,
+      "risk": "R07",
+      "is_default": true
+    },
+    {
+      "lot": 6,
+      "risk": "R08",
+      "is_default": true
+    },
+    {
+      "lot": 6,
+      "risk": "R10",
+      "is_default": true
+    },
+    {
+      "lot": 6,
+      "risk": "R11",
+      "is_default": true
+    },
+    {
+      "lot": 6,
+      "risk": "R14",
+      "is_default": true
+    },
+    {
+      "lot": 6,
+      "risk": "R13",
+      "is_default": false
+    },
+    {
+      "lot": 7,
+      "risk": "R04",
+      "is_default": true
+    },
+    {
+      "lot": 7,
+      "risk": "R05",
+      "is_default": true
+    },
+    {
+      "lot": 7,
+      "risk": "R07",
+      "is_default": true
+    },
+    {
+      "lot": 7,
+      "risk": "R10",
+      "is_default": true
+    },
+    {
+      "lot": 7,
+      "risk": "R11",
+      "is_default": true
+    },
+    {
+      "lot": 7,
+      "risk": "R13",
+      "is_default": true
+    },
+    {
+      "lot": 7,
+      "risk": "R14",
+      "is_default": true
+    },
+    {
+      "lot": 7,
+      "risk": "R03",
+      "is_default": false
+    },
+    {
+      "lot": 8,
+      "risk": "R02",
+      "is_default": true
+    },
+    {
+      "lot": 8,
+      "risk": "R04",
+      "is_default": true
+    },
+    {
+      "lot": 8,
+      "risk": "R07",
+      "is_default": true
+    },
+    {
+      "lot": 8,
+      "risk": "R10",
+      "is_default": true
+    },
+    {
+      "lot": 8,
+      "risk": "R11",
+      "is_default": true
+    },
+    {
+      "lot": 8,
+      "risk": "R13",
+      "is_default": true
+    },
+    {
+      "lot": 8,
+      "risk": "R14",
+      "is_default": true
+    },
+    {
+      "lot": 9,
+      "risk": "R04",
+      "is_default": true
+    },
+    {
+      "lot": 9,
+      "risk": "R07",
+      "is_default": true
+    },
+    {
+      "lot": 9,
+      "risk": "R10",
+      "is_default": true
+    },
+    {
+      "lot": 9,
+      "risk": "R11",
+      "is_default": true
+    },
+    {
+      "lot": 9,
+      "risk": "R13",
+      "is_default": true
+    },
+    {
+      "lot": 9,
+      "risk": "R14",
+      "is_default": true
+    },
+    {
+      "lot": 10,
+      "risk": "R02",
+      "is_default": true
+    },
+    {
+      "lot": 10,
+      "risk": "R04",
+      "is_default": true
+    },
+    {
+      "lot": 10,
+      "risk": "R05",
+      "is_default": true
+    },
+    {
+      "lot": 10,
+      "risk": "R07",
+      "is_default": true
+    },
+    {
+      "lot": 10,
+      "risk": "R10",
+      "is_default": true
+    },
+    {
+      "lot": 10,
+      "risk": "R11",
+      "is_default": true
+    },
+    {
+      "lot": 10,
+      "risk": "R13",
+      "is_default": true
+    },
+    {
+      "lot": 11,
+      "risk": "R02",
+      "is_default": true
+    },
+    {
+      "lot": 11,
+      "risk": "R05",
+      "is_default": true
+    },
+    {
+      "lot": 11,
+      "risk": "R07",
+      "is_default": true
+    },
+    {
+      "lot": 11,
+      "risk": "R10",
+      "is_default": true
+    },
+    {
+      "lot": 11,
+      "risk": "R11",
+      "is_default": true
+    },
+    {
+      "lot": 11,
+      "risk": "R13",
+      "is_default": true
+    },
+    {
+      "lot": 12,
+      "risk": "R02",
+      "is_default": true
+    },
+    {
+      "lot": 12,
+      "risk": "R04",
+      "is_default": true
+    },
+    {
+      "lot": 12,
+      "risk": "R05",
+      "is_default": true
+    },
+    {
+      "lot": 12,
+      "risk": "R06",
+      "is_default": true
+    },
+    {
+      "lot": 12,
+      "risk": "R07",
+      "is_default": true
+    },
+    {
+      "lot": 12,
+      "risk": "R08",
+      "is_default": true
+    },
+    {
+      "lot": 12,
+      "risk": "R10",
+      "is_default": true
+    },
+    {
+      "lot": 12,
+      "risk": "R11",
+      "is_default": true
+    },
+    {
+      "lot": 12,
+      "risk": "R13",
+      "is_default": true
+    },
+    {
+      "lot": 13,
+      "risk": "R02",
+      "is_default": true
+    },
+    {
+      "lot": 13,
+      "risk": "R04",
+      "is_default": true
+    },
+    {
+      "lot": 13,
+      "risk": "R10",
+      "is_default": true
+    },
+    {
+      "lot": 13,
+      "risk": "R11",
+      "is_default": true
+    },
+    {
+      "lot": 13,
+      "risk": "R14",
+      "is_default": true
+    },
+    {
+      "lot": 14,
+      "risk": "R02",
+      "is_default": true
+    },
+    {
+      "lot": 14,
+      "risk": "R04",
+      "is_default": true
+    },
+    {
+      "lot": 14,
+      "risk": "R10",
+      "is_default": true
+    },
+    {
+      "lot": 14,
+      "risk": "R11",
+      "is_default": true
+    },
+    {
+      "lot": 14,
+      "risk": "R14",
+      "is_default": true
+    },
+    {
+      "lot": 15,
+      "risk": "R02",
+      "is_default": true
+    },
+    {
+      "lot": 15,
+      "risk": "R05",
+      "is_default": true
+    },
+    {
+      "lot": 15,
+      "risk": "R06",
+      "is_default": true
+    },
+    {
+      "lot": 15,
+      "risk": "R08",
+      "is_default": true
+    },
+    {
+      "lot": 15,
+      "risk": "R10",
+      "is_default": true
+    },
+    {
+      "lot": 15,
+      "risk": "R11",
+      "is_default": true
+    },
+    {
+      "lot": 15,
+      "risk": "R14",
+      "is_default": true
+    },
+    {
+      "lot": 15,
+      "risk": "R09",
+      "is_default": false
+    },
+    {
+      "lot": 16,
+      "risk": "R02",
+      "is_default": true
+    },
+    {
+      "lot": 16,
+      "risk": "R06",
+      "is_default": true
+    },
+    {
+      "lot": 16,
+      "risk": "R07",
+      "is_default": true
+    },
+    {
+      "lot": 16,
+      "risk": "R10",
+      "is_default": true
+    },
+    {
+      "lot": 16,
+      "risk": "R11",
+      "is_default": true
+    },
+    {
+      "lot": 16,
+      "risk": "R13",
+      "is_default": true
+    },
+    {
+      "lot": 16,
+      "risk": "R14",
+      "is_default": true
+    },
+    {
+      "lot": 17,
+      "risk": "R02",
+      "is_default": true
+    },
+    {
+      "lot": 17,
+      "risk": "R06",
+      "is_default": true
+    },
+    {
+      "lot": 17,
+      "risk": "R08",
+      "is_default": true
+    },
+    {
+      "lot": 17,
+      "risk": "R10",
+      "is_default": true
+    },
+    {
+      "lot": 17,
+      "risk": "R11",
+      "is_default": true
+    },
+    {
+      "lot": 17,
+      "risk": "R14",
+      "is_default": true
+    },
+    {
+      "lot": 18,
+      "risk": "R02",
+      "is_default": true
+    },
+    {
+      "lot": 18,
+      "risk": "R04",
+      "is_default": true
+    },
+    {
+      "lot": 18,
+      "risk": "R06",
+      "is_default": true
+    },
+    {
+      "lot": 18,
+      "risk": "R07",
+      "is_default": true
+    },
+    {
+      "lot": 18,
+      "risk": "R08",
+      "is_default": true
+    },
+    {
+      "lot": 18,
+      "risk": "R10",
+      "is_default": true
+    },
+    {
+      "lot": 18,
+      "risk": "R11",
+      "is_default": true
+    },
+    {
+      "lot": 18,
+      "risk": "R13",
+      "is_default": true
+    },
+    {
+      "lot": 18,
+      "risk": "R09",
+      "is_default": true
+    },
+    {
+      "lot": 19,
+      "risk": "R02",
+      "is_default": true
+    },
+    {
+      "lot": 19,
+      "risk": "R05",
+      "is_default": true
+    },
+    {
+      "lot": 19,
+      "risk": "R06",
+      "is_default": true
+    },
+    {
+      "lot": 19,
+      "risk": "R07",
+      "is_default": true
+    },
+    {
+      "lot": 19,
+      "risk": "R10",
+      "is_default": true
+    },
+    {
+      "lot": 19,
+      "risk": "R11",
+      "is_default": true
+    },
+    {
+      "lot": 19,
+      "risk": "R13",
+      "is_default": true
+    },
+    {
+      "lot": 20,
+      "risk": "R02",
+      "is_default": true
+    },
+    {
+      "lot": 20,
+      "risk": "R03",
+      "is_default": true
+    },
+    {
+      "lot": 20,
+      "risk": "R04",
+      "is_default": true
+    },
+    {
+      "lot": 20,
+      "risk": "R05",
+      "is_default": true
+    },
+    {
+      "lot": 20,
+      "risk": "R09",
+      "is_default": true
+    },
+    {
+      "lot": 20,
+      "risk": "R10",
+      "is_default": true
+    },
+    {
+      "lot": 20,
+      "risk": "R11",
+      "is_default": true
+    },
+    {
+      "lot": 20,
+      "risk": "R12",
+      "is_default": true
+    },
+    {
+      "lot": 20,
+      "risk": "R13",
+      "is_default": true
+    },
+    {
+      "lot": 20,
+      "risk": "R14",
+      "is_default": true
+    },
+    {
+      "lot": 20,
+      "risk": "R08",
+      "is_default": false
+    },
+    {
+      "lot": 21,
+      "risk": "R02",
+      "is_default": true
+    },
+    {
+      "lot": 21,
+      "risk": "R03",
+      "is_default": true
+    },
+    {
+      "lot": 21,
+      "risk": "R04",
+      "is_default": true
+    },
+    {
+      "lot": 21,
+      "risk": "R05",
+      "is_default": true
+    },
+    {
+      "lot": 21,
+      "risk": "R06",
+      "is_default": true
+    },
+    {
+      "lot": 21,
+      "risk": "R08",
+      "is_default": true
+    },
+    {
+      "lot": 21,
+      "risk": "R09",
+      "is_default": true
+    },
+    {
+      "lot": 21,
+      "risk": "R10",
+      "is_default": true
+    },
+    {
+      "lot": 21,
+      "risk": "R11",
+      "is_default": true
+    },
+    {
+      "lot": 21,
+      "risk": "R13",
+      "is_default": true
+    },
+    {
+      "lot": 21,
+      "risk": "R07",
+      "is_default": false
+    }
+  ],
+  "natures": [
+    {
+      "label": "Dépose de plaques ou éléments en amiante-ciment (toiture, conduits, bardage)",
+      "model_code": "1.1",
+      "group_label": "1. Retrait ou traitement de l’amiante",
+      "lots": [
+        1
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Retrait de flocages, calorifugeages ou matériaux friables (procédure lourde avec confinement)",
+      "model_code": "1.2",
+      "group_label": "1. Retrait ou traitement de l’amiante",
+      "lots": [
+        1
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Retrait de dalles de sol ou colle amiantée",
+      "model_code": "1.3",
+      "group_label": "1. Retrait ou traitement de l’amiante",
+      "lots": [
+        1
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Aspiration ou raclage des poussières amiantées",
+      "model_code": "1.4",
+      "group_label": "1. Retrait ou traitement de l’amiante",
+      "lots": [
+        1
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Encapsulage si conservation du support (application de fixateur ou résine)",
+      "model_code": "1.5",
+      "group_label": "1. Retrait ou traitement de l’amiante",
+      "lots": [
+        1
+      ],
+      "extra_risks": [
+        "R08"
+      ]
+    },
+    {
+      "label": "Aspiration de la zone avec aspirateur à filtration absolue (THE)",
+      "model_code": "2.1",
+      "group_label": "2. Nettoyage et décontamination",
+      "lots": [
+        1
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Lavage humide des surfaces si nécessaire",
+      "model_code": "2.2",
+      "group_label": "2. Nettoyage et décontamination",
+      "lots": [
+        1
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Dépose des éléments non porteurs : cloisons, plafonds, doublages",
+      "model_code": "1.1",
+      "group_label": "1. Curage préalable",
+      "lots": [
+        2
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Dépose des équipements techniques : luminaires, radiateurs, sanitaires",
+      "model_code": "1.2",
+      "group_label": "1. Curage préalable",
+      "lots": [
+        2
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Dépose des menuiseries (portes, fenêtres)",
+      "model_code": "1.3",
+      "group_label": "1. Curage préalable",
+      "lots": [
+        2
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Dépose des revêtements : sols souples, carrelages, faïences",
+      "model_code": "1.4",
+      "group_label": "1. Curage préalable",
+      "lots": [
+        2
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Dépose des réseaux intérieurs (plomberie, électricité, VMC)",
+      "model_code": "1.5",
+      "group_label": "1. Curage préalable",
+      "lots": [
+        2
+      ],
+      "extra_risks": [
+        "R09",
+        "R06"
+      ]
+    },
+    {
+      "label": "Démolition de murs non porteurs à la masse, burineur",
+      "model_code": "2.1",
+      "group_label": "2. Démolition des éléments bâtis",
+      "lots": [
+        2
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Démolition de petits ouvrages (escaliers, murets, appuis)",
+      "model_code": "2.2",
+      "group_label": "2. Démolition des éléments bâtis",
+      "lots": [
+        2
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Reprise ponctuelle de dalles ou planchers",
+      "model_code": "2.3",
+      "group_label": "2. Démolition des éléments bâtis",
+      "lots": [
+        2
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Démolition de murs porteurs au BRH (brise-roche hydraulique)",
+      "model_code": "2.4",
+      "group_label": "2. Démolition des éléments bâtis",
+      "lots": [
+        2
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Démolition de planchers béton ou structures métalliques",
+      "model_code": "2.5",
+      "group_label": "2. Démolition des éléments bâtis",
+      "lots": [
+        2
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Abattage de bâtiment (grignotage ou abattage à la pelle)",
+      "model_code": "2.6",
+      "group_label": "2. Démolition des éléments bâtis",
+      "lots": [
+        2
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Sciage et carottage de béton (création de trémies ou réservations)",
+      "model_code": "2.7",
+      "group_label": "2. Démolition des éléments bâtis",
+      "lots": [
+        2
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Démolition de cheminées ou souches en toiture",
+      "model_code": "3.1",
+      "group_label": "3. Cas particuliers",
+      "lots": [
+        2
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Dépose de fondations superficielles",
+      "model_code": "3.2",
+      "group_label": "3. Cas particuliers",
+      "lots": [
+        2
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Sciage de dalles ou murs en milieux contraints",
+      "model_code": "3.3",
+      "group_label": "3. Cas particuliers",
+      "lots": [
+        2
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Intervention en site occupé (zones horaires, protections renforcées)",
+      "model_code": "3.4",
+      "group_label": "3. Cas particuliers",
+      "lots": [
+        2
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Travaux en milieu urbain / bâtiment mitoyen (procédures spécifiques)",
+      "model_code": "3.5",
+      "group_label": "3. Cas particuliers",
+      "lots": [
+        2
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Réalisation de semelles filantes ou isolées en béton armé",
+      "model_code": "1.1",
+      "group_label": "1. Fondations",
+      "lots": [
+        3
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Création de longrines, plots ou radiers",
+      "model_code": "1.2",
+      "group_label": "1. Fondations",
+      "lots": [
+        3
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Réalisation de fondations profondes (pieux, micropieux si sous-traité)",
+      "model_code": "1.3",
+      "group_label": "1. Fondations",
+      "lots": [
+        3
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose de blocs béton (parpaings), briques, agglos cellulaires / dépose",
+      "model_code": "2.1",
+      "group_label": "2. Élévations en maçonnerie",
+      "lots": [
+        3
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Montage de murs porteurs ou non porteurs",
+      "model_code": "2.2",
+      "group_label": "2. Élévations en maçonnerie",
+      "lots": [
+        3
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Réalisation de chaînages horizontaux et verticaux",
+      "model_code": "2.3",
+      "group_label": "2. Élévations en maçonnerie",
+      "lots": [
+        3
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Réalisation d'ouvertures : réservations, linteaux, seuils",
+      "model_code": "2.4",
+      "group_label": "2. Élévations en maçonnerie",
+      "lots": [
+        3
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Remplissage de murs (en rénovation)",
+      "model_code": "2.5",
+      "group_label": "2. Élévations en maçonnerie",
+      "lots": [
+        3
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Coffrage traditionnel ou modulaire (panneaux métalliques, bois)",
+      "model_code": "3.1",
+      "group_label": "3. Béton armé (banché ou préfabriqué)",
+      "lots": [
+        3
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Coulage des voiles et poteaux béton (avec contrôle vibrage et cure)",
+      "model_code": "3.2",
+      "group_label": "3. Béton armé (banché ou préfabriqué)",
+      "lots": [
+        3
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose de prédalles, poutrelles, hourdis / dépose",
+      "model_code": "3.3",
+      "group_label": "3. Béton armé (banché ou préfabriqué)",
+      "lots": [
+        3
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Coulage de dalles pleine, sur coffrage, ou sur entrevous",
+      "model_code": "3.4",
+      "group_label": "3. Béton armé (banché ou préfabriqué)",
+      "lots": [
+        3
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Réalisation de trémies, gaines, cages d'escalier",
+      "model_code": "3.5",
+      "group_label": "3. Béton armé (banché ou préfabriqué)",
+      "lots": [
+        3
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Ouverture de murs porteurs (avec pose de linteaux ou poutres métalliques)",
+      "model_code": "4.1",
+      "group_label": "4. Reprises en sous-œuvre / renforcement",
+      "lots": [
+        3
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Renforcement de planchers (résines, fibres, béton armé complémentaire)",
+      "model_code": "4.2",
+      "group_label": "4. Reprises en sous-œuvre / renforcement",
+      "lots": [
+        3
+      ],
+      "extra_risks": [
+        "R08",
+        "R14"
+      ]
+    },
+    {
+      "label": "Réalisation de massifs ou socles pour équipements techniques",
+      "model_code": "4.3",
+      "group_label": "4. Reprises en sous-œuvre / renforcement",
+      "lots": [
+        3
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Injecteurs / coulis pour consolidation si zone sensible",
+      "model_code": "4.4",
+      "group_label": "4. Reprises en sous-œuvre / renforcement",
+      "lots": [
+        3
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Réservations pour réseaux techniques (gaines, traversées)",
+      "model_code": "5.1",
+      "group_label": "5. Réservation, intégration, coordination",
+      "lots": [
+        3
+      ],
+      "extra_risks": [
+        "R09"
+      ]
+    },
+    {
+      "label": "Pose de membranes d'étanchéité sous dallage / dépose",
+      "model_code": "6.1",
+      "group_label": "6. Étanchéité et traitement des bétons",
+      "lots": [
+        3
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Traitement des joints de dilatation ou de construction",
+      "model_code": "6.2",
+      "group_label": "6. Étanchéité et traitement des bétons",
+      "lots": [
+        3
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Application de produit de cure, hydrofuge, ou traitement anti-carbonatation",
+      "model_code": "6.3",
+      "group_label": "6. Étanchéité et traitement des bétons",
+      "lots": [
+        3
+      ],
+      "extra_risks": [
+        "R14"
+      ]
+    },
+    {
+      "label": "Dépose de l'ancienne charpente ou de parties défectueuses",
+      "model_code": "1.1",
+      "group_label": "1. Dépose (en cas de rénovation)",
+      "lots": [
+        4
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Démontage sécurisé en toiture occupée",
+      "model_code": "1.2",
+      "group_label": "1. Dépose (en cas de rénovation)",
+      "lots": [
+        4
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Traitement ou renforcement ponctuel des appuis (murs, poutres)",
+      "model_code": "1.4",
+      "group_label": "1. Dépose (en cas de rénovation)",
+      "lots": [
+        4
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose d'une chapente bois / dépose",
+      "model_code": "2.1",
+      "group_label": "2. Pose de charpente bois",
+      "lots": [
+        4
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose d'une charpente métallique (portiques, poutres, etc.) / dépose",
+      "model_code": "3.1",
+      "group_label": "3. Pose de charpente métallique",
+      "lots": [
+        4
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Traitement anti-corrosion sur zones de coupe ou soudures",
+      "model_code": "3.2",
+      "group_label": "3. Pose de charpente métallique",
+      "lots": [
+        4
+      ],
+      "extra_risks": [
+        "R08"
+      ]
+    },
+    {
+      "label": "Application de traitement fongicide, insecticide ou ignifuge sur bois",
+      "model_code": "4.1",
+      "group_label": "4. Traitement et protection",
+      "lots": [
+        4
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Peinture antirouille ou galvanisation sur éléments métalliques",
+      "model_code": "4.2",
+      "group_label": "4. Traitement et protection",
+      "lots": [
+        4
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose de pare-vapeur ou pare-pluie en sous-toiture si nécessaire / dépose",
+      "model_code": "4.3",
+      "group_label": "4. Traitement et protection",
+      "lots": [
+        4
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Remplacement d'éléments de charpente affaiblis",
+      "model_code": "5.1",
+      "group_label": "5. Maintenance (le cas échéant)",
+      "lots": [
+        4
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose de pièces de renfort (potelet, sabot, doublage) / dépose",
+      "model_code": "5.2",
+      "group_label": "5. Maintenance (le cas échéant)",
+      "lots": [
+        4
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Traitement curatif de bois attaqué (champignons, insectes)",
+      "model_code": "5.3",
+      "group_label": "5. Maintenance (le cas échéant)",
+      "lots": [
+        4
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Dépose des éléments de couverture (tuiles, ardoises, bac acier)",
+      "model_code": "1.1",
+      "group_label": "1. Dépose de la couverture existante",
+      "lots": [
+        5
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Retrait des liteaux ou voliges abîmés",
+      "model_code": "1.2",
+      "group_label": "1. Dépose de la couverture existante",
+      "lots": [
+        5
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Mise en place de l'écran de sous-toiture (pare-pluie, pare-vapeur)",
+      "model_code": "2.1",
+      "group_label": "2. Pose de l’écran sous-toiture",
+      "lots": [
+        5
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose des tuiles (terre cuite, béton), ardoises, bacs acier, plaques fibro-ciment (hors amiante) / dépose",
+      "model_code": "3.1",
+      "group_label": "3. Pose des matériaux de couverture",
+      "lots": [
+        5
+      ],
+      "extra_risks": [
+        "R01"
+      ]
+    },
+    {
+      "label": "Pose des éléments de faîtage, rives, noues / dépose",
+      "model_code": "3.2",
+      "group_label": "3. Pose des matériaux de couverture",
+      "lots": [
+        5
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose de solins d'étanchéité (zinc, plomb, PVC) / dépose",
+      "model_code": "4.1",
+      "group_label": "4. Étanchéité et accessoires",
+      "lots": [
+        5
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Réalisation des habillages de cheminée, fenêtres de toit, chéneaux",
+      "model_code": "4.2",
+      "group_label": "4. Étanchéité et accessoires",
+      "lots": [
+        5
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose de gouttières, descentes d'eau pluviale et accessoires / dépose",
+      "model_code": "4.3",
+      "group_label": "4. Étanchéité et accessoires",
+      "lots": [
+        5
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Mise en place des protections contre la neige ou le vent (stop-neige, grillages)",
+      "model_code": "4.4",
+      "group_label": "4. Étanchéité et accessoires",
+      "lots": [
+        5
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Réparation de tuiles cassées ou déplacées",
+      "model_code": "6.1",
+      "group_label": "6. Réparations et maintenance",
+      "lots": [
+        5
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Remplacement de liteaux ou éléments bois pourris",
+      "model_code": "6.2",
+      "group_label": "6. Réparations et maintenance",
+      "lots": [
+        5
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Colmatage de fuites ou infiltrations",
+      "model_code": "6.3",
+      "group_label": "6. Réparations et maintenance",
+      "lots": [
+        5
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Nettoyage de la toiture (débris, mousses, feuilles)",
+      "model_code": "6.4",
+      "group_label": "6. Réparations et maintenance",
+      "lots": [
+        5
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose de membranes bitumineuses (torchis, rouleaux) / dépose",
+      "model_code": "1.1",
+      "group_label": "1. Mise en œuvre de l’étanchéité",
+      "lots": [
+        6
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Application de résines liquides (polyuréthane, epoxy)",
+      "model_code": "1.2",
+      "group_label": "1. Mise en œuvre de l’étanchéité",
+      "lots": [
+        6
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose de feuilles synthétiques (PVC, EPDM) / dépose",
+      "model_code": "1.3",
+      "group_label": "1. Mise en œuvre de l’étanchéité",
+      "lots": [
+        6
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Traitement des points singuliers : relevés, angles, pénétrations",
+      "model_code": "1.4",
+      "group_label": "1. Mise en œuvre de l’étanchéité",
+      "lots": [
+        6
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose de protections mécaniques (dalles, gravillons, plaques) / dépose",
+      "model_code": "2.1",
+      "group_label": "2. Protection de l’étanchéité",
+      "lots": [
+        6
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Mise en place de protections végétales (toitures végétalisées)",
+      "model_code": "2.2",
+      "group_label": "2. Protection de l’étanchéité",
+      "lots": [
+        6
+      ],
+      "extra_risks": [
+        "R13"
+      ]
+    },
+    {
+      "label": "Réalisation de protections contre les UV ou les agressions mécaniques",
+      "model_code": "2.3",
+      "group_label": "2. Protection de l’étanchéité",
+      "lots": [
+        6
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Détection et réparation des infiltrations",
+      "model_code": "3.1",
+      "group_label": "3. Réparations et entretien",
+      "lots": [
+        6
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Réfection partielle de membranes ou joints",
+      "model_code": "3.2",
+      "group_label": "3. Réparations et entretien",
+      "lots": [
+        6
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Nettoyage des chéneaux, évacuations d'eau pluviale",
+      "model_code": "3.3",
+      "group_label": "3. Réparations et entretien",
+      "lots": [
+        6
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Nettoyage des façades (haute pression, sablage, gommage, peeling selon nature du support)",
+      "model_code": "1.1",
+      "group_label": "1. Préparation des supports",
+      "lots": [
+        7
+      ],
+      "extra_risks": [
+        "R03"
+      ]
+    },
+    {
+      "label": "Démoussage / traitement fongicide",
+      "model_code": "1.2",
+      "group_label": "1. Préparation des supports",
+      "lots": [
+        7
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Application d'un fixateur ou primaire d'accrochage (si requis)",
+      "model_code": "1.3",
+      "group_label": "1. Préparation des supports",
+      "lots": [
+        7
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Reprise de maçonneries (joints, éclats, fissures)",
+      "model_code": "2.1",
+      "group_label": "2. Réparations ponctuelles",
+      "lots": [
+        7
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Projection ou application manuelle",
+      "model_code": "3.1",
+      "group_label": "3. Application d’enduits",
+      "lots": [
+        7
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Dressage et finition (taloché, gratté, écrasé, lissé…)",
+      "model_code": "3.2",
+      "group_label": "3. Application d’enduits",
+      "lots": [
+        7
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose d'un sous-enduit d'accrochage / dépose",
+      "model_code": "3.3",
+      "group_label": "3. Application d’enduits",
+      "lots": [
+        7
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Application manuelle ou mécanisée de la finition (acrylique, siloxane…)",
+      "model_code": "3.4",
+      "group_label": "3. Application d’enduits",
+      "lots": [
+        7
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Application d'un fixateur ou impression",
+      "model_code": "4.1",
+      "group_label": "4. Ravalement avec peinture (si applicable)",
+      "lots": [
+        7
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Mise en œuvre de deux couches de peinture de façade (acrylique, siloxane, minérale…)",
+      "model_code": "4.2",
+      "group_label": "4. Ravalement avec peinture (si applicable)",
+      "lots": [
+        7
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose / Dépose bardage bois en facade",
+      "model_code": "4.2",
+      "group_label": "4. Ravalement avec peinture (si applicable)",
+      "lots": [
+        7
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose / Dépose panneau d'habillage en facade",
+      "model_code": "4.2",
+      "group_label": "4. Ravalement avec peinture (si applicable)",
+      "lots": [
+        7
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Mise en place de l'isolation thermique, acoustique ou pare-vapeur dans les doublages ou cloisons",
+      "model_code": "1.1",
+      "group_label": "1. Pose des isolants",
+      "lots": [
+        8
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Calfeutrement et ajustement",
+      "model_code": "1.2",
+      "group_label": "1. Pose des isolants",
+      "lots": [
+        8
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Réalisation de cloisons (placo, BA13, etc.) sur ossature",
+      "model_code": "2.1",
+      "group_label": "2. Réalisation de cloisons",
+      "lots": [
+        8
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Réalisation des faux plafonds (rails, dalles ou plaques)",
+      "model_code": "3.1",
+      "group_label": "3. Réalisation des faux plafonds",
+      "lots": [
+        8
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Réalisation des réservations pour portes, fenêtres, gaines techniques",
+      "model_code": "4.1",
+      "group_label": "4. Ouvertures et accessoires",
+      "lots": [
+        8
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose des huisseries et encadrements / dépose",
+      "model_code": "4.2",
+      "group_label": "4. Ouvertures et accessoires",
+      "lots": [
+        8
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "POSE ITE : Pose d'isolant par collage ou fixation mécanique (chevilles à rosace) / dépose",
+      "model_code": "1.2",
+      "group_label": "1. Isolation des murs (extérieure)",
+      "lots": [
+        9
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "POSE ITI (ossature métallique, paneaux ou rouleaux isolants, BA13) / dépose",
+      "model_code": "2.1",
+      "group_label": "2. Isolation des murs (intérieure)",
+      "lots": [
+        9
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "POSE ITI (mise en place de pare-vapeur si nécessaire) / dépose",
+      "model_code": "2.3",
+      "group_label": "2. Isolation des murs (intérieure)",
+      "lots": [
+        9
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "ISOLATION COMBLES PERDUS (Soufflage de laine minérale en vrac)",
+      "model_code": "3.1",
+      "group_label": "3. Isolation des combles et toitures",
+      "lots": [
+        9
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "ISOLATION COMBLES PERDUS (Pose de panneaux ou rouleaux sur le plancher) / dépose",
+      "model_code": "3.2",
+      "group_label": "3. Isolation des combles et toitures",
+      "lots": [
+        9
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "ISOLATION RAMANTS DE TOITURE (Pose entre chevrons ou en double couche croisée) / dépose",
+      "model_code": "3.3",
+      "group_label": "3. Isolation des combles et toitures",
+      "lots": [
+        9
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "ISOLATION RAMANTS DE TOITURE (Pose éventuelle d'un pare-vapeur et d'un frein vapeur) / dépose",
+      "model_code": "3.4",
+      "group_label": "3. Isolation des combles et toitures",
+      "lots": [
+        9
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose de panneaux rigides sur dalle ou sous chape (polystyrène, PU, laine minérale haute densité) / dépose",
+      "model_code": "4.1",
+      "group_label": "4. Isolation des planchers et dalles",
+      "lots": [
+        9
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Réalisation de chape flottante ou plancher chauffant sur isolant",
+      "model_code": "4.2",
+      "group_label": "4. Isolation des planchers et dalles",
+      "lots": [
+        9
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Traitement des ponts thermiques en nez de dalle ou refends",
+      "model_code": "5.1",
+      "group_label": "5. Isolation des plafonds / sous-faces",
+      "lots": [
+        9
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose des habillages divers (plinthes compris) / dépose",
+      "model_code": "1",
+      "group_label": null,
+      "lots": [
+        10
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose d'une porte intérieure / dépose",
+      "model_code": "2",
+      "group_label": null,
+      "lots": [
+        10,
+        12
+      ],
+      "extra_risks": [
+        "R08",
+        "R06"
+      ]
+    },
+    {
+      "label": "Pose des gardes corps et/ou mains-courantes / dépose",
+      "model_code": "3",
+      "group_label": null,
+      "lots": [
+        10
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose d'une menuiserie / dépose",
+      "model_code": "3",
+      "group_label": null,
+      "lots": [
+        10,
+        11
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose d'une portée d'entrée de bâtiment / dépose",
+      "model_code": "1",
+      "group_label": null,
+      "lots": [
+        11,
+        12
+      ],
+      "extra_risks": [
+        "R04",
+        "R08",
+        "R06"
+      ]
+    },
+    {
+      "label": "Pose d'un volet battant / dépose",
+      "model_code": "2",
+      "group_label": null,
+      "lots": [
+        11
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose d'un volet roulant à tablier PVC / dépose",
+      "model_code": "4",
+      "group_label": null,
+      "lots": [
+        11
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose d'une porte de garage extérieure / dépose",
+      "model_code": "3",
+      "group_label": null,
+      "lots": [
+        12
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose d'un store / dépose",
+      "model_code": "4",
+      "group_label": null,
+      "lots": [
+        12
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose d'un equipement motorisé pour parking (Porte, Portail, Barrière..) / dépose",
+      "model_code": "5",
+      "group_label": null,
+      "lots": [
+        12
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Installation d'une barre de pivotement",
+      "model_code": "6",
+      "group_label": null,
+      "lots": [
+        12
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Poser une main courante en extérieur / dépose",
+      "model_code": "7",
+      "group_label": null,
+      "lots": [
+        12
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Application d'un primaire d'accrochage si nécessaire",
+      "model_code": "1.1",
+      "group_label": "1. Préparation du support",
+      "lots": [
+        13
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose d'un système d'étanchéité (SPEC, SEL) dans zones humides / dépose",
+      "model_code": "1.2",
+      "group_label": "1. Préparation du support",
+      "lots": [
+        13
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose du carrelage au sol / dépose",
+      "model_code": "2.1",
+      "group_label": "2. Pose du carrelage au sol",
+      "lots": [
+        13
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose de plinthes carrelées ou à chant / dépose",
+      "model_code": "2.2",
+      "group_label": "2. Pose du carrelage au sol",
+      "lots": [
+        13
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose des carreaux muraux (faïence, pâte de verre, mosaïque) / dépose",
+      "model_code": "3.1",
+      "group_label": "3. Pose de faïence murale",
+      "lots": [
+        13
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose de profils de finition (cornières, angles sortants) / dépose",
+      "model_code": "3.2",
+      "group_label": "3. Pose de faïence murale",
+      "lots": [
+        13
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "PEINTURE",
+      "model_code": null,
+      "group_label": null,
+      "lots": [
+        14
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Application des couches de peinture (primaire, finition)",
+      "model_code": "2.1",
+      "group_label": "2. Application des couches de peinture",
+      "lots": [
+        14
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Application d'une peinture de sol (garage, cave, locaux techniques)",
+      "model_code": "3.1",
+      "group_label": "3. Travaux spécifiques",
+      "lots": [
+        14
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Application d'une peinture technique (intumescente, anti-humidité, traitement moisissure)",
+      "model_code": "3.2",
+      "group_label": "3. Travaux spécifiques",
+      "lots": [
+        14
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "REVETEMENT DE SOL",
+      "model_code": null,
+      "group_label": null,
+      "lots": [
+        14
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "REVETEMENT SOUPLE : Pose en lés ou en dalles (PVC, linoléum, caoutchouc…) / dépose",
+      "model_code": "2.1",
+      "group_label": "2. Pose du revêtement",
+      "lots": [
+        14
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "PARQUET : Pose flottante, collée ou clouée / dépose",
+      "model_code": "2.4",
+      "group_label": "2. Pose du revêtement",
+      "lots": [
+        14
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "PARQUET : Pose de sous-couche acoustique ou thermique / dépose",
+      "model_code": "2.5",
+      "group_label": "2. Pose du revêtement",
+      "lots": [
+        14
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose de moquette / dépose",
+      "model_code": "2.7",
+      "group_label": "2. Pose du revêtement",
+      "lots": [
+        14
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose de plinthes assorties ou de finition / dépose",
+      "model_code": "3.1",
+      "group_label": "3. Finitions",
+      "lots": [
+        14
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Barres de seuil et accessoires",
+      "model_code": "3.2",
+      "group_label": "3. Finitions",
+      "lots": [
+        14
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Joints de dilatation ou de fractionnement",
+      "model_code": "3.3",
+      "group_label": "3. Finitions",
+      "lots": [
+        14
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Poser un réseau multicouche / dépose",
+      "model_code": "1",
+      "group_label": null,
+      "lots": [
+        15
+      ],
+      "extra_risks": [
+        "R09"
+      ]
+    },
+    {
+      "label": "Poser une évacuation d'EU / dépose",
+      "model_code": "2",
+      "group_label": null,
+      "lots": [
+        15
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Poser une baignoire / dépose",
+      "model_code": "3",
+      "group_label": null,
+      "lots": [
+        15
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Poser un receveur de douche / dépose",
+      "model_code": "4",
+      "group_label": null,
+      "lots": [
+        15
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Poser un évier / dépose",
+      "model_code": "5",
+      "group_label": null,
+      "lots": [
+        15
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Poser un lavabo / dépose",
+      "model_code": "6",
+      "group_label": null,
+      "lots": [
+        15
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Poser un WC / dépose",
+      "model_code": "7",
+      "group_label": null,
+      "lots": [
+        15
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Poser les conduites gaz / dépose",
+      "model_code": "8",
+      "group_label": null,
+      "lots": [
+        15
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Poser/Remplacer une canalisation EP / dépose",
+      "model_code": "9",
+      "group_label": null,
+      "lots": [
+        15
+      ],
+      "extra_risks": [
+        "R09"
+      ]
+    },
+    {
+      "label": "Poser des gaines de ventilation / dépose",
+      "model_code": "1",
+      "group_label": null,
+      "lots": [
+        16
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Poser une VMC / dépose",
+      "model_code": "2",
+      "group_label": null,
+      "lots": [
+        16
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Poser une centrale de traitement d'air / dépose",
+      "model_code": "3",
+      "group_label": null,
+      "lots": [
+        16
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Installer un split mural",
+      "model_code": "4",
+      "group_label": null,
+      "lots": [
+        16
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Remplacement d'une carte electronique de commande VMC",
+      "model_code": "5",
+      "group_label": null,
+      "lots": [
+        16
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Poser une chaudière gaz / dépose",
+      "model_code": "1",
+      "group_label": null,
+      "lots": [
+        17
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Installer une pompe à chaleur",
+      "model_code": "2",
+      "group_label": null,
+      "lots": [
+        17
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Poser un chauffe-eau / dépose",
+      "model_code": "3",
+      "group_label": null,
+      "lots": [
+        17
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Poser un radiateur / dépose",
+      "model_code": "4",
+      "group_label": null,
+      "lots": [
+        17
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Poser un poêle à bois ou à pellets / dépose",
+      "model_code": "5",
+      "group_label": null,
+      "lots": [
+        17
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Installer le réseau téléphonique",
+      "model_code": "1",
+      "group_label": null,
+      "lots": [
+        18
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Installer le réseau télévision",
+      "model_code": "2",
+      "group_label": null,
+      "lots": [
+        18
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Installer le réseau informatique",
+      "model_code": "3",
+      "group_label": null,
+      "lots": [
+        18
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Poser une installation électrique photovoltaïque / dépose",
+      "model_code": "4",
+      "group_label": null,
+      "lots": [
+        18
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Installation d'un équipement de contrôle d'accès/ d'Interphonie",
+      "model_code": "5",
+      "group_label": null,
+      "lots": [
+        18
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Installer un système de sécurité incendie",
+      "model_code": "6",
+      "group_label": null,
+      "lots": [
+        18
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Poser le réseau électique d'un logement / dépose",
+      "model_code": "7",
+      "group_label": null,
+      "lots": [
+        18
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Intervention sur Eclairage Extérieur (candelabre, borne,...)",
+      "model_code": "8",
+      "group_label": null,
+      "lots": [
+        18
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Installation d'un ascenceur",
+      "model_code": "1.1",
+      "group_label": "1. Installation de l’ascenseur",
+      "lots": [
+        19
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Modernisation complète / remplacement d'un ascenseur",
+      "model_code": "1.2",
+      "group_label": "1. Installation de l’ascenseur",
+      "lots": [
+        19
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose du tableau de commande (armoire ou armoire compacte en gaine) / dépose",
+      "model_code": "1.3",
+      "group_label": "1. Installation de l’ascenseur",
+      "lots": [
+        19
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Audit des prestations d'entretien, de la sécurité et du bon fonctionnement des ascenseurs",
+      "model_code": "2.1",
+      "group_label": "2. Audit et contrôle",
+      "lots": [
+        19
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Contrôle technique réglementaire des ascenseurs selon les conditions imposées par le décret n° 2004-964 du 9 septembre 2004 et du décret n°2012-674 du 7 mai 2012.",
+      "model_code": "2.2",
+      "group_label": "2. Audit et contrôle",
+      "lots": [
+        19
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Débroussaillage et défrichage",
+      "model_code": "1.1",
+      "group_label": "1. Terrassement et préparation des sols",
+      "lots": [
+        20
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Abattage et dessouchage d'arbres",
+      "model_code": "1.2",
+      "group_label": "1. Terrassement et préparation des sols",
+      "lots": [
+        20
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Modelage du terrain (nivellement, création de talus, fossés, etc.)",
+      "model_code": "1.3",
+      "group_label": "1. Terrassement et préparation des sols",
+      "lots": [
+        20
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Plantation (arbres, arbustes, haies)",
+      "model_code": "2.1",
+      "group_label": "2. Plantation",
+      "lots": [
+        20
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Mise en place de gazon (semis ou pose de gazon en plaques)",
+      "model_code": "2.2",
+      "group_label": "2. Plantation",
+      "lots": [
+        20
+      ],
+      "extra_risks": [
+        "R08"
+      ]
+    },
+    {
+      "label": "Tonte de pelouses",
+      "model_code": "4.1",
+      "group_label": "4. Entretien courant (si marché de maintenance)",
+      "lots": [
+        20
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Taille des haies et arbustes",
+      "model_code": "4.2",
+      "group_label": "4. Entretien courant (si marché de maintenance)",
+      "lots": [
+        20
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Ramassage de feuilles",
+      "model_code": "4.3",
+      "group_label": "4. Entretien courant (si marché de maintenance)",
+      "lots": [
+        20
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Nettoyage et curage des fossés, bassins ou caniveaux",
+      "model_code": "4.4",
+      "group_label": "4. Entretien courant (si marché de maintenance)",
+      "lots": [
+        20
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose de mobilier urbain (bancs, corbeilles, barrières) / dépose",
+      "model_code": "5.1",
+      "group_label": "5. Aménagements paysagers",
+      "lots": [
+        20
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Création d'allées piétonnes (graviers, pavés, enrobé)",
+      "model_code": "5.2",
+      "group_label": "5. Aménagements paysagers",
+      "lots": [
+        20
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Installation de clôtures végétales ou rigides",
+      "model_code": "5.3",
+      "group_label": "5. Aménagements paysagers",
+      "lots": [
+        20
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Création de murets paysagers, escaliers ou éléments décoratifs",
+      "model_code": "5.4",
+      "group_label": "5. Aménagements paysagers",
+      "lots": [
+        20
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Mise en place de bordures, pas japonais, pergolas",
+      "model_code": "5.5",
+      "group_label": "5. Aménagements paysagers",
+      "lots": [
+        20
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Excavation de tranchées, fouilles ou plateformes",
+      "model_code": "1.1",
+      "group_label": "1. Terrassements généraux",
+      "lots": [
+        21
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Réalisation des couches de forme",
+      "model_code": "2.1",
+      "group_label": "2. Voirie (chaussées, trottoirs, cheminements)",
+      "lots": [
+        21
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Mise en place de géotextiles ou géogrilles",
+      "model_code": "2.2",
+      "group_label": "2. Voirie (chaussées, trottoirs, cheminements)",
+      "lots": [
+        21
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Réalisation des couches de fondation (GNT, graves, etc.)",
+      "model_code": "2.3",
+      "group_label": "2. Voirie (chaussées, trottoirs, cheminements)",
+      "lots": [
+        21
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose des bordures (CC1, CC2, T2, etc.) / dépose",
+      "model_code": "2.4",
+      "group_label": "2. Voirie (chaussées, trottoirs, cheminements)",
+      "lots": [
+        21
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose de caniveaux (béton, fonte, etc.) / dépose",
+      "model_code": "2.5",
+      "group_label": "2. Voirie (chaussées, trottoirs, cheminements)",
+      "lots": [
+        21
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Réalisation de trottoirs, cheminements piétons (béton désactivé, pavés, enrobé, etc.)",
+      "model_code": "2.6",
+      "group_label": "2. Voirie (chaussées, trottoirs, cheminements)",
+      "lots": [
+        21
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Réalisation de chaussées : enrobé, béton, pavés, bicouche, etc.",
+      "model_code": "2.7",
+      "group_label": "2. Voirie (chaussées, trottoirs, cheminements)",
+      "lots": [
+        21
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Réseaux d'assainissement eaux usées (EU)",
+      "model_code": "3.1",
+      "group_label": "3. Réseaux humides",
+      "lots": [
+        21
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Réseaux d'eaux pluviales (EP)",
+      "model_code": "3.2",
+      "group_label": "3. Réseaux humides",
+      "lots": [
+        21
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose de canalisations (PVC, béton, fonte, etc.) / dépose",
+      "model_code": "3.3",
+      "group_label": "3. Réseaux humides",
+      "lots": [
+        21
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose de regards, avaloirs, grilles / dépose",
+      "model_code": "3.4",
+      "group_label": "3. Réseaux humides",
+      "lots": [
+        21
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Étanchéité et essais de réseaux",
+      "model_code": "3.5",
+      "group_label": "3. Réseaux humides",
+      "lots": [
+        21
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Réseaux d'électricité (basse tension, éclairage public)",
+      "model_code": "4.1",
+      "group_label": "4. Réseaux secs",
+      "lots": [
+        21
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Réseaux de télécommunications (fourreaux, chambres de tirage)",
+      "model_code": "4.2",
+      "group_label": "4. Réseaux secs",
+      "lots": [
+        21
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Réseaux de gaz (avec entreprise agréée)",
+      "model_code": "4.3",
+      "group_label": "4. Réseaux secs",
+      "lots": [
+        21
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Réseaux de fibre optique (fourreaux, boîtiers)",
+      "model_code": "4.4",
+      "group_label": "4. Réseaux secs",
+      "lots": [
+        21
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose de gaines, chambres, coffrets / dépose",
+      "model_code": "4.5",
+      "group_label": "4. Réseaux secs",
+      "lots": [
+        21
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose de candélabres, bornes lumineuses / dépose",
+      "model_code": "5.1",
+      "group_label": "5. Éclairage public et mobilier urbain",
+      "lots": [
+        21
+      ],
+      "extra_risks": [
+        "R07"
+      ]
+    },
+    {
+      "label": "Installation d'armoires de commande",
+      "model_code": "5.2",
+      "group_label": "5. Éclairage public et mobilier urbain",
+      "lots": [
+        21
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Création de noues paysagères",
+      "model_code": "6.1",
+      "group_label": "6. Gestion des eaux pluviales et infiltration",
+      "lots": [
+        21
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Fossés drainants",
+      "model_code": "6.2",
+      "group_label": "6. Gestion des eaux pluviales et infiltration",
+      "lots": [
+        21
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Tranchées d'infiltration",
+      "model_code": "6.3",
+      "group_label": "6. Gestion des eaux pluviales et infiltration",
+      "lots": [
+        21
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Bassins de rétention ou d'infiltration",
+      "model_code": "6.4",
+      "group_label": "6. Gestion des eaux pluviales et infiltration",
+      "lots": [
+        21
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Pose de séparateurs hydrocarbures / dépose",
+      "model_code": "6.5",
+      "group_label": "6. Gestion des eaux pluviales et infiltration",
+      "lots": [
+        21
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Refection voirie et abords",
+      "model_code": null,
+      "group_label": null,
+      "lots": [
+        21
+      ],
+      "extra_risks": []
+    }
+  ],
+  "vocabulary": [
+    {
+      "term": "robinet",
+      "equivalents": [
+        "robinetterie",
+        "plomberie",
+        "eau"
+      ]
+    },
+    {
+      "term": "fuite",
+      "equivalents": [
+        "plomberie",
+        "eau",
+        "etancheite"
+      ]
+    },
+    {
+      "term": "lavabo",
+      "equivalents": [
+        "lavabo",
+        "plomberie"
+      ]
+    },
+    {
+      "term": "wc",
+      "equivalents": [
+        "plomberie",
+        "evacuation"
+      ]
+    },
+    {
+      "term": "douche",
+      "equivalents": [
+        "plomberie",
+        "receveur"
+      ]
+    },
+    {
+      "term": "chauffe",
+      "equivalents": [
+        "plomberie",
+        "ecs",
+        "eau"
+      ]
+    },
+    {
+      "term": "toiture",
+      "equivalents": [
+        "couverture",
+        "charpente",
+        "toiture"
+      ]
+    },
+    {
+      "term": "tuile",
+      "equivalents": [
+        "couverture"
+      ]
+    },
+    {
+      "term": "gouttiere",
+      "equivalents": [
+        "descente",
+        "pluvial"
+      ]
+    },
+    {
+      "term": "cloison",
+      "equivalents": [
+        "cloisons",
+        "doublage",
+        "placo"
+      ]
+    },
+    {
+      "term": "placo",
+      "equivalents": [
+        "doublage",
+        "cloisons",
+        "plaque"
+      ]
+    },
+    {
+      "term": "plafond",
+      "equivalents": [
+        "faux",
+        "plafond",
+        "doublage"
+      ]
+    },
+    {
+      "term": "peindre",
+      "equivalents": [
+        "peinture"
+      ]
+    },
+    {
+      "term": "peinture",
+      "equivalents": [
+        "peinture"
+      ]
+    },
+    {
+      "term": "mur",
+      "equivalents": [
+        "maconnerie",
+        "mur",
+        "murs"
+      ]
+    },
+    {
+      "term": "demolir",
+      "equivalents": [
+        "demolition",
+        "demolir"
+      ]
+    },
+    {
+      "term": "demolition",
+      "equivalents": [
+        "demolition"
+      ]
+    },
+    {
+      "term": "sol",
+      "equivalents": [
+        "revetement",
+        "carrelage",
+        "sol"
+      ]
+    },
+    {
+      "term": "carrelage",
+      "equivalents": [
+        "carrelage"
+      ]
+    },
+    {
+      "term": "faience",
+      "equivalents": [
+        "faience"
+      ]
+    },
+    {
+      "term": "fenetre",
+      "equivalents": [
+        "fenetre",
+        "menuiseries"
+      ]
+    },
+    {
+      "term": "volet",
+      "equivalents": [
+        "volet",
+        "fermetures"
+      ]
+    },
+    {
+      "term": "porte",
+      "equivalents": [
+        "porte",
+        "portes"
+      ]
+    },
+    {
+      "term": "serrure",
+      "equivalents": [
+        "serrurerie"
+      ]
+    },
+    {
+      "term": "electrique",
+      "equivalents": [
+        "electricite",
+        "electrique"
+      ]
+    },
+    {
+      "term": "electricite",
+      "equivalents": [
+        "electricite"
+      ]
+    },
+    {
+      "term": "radiateur",
+      "equivalents": [
+        "chauffage",
+        "radiateur"
+      ]
+    },
+    {
+      "term": "chauffage",
+      "equivalents": [
+        "chauffage"
+      ]
+    },
+    {
+      "term": "ascenseur",
+      "equivalents": [
+        "ascenseur"
+      ]
+    },
+    {
+      "term": "jardin",
+      "equivalents": [
+        "espaces",
+        "verts",
+        "abords"
+      ]
+    },
+    {
+      "term": "parking",
+      "equivalents": [
+        "parking",
+        "portail",
+        "barriere"
+      ]
+    },
+    {
+      "term": "portail",
+      "equivalents": [
+        "portail"
+      ]
+    },
+    {
+      "term": "ventilation",
+      "equivalents": [
+        "ventilation",
+        "vmc"
+      ]
+    },
+    {
+      "term": "vmc",
+      "equivalents": [
+        "vmc",
+        "ventilation"
+      ]
+    },
+    {
+      "term": "amiante",
+      "equivalents": [
+        "amiante"
+      ]
+    },
+    {
+      "term": "isolation",
+      "equivalents": [
+        "isolation",
+        "isolant"
+      ]
+    },
+    {
+      "term": "facade",
+      "equivalents": [
+        "facade",
+        "ravalement"
+      ]
+    },
+    {
+      "term": "balcon",
+      "equivalents": [
+        "balcon",
+        "etancheite"
+      ]
+    },
+    {
+      "term": "escalier",
+      "equivalents": [
+        "escalier",
+        "cage"
+      ]
+    },
+    {
+      "term": "eaux",
+      "equivalents": [
+        "pluvial",
+        "eaux"
+      ]
+    }
+  ],
+  "alerts": [
+    {
+      "code": "A01",
+      "type": "Décision appliquée",
+      "object": "Protection des trémies et ouvertures",
+      "finding": "Liée à « Chute d'objet » seulement dans le modèle.",
+      "proposal": "Liée à « Chute d'objet » ET « Chute de hauteur » (réponse 1 : les deux).",
+      "status": "APPLIQUE_A_VALIDER"
+    },
+    {
+      "code": "A02",
+      "type": "Décision appliquée",
+      "object": "Gants",
+      "finding": "Pas liés aux vibrations dans le modèle.",
+      "proposal": "Ajout de « Vibration » (réponse 2).",
+      "status": "APPLIQUE_A_VALIDER"
+    },
+    {
+      "code": "A03",
+      "type": "Décision appliquée",
+      "object": "Lunettes / visière de protection",
+      "finding": "Liées à la coupure seulement.",
+      "proposal": "Ajout de « Chute d'objet » et « Produit chimique » pour les projections et éclaboussures (réponse 3). À ajuster si vous ne voulez que les projections.",
+      "status": "APPLIQUE_A_VALIDER"
+    },
+    {
+      "code": "A04",
+      "type": "Décision appliquée",
+      "object": "PEINTURE, REVETEMENT DE SOL",
+      "finding": "Absentes du modèle.",
+      "proposal": "Rattachées au lot 14 PEINTURE / REVETEMENTS DE SOL (réponse 5).",
+      "status": "APPLIQUE_A_VALIDER"
+    },
+    {
+      "code": "A05",
+      "type": "Décision appliquée",
+      "object": "Refection voirie et abords",
+      "finding": "Absente du modèle.",
+      "proposal": "Rattachée au lot 21 VOIRIES / RESEAUX DIVERS (réponse 5).",
+      "status": "APPLIQUE_A_VALIDER"
+    },
+    {
+      "code": "A06",
+      "type": "Doublon modèle",
+      "object": "Pose d'une porte intérieure ; Pose d'une menuiserie ; Pose d'une portée d'entrée de bâtiment",
+      "finding": "Ces natures apparaissent dans plusieurs lots du modèle.",
+      "proposal": "Fusion ou conservation multi-lots (réponse 5 : OK). Vérifier le lot par défaut de chacune.",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A07",
+      "type": "Règle à confirmer",
+      "object": "Chaussure de sécurité",
+      "finding": "Cochée dès qu'un risque est présent (règle « tous risques » du modèle).",
+      "proposal": "Garder, ou limiter à certains lots.",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A08",
+      "type": "Règle à confirmer",
+      "object": "Rangement et nettoyage régulier",
+      "finding": "Cochée dès qu'un risque est présent.",
+      "proposal": "Garder comme mesure transversale, ou limiter.",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A09",
+      "type": "Règle à confirmer",
+      "object": "Trousse de premiers secours sur place",
+      "finding": "Cochée dès qu'un risque est présent.",
+      "proposal": "Garder comme mesure transversale.",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A10",
+      "type": "Saisie manuelle",
+      "object": "Eclairage suffisant du chantier",
+      "finding": "Valeur fixe dans le modèle, jamais automatique.",
+      "proposal": "Garder en saisie manuelle, ou ajouter une règle.",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A11",
+      "type": "Saisie manuelle",
+      "object": "Personnel formés aux gestes de premiers secours",
+      "finding": "Valeur fixe dans le modèle.",
+      "proposal": "Garder en saisie manuelle, ou ajouter une règle.",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A12",
+      "type": "Écart matrice / règles",
+      "object": "Eclairage suffisant du chantier",
+      "finding": "matrice seule : 213 tâches sur 213.",
+      "proposal": "Décider : garder la règle, ou ajouter un lien risque → mesure.",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A13",
+      "type": "Écart matrice / règles",
+      "object": "Chaussure de sécurité",
+      "finding": "règle seule : 213 tâches sur 213.",
+      "proposal": "Décider : garder la règle, ou ajouter un lien risque → mesure.",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A14",
+      "type": "Écart matrice / règles",
+      "object": "Trousse de premiers secours sur place",
+      "finding": "règle seule : 213 tâches sur 213.",
+      "proposal": "Décider : garder la règle, ou ajouter un lien risque → mesure.",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A15",
+      "type": "Écart matrice / règles",
+      "object": "Protection des trémies et ouvertures",
+      "finding": "règle seule : 181 tâches sur 213.",
+      "proposal": "Décider : garder la règle, ou ajouter un lien risque → mesure.",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A16",
+      "type": "Écart matrice / règles",
+      "object": "Echafaudages",
+      "finding": "règle seule : 142 tâches sur 213.",
+      "proposal": "Décider : garder la règle, ou ajouter un lien risque → mesure.",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A17",
+      "type": "Écart matrice / règles",
+      "object": "Stockage sécurisé des matériaux / produit dangereux",
+      "finding": "matrice seule : 90 tâches sur 213.",
+      "proposal": "Décider : garder la règle, ou ajouter un lien risque → mesure.",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A18",
+      "type": "Écart matrice / règles",
+      "object": "Tenue de protection",
+      "finding": "règle seule : 73 tâches sur 213.",
+      "proposal": "Décider : garder la règle, ou ajouter un lien risque → mesure.",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A19",
+      "type": "Écart matrice / règles",
+      "object": "Mise à la terre des équipements",
+      "finding": "règle seule : 66 tâches sur 213.",
+      "proposal": "Décider : garder la règle, ou ajouter un lien risque → mesure.",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A20",
+      "type": "Écart matrice / règles",
+      "object": "Formation et autorisation pour engins",
+      "finding": "règle seule : 48 tâches sur 213.",
+      "proposal": "Décider : garder la règle, ou ajouter un lien risque → mesure.",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A21",
+      "type": "Écart matrice / règles",
+      "object": "Gants",
+      "finding": "règle seule : 29 tâches sur 213.",
+      "proposal": "Décider : garder la règle, ou ajouter un lien risque → mesure.",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A22",
+      "type": "Écart matrice / règles",
+      "object": "Tenue de protection",
+      "finding": "matrice seule : 22 tâches sur 213.",
+      "proposal": "Décider : garder la règle, ou ajouter un lien risque → mesure.",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A23",
+      "type": "Défaut de lot à valider",
+      "object": "DESAMIANTAGE",
+      "finding": "7 natures. Mesures communes (socle) : 16.",
+      "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A24",
+      "type": "Défaut de lot à valider",
+      "object": "DEMOLITION",
+      "finding": "17 natures. Mesures communes (socle) : 19.",
+      "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A25",
+      "type": "Défaut de lot à valider",
+      "object": "GROS ŒUVRE",
+      "finding": "21 natures. Mesures communes (socle) : 15.",
+      "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A26",
+      "type": "Défaut de lot à valider",
+      "object": "CHARPENTE",
+      "finding": "12 natures. Mesures communes (socle) : 17.",
+      "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A27",
+      "type": "Défaut de lot à valider",
+      "object": "COUVERTURE",
+      "finding": "13 natures. Mesures communes (socle) : 17.",
+      "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A28",
+      "type": "Défaut de lot à valider",
+      "object": "ETANCHEITE",
+      "finding": "10 natures. Mesures communes (socle) : 17.",
+      "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A29",
+      "type": "Défaut de lot à valider",
+      "object": "RAVALEMENT / ENDUIT",
+      "finding": "12 natures. Mesures communes (socle) : 16.",
+      "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A30",
+      "type": "Défaut de lot à valider",
+      "object": "DOUBLAGE / FAUX PLAFOND / CLOISONS",
+      "finding": "6 natures. Mesures communes (socle) : 16.",
+      "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A31",
+      "type": "Défaut de lot à valider",
+      "object": "ISOLATION",
+      "finding": "10 natures. Mesures communes (socle) : 15.",
+      "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A32",
+      "type": "Défaut de lot à valider",
+      "object": "MENUISERIES INTERIEURES",
+      "finding": "4 natures. Mesures communes (socle) : 15.",
+      "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A33",
+      "type": "Défaut de lot à valider",
+      "object": "SERRURERIE",
+      "finding": "7 natures. Mesures communes (socle) : 20.",
+      "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A34",
+      "type": "Défaut de lot à valider",
+      "object": "MENUISERIES EXTERIEURES",
+      "finding": "4 natures. Mesures communes (socle) : 14.",
+      "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A35",
+      "type": "Défaut de lot à valider",
+      "object": "CARRELAGE / FAIENCE",
+      "finding": "6 natures. Mesures communes (socle) : 10.",
+      "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A36",
+      "type": "Défaut de lot à valider",
+      "object": "PEINTURE / REVETEMENTS DE SOL",
+      "finding": "12 natures. Mesures communes (socle) : 10.",
+      "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A37",
+      "type": "Défaut de lot à valider",
+      "object": "PLOMBERIE",
+      "finding": "9 natures. Mesures communes (socle) : 16.",
+      "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A38",
+      "type": "Défaut de lot à valider",
+      "object": "VENTILATION",
+      "finding": "5 natures. Mesures communes (socle) : 18.",
+      "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A39",
+      "type": "Défaut de lot à valider",
+      "object": "CHAUFFAGE",
+      "finding": "5 natures. Mesures communes (socle) : 14.",
+      "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A40",
+      "type": "Défaut de lot à valider",
+      "object": "ELECTRICITE",
+      "finding": "8 natures. Mesures communes (socle) : 19.",
+      "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A41",
+      "type": "Défaut de lot à valider",
+      "object": "ASCENSEURS",
+      "finding": "5 natures. Mesures communes (socle) : 17.",
+      "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A42",
+      "type": "Défaut de lot à valider",
+      "object": "ESPACES VERTS",
+      "finding": "14 natures. Mesures communes (socle) : 15.",
+      "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
+      "status": "A_VALIDER"
+    },
+    {
+      "code": "A43",
+      "type": "Défaut de lot à valider",
+      "object": "VOIRIES / RESEAUX DIVERS",
+      "finding": "26 natures. Mesures communes (socle) : 17.",
+      "proposal": "Valider les risques par défaut de ce lot (feuille CATEGORIES).",
+      "status": "A_VALIDER"
+    }
+  ]
 }

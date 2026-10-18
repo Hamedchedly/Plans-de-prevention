@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
+import { logActivity } from './activity'
 import type { Profile, Role } from './types'
 
 interface AuthState {
@@ -49,8 +50,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     error,
     signIn: async (email, password) => {
       setError(null)
-      const { error: err } = await supabase.auth.signInWithPassword({ email, password })
+      const { data, error: err } = await supabase.auth.signInWithPassword({ email, password })
       if (err) throw err
+      void logActivity('LOGIN', 'auth', data.user?.id ?? '', { email })
     },
     signOut: async () => { await supabase.auth.signOut() },
     refreshProfile: async () => loadProfile(session?.user.id),

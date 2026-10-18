@@ -6,11 +6,12 @@ import { importReferentielV4 } from '../lib/referentiel'
 import type { AlertRow, Profile, Role } from '../lib/types'
 import { Badge, Button, Card, Notice, errMsg, fieldClass } from '../components/ui'
 
-type Section = 'validations' | 'perimetre' | 'referentiels' | 'alertes' | 'utilisateurs'
+type Section = 'validations' | 'tracabilite' | 'perimetre' | 'referentiels' | 'alertes' | 'utilisateurs'
 
 const SECTIONS: { key: Section; label: string; superOnly: boolean }[] = [
   { key: 'alertes', label: 'Alertes', superOnly: false },
   { key: 'validations', label: 'Validations', superOnly: true },
+  { key: 'tracabilite', label: 'Traçabilité', superOnly: true },
   { key: 'perimetre', label: 'Périmètre', superOnly: true },
   { key: 'referentiels', label: 'Référentiels', superOnly: true },
   { key: 'utilisateurs', label: 'Utilisateurs', superOnly: true },
@@ -30,6 +31,7 @@ export default function Admin() {
       </div>
       {section === 'alertes' && <AlertsSection />}
       {section === 'validations' && isSuper && <ValidationsSection />}
+      {section === 'tracabilite' && isSuper && <TraceSection />}
       {section === 'perimetre' && isSuper && <ScopeSection />}
       {section === 'referentiels' && isSuper && <ReferentielSection userId={profile?.user_id ?? ''} />}
       {section === 'utilisateurs' && isSuper && <UsersSection />}
@@ -125,11 +127,23 @@ function ValidationsSection() {
   }
   useEffect(() => { void load() }, [])
 
-  const decideProposal = async (p: Proposal, approve: boolean) => {
+  const [adjust, setAdjust] = useState<Record<number, { label: string; lots: number[]; lot?: number }>>({})
+  const adjustFor = (p: Proposal) => adjust[p.id] ?? { label: p.payload.label ?? '', lots: p.payload.lots ?? [], lot: p.payload.lot_code }
+
+  const decideProposal = async (p: Proposal, approve: boolean, modified = false) => {
     const c = comments[`p${p.id}`] ?? null
-    const { error } = p.kind === 'CORPS_NAAC'
-      ? await supabase.rpc('decide_corps_naac', { p_id: p.id, p_approve: approve, p_comment: c })
-      : await supabase.rpc('decide_referential', { p_id: p.id, p_status: approve ? 'APPROUVEE' : 'REFUSEE', p_comment: c })
+    const a = adjustFor(p)
+    let error: { message: string } | null = null
+    if (p.kind === 'CORPS_NAAC') {
+      ;({ error } = await supabase.rpc('decide_corps_naac', { p_id: p.id, p_approve: approve, p_comment: c, p_lot: modified ? a.lot ?? null : null }))
+    } else {
+      const adjusted = modified && approve
+        ? { ...p.payload, label: a.label.trim(), lots: a.lots }
+        : undefined
+      ;({ error } = await supabase.rpc('decide_referential', {
+        p_id: p.id, p_status: approve ? (modified ? 'AJUSTEE' : 'APPROUVEE') : 'REFUSEE', p_comment: c, p_adjusted: adjusted ?? null,
+      }))
+    }
     if (error) setErr(error.message); else void load()
   }
 
@@ -161,10 +175,40 @@ function ValidationsSection() {
           </div>
           <p className="text-sm">{describe(p)}</p>
           {p.reason && <p className="mt-1 text-xs text-muted-foreground">Motif : {p.reason}</p>}
+          {p.kind === 'CORPS_NAAC' ? (
+            <div className="mt-2 flex items-center gap-2 text-sm">
+              <span className="text-muted-foreground">Lot retenu :</span>
+              <select className={fieldClass + ' w-auto'} value={adjustFor(p).lot ?? ''} onChange={(e) => setAdjust({ ...adjust, [p.id]: { ...adjustFor(p), lot: Number(e.target.value) } })}>
+                {Object.entries(lots).map(([code, name]) => <option key={code} value={code}>{name}</option>)}
+              </select>
+            </div>
+          ) : (
+            <div className="mt-2 space-y-2">
+              {p.kind === 'NATURE_NOUVELLE' && (
+                <input className={fieldClass} value={adjustFor(p).label} onChange={(e) => setAdjust({ ...adjust, [p.id]: { ...adjustFor(p), label: e.target.value } })} />
+              )}
+              <div className="grid grid-cols-1 gap-1 sm:grid-cols-3 text-sm">
+                {Object.entries(lots).map(([code, name]) => {
+                  const on = adjustFor(p).lots.includes(Number(code))
+                  return (
+                    <label key={code} className="flex items-center gap-2">
+                      <input type="checkbox" checked={on} onChange={() => {
+                        const cur = adjustFor(p).lots
+                        const next = on ? cur.filter((x) => x !== Number(code)) : [...cur, Number(code)]
+                        setAdjust({ ...adjust, [p.id]: { ...adjustFor(p), lots: next } })
+                      }} />
+                      {name}
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
+          )}
           <div className="mt-3 flex flex-wrap gap-2">
             <input className={fieldClass + ' min-w-[200px] flex-1'} placeholder="Commentaire (optionnel)" value={comments[`p${p.id}`] ?? ''}
               onChange={(e) => setComments({ ...comments, [`p${p.id}`]: e.target.value })} />
             <Button onClick={() => void decideProposal(p, true)}>Approuver</Button>
+            <Button variant="ghost" onClick={() => void decideProposal(p, true, true)}>Approuver avec modifications</Button>
             <Button variant="ghost" onClick={() => void decideProposal(p, false)}>Refuser</Button>
           </div>
         </Card>
@@ -185,6 +229,130 @@ function ValidationsSection() {
         </Card>
       ))}
       {requests.length === 0 && <Notice>Aucune demande d’exclusion en attente.</Notice>}
+    </div>
+  )
+}
+
+interface TraceRow {
+  entry_id: number; occurred_at: string; actor_user_id: string | null; actor_email: string | null; action: string
+  category: string; entity: string; entity_id: string; summary: string; payload: unknown; highlighted: boolean; highlight_note: string | null
+}
+
+const esc = (v: unknown) => String(v ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] ?? c))
+
+/** Traçabilité : toutes les entrées, catégorisées, filtrables, avec surbrillance et exports PDF séparés. */
+function TraceSection() {
+  const today = new Date()
+  const monthAgo = new Date(Date.now() - 30 * 86400000)
+  const [from, setFrom] = useState(monthAgo.toISOString().slice(0, 10))
+  const [to, setTo] = useState(today.toISOString().slice(0, 10))
+  const [user, setUser] = useState('')
+  const [category, setCategory] = useState('')
+  const [onlyErrors, setOnlyErrors] = useState(false)
+  const [onlyHighlighted, setOnlyHighlighted] = useState(false)
+  const [rows, setRows] = useState<TraceRow[]>([])
+  const [users, setUsers] = useState<{ user_id: string; email: string | null }[]>([])
+  const [err, setErr] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  const load = async () => {
+    setLoading(true); setErr(null)
+    const { data, error } = await supabase.rpc('traceability', {
+      p_from: new Date(from).toISOString(),
+      p_to: new Date(new Date(to).getTime() + 86400000).toISOString(),
+      p_user: user || null, p_category: null, p_only_errors: onlyErrors,
+    })
+    setLoading(false)
+    if (error) { setErr(error.message); return }
+    setRows((data ?? []) as TraceRow[])
+  }
+  useEffect(() => {
+    void (async () => {
+      const { data } = await supabase.from('profiles').select('user_id,email').order('email')
+      setUsers((data ?? []) as { user_id: string; email: string | null }[])
+    })()
+    void load()
+  }, [])
+
+  const categories = [...new Set(rows.map((r) => r.category))].sort()
+  const visible = rows.filter((r) => (!category || r.category === category) && (!onlyHighlighted || r.highlighted))
+
+  const toggleHighlight = async (r: TraceRow) => {
+    const note = r.highlighted ? null : window.prompt('Note pour l’examen ultérieur (optionnel) :') ?? ''
+    if (!r.highlighted && note === null) return
+    const { error } = await supabase.rpc('set_trace_highlight', { p_entry: r.entry_id, p_on: !r.highlighted, p_note: note })
+    if (error) setErr(error.message); else void load()
+  }
+
+  const printPdf = (title: string, list: TraceRow[]) => {
+    const w = window.open('', '_blank')
+    if (!w) { setErr('Autorisez les fenêtres pop-up pour exporter le PDF.'); return }
+    const body = list.map((r) => `<tr class="${r.highlighted ? 'hl' : ''}">
+      <td>${esc(new Date(r.occurred_at).toLocaleString('fr-FR'))}</td><td>${esc(r.actor_email ?? '—')}</td>
+      <td>${esc(r.category)}</td><td>${esc(r.action)}</td><td>${esc(r.summary)}</td>
+      <td>${r.highlighted ? esc('⚑ ' + (r.highlight_note ?? '')) : ''}</td></tr>`).join('')
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title>
+      <style>body{font-family:Arial,sans-serif;font-size:11px;margin:16px}h1{font-size:16px}
+      table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:4px;text-align:left;vertical-align:top}
+      th{background:#eee}tr.hl td{background:#fff3c4}</style></head><body>
+      <h1>${esc(title)}</h1><p>Période : ${esc(from)} au ${esc(to)} · ${list.length} entrée(s) · généré le ${esc(new Date().toLocaleString('fr-FR'))}</p>
+      <table><thead><tr><th>Date</th><th>Utilisateur</th><th>Catégorie</th><th>Action</th><th>Détail</th><th>Surbrillance</th></tr></thead>
+      <tbody>${body}</tbody></table></body></html>`)
+    w.document.close()
+    w.focus(); w.print()
+  }
+
+  const isCommandes = (r: TraceRow) => r.category.startsWith('Nature') || ['Suivi des plans', 'Périmètre', 'Erreurs'].includes(r.category)
+  const isConnexionsAjouts = (r: TraceRow) => ['Connexions', 'Imports', 'Référentiel'].includes(r.category)
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-end gap-3">
+        <div><label className="mb-1 block text-xs text-muted-foreground">Du</label><input type="date" className={fieldClass} value={from} onChange={(e) => setFrom(e.target.value)} /></div>
+        <div><label className="mb-1 block text-xs text-muted-foreground">Au</label><input type="date" className={fieldClass} value={to} onChange={(e) => setTo(e.target.value)} /></div>
+        <div>
+          <label className="mb-1 block text-xs text-muted-foreground">Utilisateur</label>
+          <select className={fieldClass} value={user} onChange={(e) => setUser(e.target.value)}>
+            <option value="">Tous</option>
+            {users.map((u) => <option key={u.user_id} value={u.user_id}>{u.email ?? u.user_id}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs text-muted-foreground">Catégorie</label>
+          <select className={fieldClass} value={category} onChange={(e) => setCategory(e.target.value)}>
+            <option value="">Toutes</option>
+            {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={onlyErrors} onChange={(e) => setOnlyErrors(e.target.checked)} />Erreurs seulement</label>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={onlyHighlighted} onChange={(e) => setOnlyHighlighted(e.target.checked)} />Surbrillance seulement</label>
+        <Button variant="ghost" onClick={() => void load()} disabled={loading}>{loading ? 'Chargement…' : 'Appliquer'}</Button>
+        <span className="flex-1" />
+        <Button variant="ghost" onClick={() => printPdf('Activité sur les commandes', visible.filter(isCommandes))}>PDF : activité commandes</Button>
+        <Button variant="ghost" onClick={() => printPdf('Connexions et ajouts', visible.filter(isConnexionsAjouts))}>PDF : connexions et ajouts</Button>
+      </div>
+      {err && <Notice tone="error">{err}</Notice>}
+      <div className="overflow-x-auto rounded-lg border border-border bg-card">
+        <table className="w-full text-sm">
+          <thead className="bg-muted text-left text-xs text-muted-foreground">
+            <tr><th className="px-3 py-2">Date</th><th className="px-3 py-2">Utilisateur</th><th className="px-3 py-2">Catégorie</th><th className="px-3 py-2">Action</th><th className="px-3 py-2">Détail</th><th className="px-3 py-2" /></tr>
+          </thead>
+          <tbody>
+            {visible.slice(0, 500).map((r) => (
+              <tr key={r.entry_id} className={`border-t border-border align-top ${r.highlighted ? 'bg-amber-50' : ''} ${r.action === 'ERROR' ? 'text-red-700' : ''}`}>
+                <td className="px-3 py-2 whitespace-nowrap">{new Date(r.occurred_at).toLocaleString('fr-FR')}</td>
+                <td className="px-3 py-2">{r.actor_email ?? '—'}</td>
+                <td className="px-3 py-2"><Badge>{r.category}</Badge></td>
+                <td className="px-3 py-2 font-mono text-xs">{r.action}</td>
+                <td className="px-3 py-2">{r.summary}{r.highlight_note && <div className="text-xs text-amber-800">⚑ {r.highlight_note}</div>}</td>
+                <td className="px-3 py-2 text-right"><Button variant="ghost" onClick={() => void toggleHighlight(r)}>{r.highlighted ? 'Retirer' : 'Surligner'}</Button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {visible.length > 500 && <p className="p-3 text-xs text-muted-foreground">500 premières entrées affichées sur {visible.length} : réduisez la période.</p>}
+        {!loading && visible.length === 0 && <p className="p-3 text-sm text-muted-foreground">Aucune entrée sur cette sélection.</p>}
+      </div>
     </div>
   )
 }

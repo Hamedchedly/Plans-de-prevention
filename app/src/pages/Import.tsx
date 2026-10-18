@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { mapCommande, mapSuivi, readRows, sha256, type ImportKind } from '../lib/importers'
 import { Button, Card, Notice, errMsg, fieldClass } from '../components/ui'
+import { logActivity, logError } from '../lib/activity'
 
 const chunk = <T,>(xs: T[], n = 200) => Array.from({ length: Math.ceil(xs.length / n) }, (_, i) => xs.slice(i * n, i * n + n))
 const check = (res: { error: { message: string } | null }) => { if (res.error) throw new Error(res.error.message) }
@@ -77,12 +78,14 @@ export default function ImportPage() {
         status: 'TERMINE', inserted_count: res.inserted, updated_count: res.updated,
         summary: { scope_recalculated: res.scopeRecalculated },
       }).eq('id', importId))
+      void logActivity('IMPORT', kind, importId, { file: file.name, summary: `${res.inserted} nouvelles, ${res.updated} mises à jour` })
       setLog([
         `${rows.length} lignes lues dans « ${file.name} ».`,
         `${res.inserted} nouvelle(s) ligne(s), ${res.updated} mise(s) à jour (données source uniquement).`,
         ...(kind === 'COMMANDES' ? [`Périmètre recalculé sur ${res.scopeRecalculated} commande(s) non fixée(s) manuellement.`] : []),
       ])
     } catch (e) {
+      logError('import ' + kind, e)
       setErr(errMsg(e))
       if (importId) await supabase.from('imports').update({ status: 'ERREUR', summary: { error: errMsg(e) } }).eq('id', importId)
     } finally {

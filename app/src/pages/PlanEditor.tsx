@@ -4,6 +4,7 @@ import { corpsMatch, getReferentiel, lotFromCorpsEtat, type Referentiel } from '
 import { computeMeasures, fold, proposeRisks, searchNatures, type NatureRef } from '../lib/rules'
 import type { OrderRow, PlanStatus } from '../lib/types'
 import { Badge, Button, Card, Notice, fieldClass, errMsg } from '../components/ui'
+import { logError } from '../lib/activity'
 
 type RiskState = { checked: boolean; origin: 'LOT_DEFAUT' | 'NATURE' | 'MANUEL' }
 type MeasureState = { checked: boolean; origin: 'AUTO' | 'MANUEL' }
@@ -16,7 +17,7 @@ interface Draft {
   measures: Map<string, MeasureState>
 }
 
-const MIN_CHARS = 4
+const MIN_CHARS = 1
 const EDITABLE: PlanStatus[] = ['NON_QUALIFIEE', 'A_ENVOYER']
 const STATUS_LABEL: Record<PlanStatus, string> = {
   NON_QUALIFIEE: 'Non qualifiée', A_ENVOYER: 'À envoyer', EN_ATTENTE_RETOUR: 'En attente retour entreprise', ARCHIVEE: 'Archivée',
@@ -112,6 +113,7 @@ export default function PlanEditor({ order, onBack }: { order: OrderRow; onBack:
         if (!alive) return
         setRef(r); setDraft(d)
       } catch (e) {
+        logError('chargement du plan', e)
         if (alive) setErr(errMsg(e))
       } finally {
         if (alive) setLoading(false)
@@ -185,6 +187,8 @@ export default function PlanEditor({ order, onBack }: { order: OrderRow; onBack:
   }, [ref, hits, searching])
 
   const suggested = detected?.lot ?? null
+  const myPending = useMemo(() => (ref ? ref.natures.filter((n) => n.pending) : []), [ref])
+  const hitIds = useMemo(() => new Set(hits.map((h) => h.nature.id)), [hits])
   const lotOrder = useMemo(() => {
     if (!ref) return []
     const all = ref.lots.map((l) => l.code).filter((c) => !searching || groups.has(c))
@@ -222,8 +226,8 @@ export default function PlanEditor({ order, onBack }: { order: OrderRow; onBack:
         commit({ ...draft, natures, lots: lotsMap }, true)
       }
       setMsg('Nature ajoutée pour votre session. Elle sera généralisée après validation du Super Admin.')
-      setShowAdd(false); setNewNature({ label: '', lots: [], reason: '' }); setQuery('')
-    } catch (e) { setErr(errMsg(e)) } finally { setBusy(false) }
+      setShowAdd(false); setNewNature({ label: '', lots: [], reason: '' })
+    } catch (e) { logError('proposition de nature', e); setErr(errMsg(e)) } finally { setBusy(false) }
   }
 
   const proposeRuleUpdate = async (n: NatureRef) => {
@@ -240,7 +244,7 @@ export default function PlanEditor({ order, onBack }: { order: OrderRow; onBack:
       if (error) throw new Error(error.message)
       setRef(await getReferentiel(true))
       setMsg(`Règle proposée pour « ${n.label} ». Elle sera généralisée après validation du Super Admin.`)
-    } catch (e) { setErr(errMsg(e)) } finally { setBusy(false) }
+    } catch (e) { logError('proposition de règle', e); setErr(errMsg(e)) } finally { setBusy(false) }
   }
 
   const [pickLot, setPickLot] = useState<number | ''>('')
@@ -257,7 +261,7 @@ export default function PlanEditor({ order, onBack }: { order: OrderRow; onBack:
       const hit = corpsMatch(corps, fresh.naacCorps, order.naac_code)
       if (hit?.lotCode) setDetected({ lot: hit.lotCode, source: 'AUTO_ANALYSIS', validated: false })
       setMsg('Correspondance proposée. Elle servira de suggestion pour vous, puis sera validée par le Super Admin.')
-    } catch (e) { setErr(errMsg(e)) } finally { setBusy(false) }
+    } catch (e) { logError('correspondance NAAC', e); setErr(errMsg(e)) } finally { setBusy(false) }
   }
 
   // ---- enregistrement et statut
@@ -277,7 +281,7 @@ export default function PlanEditor({ order, onBack }: { order: OrderRow; onBack:
       if (error) throw new Error(error.message)
       if (status === 'NON_QUALIFIEE') setStatus('A_ENVOYER')
       setMsg('Plan enregistré.')
-    } catch (e) { setErr(errMsg(e)) } finally { setBusy(false) }
+    } catch (e) { logError('enregistrement du plan', e); setErr(errMsg(e)) } finally { setBusy(false) }
   }
 
   const advance = async (to: PlanStatus) => {
@@ -287,7 +291,7 @@ export default function PlanEditor({ order, onBack }: { order: OrderRow; onBack:
       if (error) throw new Error(error.message)
       setStatus(to)
       setMsg(`Statut : ${STATUS_LABEL[to]}.`)
-    } catch (e) { setErr(errMsg(e)) } finally { setBusy(false) }
+    } catch (e) { logError('changement de statut', e); setErr(errMsg(e)) } finally { setBusy(false) }
   }
 
   // ---- rendu
@@ -355,7 +359,7 @@ export default function PlanEditor({ order, onBack }: { order: OrderRow; onBack:
       <Card>
         <h2 className="mb-2 font-semibold">1. Nature des travaux</h2>
         <div className="flex flex-wrap gap-2">
-          <input className={fieldClass + ' flex-1 min-w-[260px]'} value={query} placeholder="Saisir au moins 4 lettres, ou ouvrir la liste par lot"
+          <input className={fieldClass + ' flex-1 min-w-[260px]'} value={query} placeholder="Commencer à saisir, ou ouvrir la liste par lot"
             onFocus={() => setOpen(true)} onChange={(e) => { setQuery(e.target.value); setOpen(true) }} disabled={!editable} />
           <Button variant="ghost" onClick={() => { setQuery(order.nature_text ?? ''); setOpen(true) }} disabled={!editable || !order.nature_text}>
             Reprendre le libellé source
@@ -366,6 +370,19 @@ export default function PlanEditor({ order, onBack }: { order: OrderRow; onBack:
         {editable && open && (
           <div className="mt-2 rounded-md border border-border">
             <div className="max-h-96 overflow-y-auto">
+              {myPending.length > 0 && (
+                <div className="border-b border-border bg-amber-50/50">
+                  <div className="px-3 py-2 text-xs font-semibold uppercase text-muted-foreground">Mes propositions (en attente de validation)</div>
+                  {myPending.filter((n) => !searching || hitIds.has(n.id)).map((n) => (
+                    <label key={`pending-${n.id}`} className="flex items-center gap-2 px-6 py-1.5 text-sm hover:bg-muted">
+                      <input type="checkbox" checked={draft.natures.some((x) => x.id === n.id)} onChange={() => toggleNature(n)} />
+                      <span className="flex-1">{n.label}</span>
+                      <span className="text-xs text-muted-foreground">{n.lots.map(lotName).join(', ')}</span>
+                      <Badge tone="warn">en attente</Badge>
+                    </label>
+                  ))}
+                </div>
+              )}
               {searching && groups.size === 0 && <p className="p-3 text-sm text-muted-foreground">Aucune nature trouvée. Vous pouvez en proposer une nouvelle ci-dessous.</p>}
               {lotOrder.map((lot) => {
                 const list = groups.get(lot) ?? []
@@ -421,13 +438,16 @@ export default function PlanEditor({ order, onBack }: { order: OrderRow; onBack:
 
         <div className="mt-3 space-y-2">
           {draft.natures.length === 0 && <p className="text-sm text-muted-foreground">Aucune nature retenue : vous pouvez choisir les lots directement ci-dessous.</p>}
+          {draft.natures.length > 1 && (
+            <Notice>Plusieurs natures sur cette fiche : la combinaison ne vaut que pour cette fiche et n’est pas généralisée au référentiel.</Notice>
+          )}
           {draft.natures.map((n) => (
             <div key={n.id} className="flex flex-wrap items-center gap-2 rounded-md border border-border px-3 py-2 text-sm">
               <span className="font-medium">{n.label}</span>
               {n.pending && <Badge tone="warn">en attente de validation</Badge>}
               <span className="text-xs text-muted-foreground">lots : {n.lots.map(lotName).join(', ')}</span>
               <span className="flex-1" />
-              {editable && !n.pending && differs(n) && (
+              {editable && !n.pending && draft.natures.length === 1 && differs(n) && (
                 <Button variant="ghost" onClick={() => void proposeRuleUpdate(n)} disabled={busy}>Mettre à jour la règle</Button>
               )}
               {editable && <Button variant="ghost" onClick={() => toggleNature(n)}>Retirer</Button>}

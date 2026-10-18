@@ -282,42 +282,42 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
         actions={<Button variant="ghost" onClick={() => void load()} disabled={loading}>Actualiser</Button>}
       />
 
-      <Card className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-        <div className="md:col-span-2">
-          <label className="mb-1 block text-xs text-muted-foreground">Recherche</label>
-          <input className={fieldClass} value={q} onChange={(e) => setQ(e.target.value)} placeholder="N° commande, adresse, nature…" />
-        </div>
+      <Card className="grid grid-cols-2 items-end gap-3 md:flex md:flex-wrap">
         <div>
           <label className="mb-1 block text-xs text-muted-foreground">Secteur</label>
-          <select className={fieldClass} value={sector} onChange={(e) => setSector(e.target.value)}>
+          <select className={`${fieldClass} md:w-32`} value={sector} onChange={(e) => setSector(e.target.value)}>
             <option value="TOUS">Tous</option>
             {sectors.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-xs text-muted-foreground">Lot (suggéré)</label>
-          <select className={fieldClass} value={lotFilter} onChange={(e) => setLotFilter(e.target.value)}>
-            <option value="">Tous</option>
-            <option value="NONE">Sans lot identifié</option>
-            {lotOptions.map((l) => <option key={l.code} value={String(l.code)}>{l.name}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-xs text-muted-foreground">Nature (approx.)</label>
-          <select className={fieldClass} value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)}>
-            <option value="">Toutes</option>
-            {groupOptions.map((g) => <option key={g} value={g}>{g}</option>)}
           </select>
         </div>
         {isManager && (
           <div>
             <label className="mb-1 block text-xs text-muted-foreground">Chargé</label>
-            <select className={fieldClass} value={operator} onChange={(e) => setOperator(e.target.value)}>
+            <select className={`${fieldClass} md:w-40`} value={operator} onChange={(e) => setOperator(e.target.value)}>
               <option value="">Tous</option>
               {operators.map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
           </div>
         )}
+        <div>
+          <label className="mb-1 block text-xs text-muted-foreground">Recherche</label>
+          <input className={`${fieldClass} md:w-56`} value={q} onChange={(e) => setQ(e.target.value)} placeholder="N° commande, adresse, nature…" />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs text-muted-foreground">Lot (suggéré)</label>
+          <select className={`${fieldClass} md:w-44`} value={lotFilter} onChange={(e) => setLotFilter(e.target.value)}>
+            <option value="">Tous</option>
+            <option value="NONE">Sans lot identifié</option>
+            {lotOptions.map((l) => <option key={l.code} value={String(l.code)}>{l.name}</option>)}
+          </select>
+        </div>
+        <div className="col-span-2 md:col-span-1">
+          <label className="mb-1 block text-xs text-muted-foreground">Nature (approx.)</label>
+          <select className={`${fieldClass} md:w-44`} value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)}>
+            <option value="">Toutes</option>
+            {groupOptions.map((g) => <option key={g} value={g}>{g}</option>)}
+          </select>
+        </div>
       </Card>
 
       <Card className="space-y-3">
@@ -335,6 +335,16 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
               className={i === activePreset ? 'font-semibold text-foreground' : 'hover:text-foreground'}>{p.label}</button>
           ))}
         </div>
+        {!isTrashView && cutoff != null && hiddenOld > 0 && (
+          <Notice tone="warn">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span>
+                {hiddenOld} commande{hiddenOld > 1 ? 's' : ''} plus ancienne{hiddenOld > 1 ? 's' : ''} que le filtre « {PRESETS[activePreset].label} » {hiddenOld > 1 ? 'sont masquées' : 'est masquée'}.
+              </span>
+              <Button variant="ghost" size="sm" onClick={() => setPreset(PRESETS.length - 1)}>Tout afficher</Button>
+            </div>
+          </Notice>
+        )}
       </Card>
 
       <div className="flex flex-wrap items-center gap-1 border-b border-border">
@@ -378,16 +388,6 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
 
       {err && <Notice tone="error">{err}</Notice>}
       {notice && <Notice tone="ok">{notice}</Notice>}
-      {!isTrashView && cutoff != null && hiddenOld > 0 && (
-        <Notice tone="warn">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span>
-              {hiddenOld} commande{hiddenOld > 1 ? 's' : ''} plus ancienne{hiddenOld > 1 ? 's' : ''} que le filtre « {PRESETS[activePreset].label} » {hiddenOld > 1 ? 'sont masquées' : 'est masquée'}.
-            </span>
-            <Button variant="ghost" size="sm" onClick={() => setPreset(PRESETS.length - 1)}>Tout afficher</Button>
-          </div>
-        </Notice>
-      )}
 
       {loading ? <p className="text-sm text-muted-foreground">Chargement des commandes…</p> : list.length === 0 ? (
         <Card className="p-0">

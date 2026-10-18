@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import * as XLSX from 'xlsx'
 import { supabase } from '../lib/supabase'
-import type { OrderRow } from '../lib/types'
 import { Badge, Button, Card, Notice, errMsg, fieldClass } from '../components/ui'
 
 export interface CompanyRow {
@@ -29,26 +28,39 @@ export async function fetchCompanies(): Promise<CompanyRow[]> {
   return (data ?? []) as CompanyRow[]
 }
 
-async function fetchAllOrders(): Promise<OrderRow[]> {
+async function fetchOrderCounts(): Promise<Map<string, number>> {
   const page = 1000
-  const out: OrderRow[] = []
+  const out = new Map<string, number>()
   for (let from = 0; ; from += page) {
-    const { data, error } = await supabase.from('orders').select('*').order('order_number').range(from, from + page - 1)
+    const { data, error } = await supabase.from('orders').select('order_number,isis_code').order('order_number').range(from, from + page - 1)
     if (error) throw new Error(error.message)
-    out.push(...((data ?? []) as OrderRow[]))
+    for (const o of (data ?? []) as { isis_code: string | null }[]) if (o.isis_code) out.set(o.isis_code, (out.get(o.isis_code) ?? 0) + 1)
     if (!data || data.length < page) break
   }
   return out
 }
 
-const HEADERS = ['N° commande', 'Date', 'Secteur', 'Adresse', 'Nature (source)', 'Entreprise (n°)', 'Nom de l’entreprise', 'Email OS', 'Nom du dirigeant', 'Email du dirigeant', 'Tél. dirigeant', 'Tél. entreprise']
+/** Champs importants pour les envois mailto : nom de l'entreprise et email OS. */
+export const isComplete = (c: CompanyRow | undefined) => Boolean(c?.name && c?.os_email)
 
-/** Tableau Excel : une ligne par commande, classée par numéro de commande, avec les infos de l'entreprise. */
+type Tab = 'REMPLIES' | 'A_VERIFIER' | 'A_COMPLETER'
+const TABS: { key: Tab; label: string; hint: string }[] = [
+  { key: 'REMPLIES', label: 'Remplies', hint: 'Nom et email OS validés' },
+  { key: 'A_VERIFIER', label: 'En attente de vérification', hint: 'Informations proposées, pas encore validées' },
+  { key: 'A_COMPLETER', label: 'À compléter', hint: 'Nom ou email OS manquant' },
+]
+const HEADERS = ['Entreprise (n°)', 'Nombre de commandes', 'Nom de l’entreprise', 'Email OS', 'Nom du dirigeant', 'Email du dirigeant', 'Tél. dirigeant', 'Tél. entreprise']
+
+interface Entry { isis: string; count: number; company: CompanyRow | undefined; tab: Tab }
+
+/** Une ligne par entreprise (numéro ENTN_NUM), triable par nombre de commandes, classée par onglet. */
 export function CompaniesSection() {
-  const [orders, setOrders] = useState<OrderRow[]>([])
+  const [counts, setCounts] = useState<Map<string, number>>(new Map())
   const [companies, setCompanies] = useState<CompanyRow[]>([])
+  const [pending, setPending] = useState<Set<string>>(new Set())
+  const [tab, setTab] = useState<Tab>('A_COMPLETER')
   const [q, setQ] = useState('')
-  const [missingOnly, setMissingOnly] = useState(false)
+  const [sort, setSort] = useState<'COMMANDES' | 'NUMERO'>('COMMANDES')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -56,36 +68,43 @@ export function CompaniesSection() {
 
   const load = async () => {
     setErr(null)
-    try { const [o, c] = await Promise.all([fetchAllOrders(), fetchCompanies()]); setOrders(o); setCompanies(c) } catch (e) { setErr(errMsg(e)) }
+    try {
+      const [c, comps, prop] = await Promise.all([
+        fetchOrderCounts(), fetchCompanies(),
+        supabase.from('company_proposals').select('isis_code').eq('status', 'EN_ATTENTE'),
+      ])
+      if (prop.error) throw new Error(prop.error.message)
+      setCounts(c); setCompanies(comps)
+      setPending(new Set(((prop.data ?? []) as { isis_code: string }[]).map((r) => r.isis_code)))
+    } catch (e) { setErr(errMsg(e)) }
   }
   useEffect(() => { void load() }, [])
 
-  const byIsis = useMemo(() => new Map(companies.map((c) => [c.isis_code, c])), [companies])
-  const countByIsis = useMemo(() => {
-    const m = new Map<string, number>()
-    orders.forEach((o) => { if (o.isis_code) m.set(o.isis_code, (m.get(o.isis_code) ?? 0) + 1) })
-    return m
-  }, [orders])
-  const isisList = useMemo(() => [...countByIsis.entries()].sort((a, b) => b[1] - a[1]).map(([isis]) => isis), [countByIsis])
-  const incomplete = (isis: string) => { const c = byIsis.get(isis); return !c?.name || !c?.os_email }
-  const shown = isisList.filter((isis) => {
-    const c = byIsis.get(isis)
-    if (missingOnly && !incomplete(isis)) return false
-    const hay = `${isis} ${c?.name ?? ''} ${c?.os_email ?? ''}`.toLowerCase()
-    return !q || hay.includes(q.toLowerCase())
-  })
+  const entries: Entry[] = useMemo(() => {
+    const byIsis = new Map(companies.map((c) => [c.isis_code, c]))
+    const all = new Set([...counts.keys(), ...byIsis.keys()])
+    return [...all].map((isis) => {
+      const company = byIsis.get(isis)
+      const tabOf: Tab = pending.has(isis) ? 'A_VERIFIER' : isComplete(company) ? 'REMPLIES' : 'A_COMPLETER'
+      return { isis, count: counts.get(isis) ?? 0, company, tab: tabOf }
+    })
+  }, [counts, companies, pending])
+
+  const numberOf = (t: Tab) => entries.filter((e) => e.tab === t).length
+  const shown = entries
+    .filter((e) => e.tab === tab)
+    .filter((e) => !q || `${e.isis} ${e.company?.name ?? ''} ${e.company?.os_email ?? ''}`.toLowerCase().includes(q.toLowerCase()))
+    .sort((a, b) => (sort === 'COMMANDES' ? b.count - a.count || a.isis.localeCompare(b.isis) : a.isis.localeCompare(b.isis)))
 
   const exportXlsx = () => {
-    const rows = orders.map((o) => {
-      const c = o.isis_code ? byIsis.get(o.isis_code) : undefined
-      return [o.order_number, o.order_date ?? '', o.sector_code ?? '', [o.address, o.city].filter(Boolean).join(', '),
-        o.nature_text ?? '', o.isis_code ?? '', c?.name ?? '', c?.os_email ?? '', c?.director_name ?? '',
-        c?.director_email ?? '', c?.director_phone ?? '', c?.company_phone ?? '']
-    })
+    const rows = [...entries].sort((a, b) => b.count - a.count || a.isis.localeCompare(b.isis)).map((e) => [
+      e.isis, e.count, e.company?.name ?? '', e.company?.os_email ?? '', e.company?.director_name ?? '',
+      e.company?.director_email ?? '', e.company?.director_phone ?? '', e.company?.company_phone ?? '',
+    ])
     const ws = XLSX.utils.aoa_to_sheet([HEADERS, ...rows])
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Entreprises')
-    XLSX.writeFile(wb, `entreprises_par_commande_${new Date().toISOString().slice(0, 10)}.xlsx`)
+    XLSX.writeFile(wb, `entreprises_${new Date().toISOString().slice(0, 10)}.xlsx`)
   }
 
   const importXlsx = async (file: File) => {
@@ -102,7 +121,6 @@ export function CompaniesSection() {
         name: col('Nom de l’entreprise'), os_email: col('Email OS'), director_name: col('Nom du dirigeant'),
         director_email: col('Email du dirigeant'), director_phone: col('Tél. dirigeant'), company_phone: col('Tél. entreprise'),
       }
-      const merged = new Map<string, Record<string, string | null>>()
       const seen = new Map<string, Record<string, string | null>>()
       const conflictList: string[] = []
       for (const row of matrix.slice(1)) {
@@ -122,9 +140,8 @@ export function CompaniesSection() {
         const base = { ...(prev ?? {}) }
         for (const k of Object.keys(values)) if (!base[k] && values[k]) base[k] = values[k]
         seen.set(isis, base)
-        merged.set(isis, base)
       }
-      const payload = [...merged.entries()].map(([isis_code, v]) => ({ isis_code, ...v }))
+      const payload = [...seen.entries()].map(([isis_code, v]) => ({ isis_code, ...v }))
       let n = 0
       for (let i = 0; i < payload.length; i += 200) {
         const { data, error } = await supabase.rpc('upsert_companies', { p_rows: payload.slice(i, i + 200) })
@@ -147,8 +164,8 @@ export function CompaniesSection() {
   return (
     <Card className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="mr-auto font-semibold">Entreprises ({isisList.length} numéros, {companies.length} fiches)</h2>
-        <Button variant="ghost" onClick={exportXlsx} disabled={!orders.length}>Exporter Excel</Button>
+        <h2 className="mr-auto font-semibold">Entreprises ({entries.length})</h2>
+        <Button variant="ghost" onClick={exportXlsx} disabled={!entries.length}>Exporter Excel</Button>
         <label className="inline-flex cursor-pointer items-center rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted">
           Importer Excel
           <input type="file" accept=".xlsx,.xls" className="hidden" disabled={busy}
@@ -156,19 +173,34 @@ export function CompaniesSection() {
         </label>
       </div>
       <p className="text-xs text-muted-foreground">
-        Exportez le tableau, complétez-le dans Excel (une ligne par commande, colonnes entreprise à remplir) puis réimportez-le sans changer les en-têtes.
-        Les fiches sont identifiées par le numéro d’entreprise (ENTN_NUM).
+        Une ligne par numéro d’entreprise. Exportez, complétez les colonnes d’informations dans Excel, puis réimportez sans changer les en-têtes.
+        La colonne « Nombre de commandes » est indicative et n’est pas réimportée.
       </p>
+
+      <div className="flex flex-wrap gap-2 border-b border-border">
+        {TABS.map((t) => (
+          <button key={t.key} onClick={() => setTab(t.key)} title={t.hint}
+            className={`-mb-px border-b-2 px-3 py-2 text-sm ${tab === t.key ? 'border-primary font-semibold' : 'border-transparent text-muted-foreground'}`}>
+            {t.label} <span className="text-xs">({numberOf(t.key)})</span>
+          </button>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">{TABS.find((t) => t.key === tab)?.hint}.</p>
+
       <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-[220px] flex-1">
           <label className="mb-1 block text-xs text-muted-foreground">Recherche (n°, nom, email OS)</label>
           <input className={fieldClass} value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
-        <label className="flex items-center gap-2 pb-2 text-sm">
-          <input type="checkbox" checked={missingOnly} onChange={(e) => setMissingOnly(e.target.checked)} />
-          Fiches incomplètes seulement
-        </label>
+        <div>
+          <label className="mb-1 block text-xs text-muted-foreground">Trier par</label>
+          <select className={fieldClass} value={sort} onChange={(e) => setSort(e.target.value as 'COMMANDES' | 'NUMERO')}>
+            <option value="COMMANDES">Nombre de commandes (décroissant)</option>
+            <option value="NUMERO">Numéro d’entreprise</option>
+          </select>
+        </div>
       </div>
+
       {msg && <Notice tone="ok">{msg}</Notice>}
       {conflicts.length > 0 && (
         <Notice tone="error">
@@ -177,40 +209,37 @@ export function CompaniesSection() {
         </Notice>
       )}
       {err && <Notice tone="error">{err}</Notice>}
+
       <div className="overflow-x-auto rounded-md border border-border">
         <table className="w-full text-sm">
           <thead className="bg-muted text-left text-xs text-muted-foreground">
             <tr>
               <th className="px-3 py-2">Entreprise (n°)</th>
-              <th className="px-3 py-2">Commandes</th>
+              <th className="px-3 py-2 text-right">Commandes</th>
               <th className="px-3 py-2">Nom</th>
               <th className="px-3 py-2">Email OS</th>
               <th className="px-3 py-2">Dirigeant</th>
-              <th className="px-3 py-2">Statut</th>
               <th className="px-3 py-2 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {shown.slice(0, 300).map((isis) => {
-              const c = byIsis.get(isis)
-              return (
-                <tr key={isis} className="border-t border-border">
-                  <td className="px-3 py-2 font-mono text-xs">{isis}</td>
-                  <td className="px-3 py-2">{countByIsis.get(isis)}</td>
-                  <td className="px-3 py-2">{c?.name ?? <span className="text-muted-foreground">—</span>}</td>
-                  <td className="px-3 py-2">{c?.os_email ?? <span className="text-muted-foreground">—</span>}</td>
-                  <td className="px-3 py-2">{c?.director_name ?? <span className="text-muted-foreground">—</span>}</td>
-                  <td className="px-3 py-2">{incomplete(isis) ? <Badge tone="warn">À compléter</Badge> : <Badge tone="ok">Complète</Badge>}</td>
-                  <td className="px-3 py-2 text-right">
-                    {c && <Button variant="ghost" onClick={() => void remove(isis)}>Supprimer</Button>}
-                  </td>
-                </tr>
-              )
-            })}
+            {shown.slice(0, 300).map((e) => (
+              <tr key={e.isis} className="border-t border-border">
+                <td className="px-3 py-2 font-mono text-xs">{e.isis}</td>
+                <td className="px-3 py-2 text-right font-semibold">{e.count}</td>
+                <td className="px-3 py-2">{e.company?.name ?? <span className="text-muted-foreground">manquant</span>}</td>
+                <td className="px-3 py-2">{e.company?.os_email ?? <span className="text-muted-foreground">manquant</span>}</td>
+                <td className="px-3 py-2">{e.company?.director_name ?? <span className="text-muted-foreground">—</span>}</td>
+                <td className="px-3 py-2 text-right">
+                  {e.company && <Button variant="ghost" onClick={() => void remove(e.isis)}>Supprimer</Button>}
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
+        {shown.length === 0 && <p className="p-3 text-sm text-muted-foreground">Aucune entreprise dans cet onglet.</p>}
       </div>
-      {shown.length > 300 && <p className="text-xs text-muted-foreground">300 premiers numéros affichés sur {shown.length}.</p>}
+      {shown.length > 300 && <p className="text-xs text-muted-foreground">300 premières entreprises affichées sur {shown.length}.</p>}
     </Card>
   )
 }

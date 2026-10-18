@@ -71,7 +71,20 @@ export async function loadBrandLogo(): Promise<Uint8Array | null> {
 let logoCache: Promise<Uint8Array | null> | null = null
 export const brandLogo = () => (logoCache ??= loadBrandLogo())
 
+/** Fiche sur une seule page : on resserre l'espacement par paliers tant que le contenu déborde. */
 export async function buildPlanPdf(d: PlanPdfData, logo: Uint8Array | null = null): Promise<Uint8Array> {
+  let last: Uint8Array | null = null
+  for (const k of [1, 0.9, 0.8, 0.7]) {
+    const r = await renderPlan(d, logo, k)
+    last = r.bytes
+    if (r.pages === 1) break
+  }
+  return last as Uint8Array
+}
+
+async function renderPlan(d: PlanPdfData, logo: Uint8Array | null, k: number): Promise<{ bytes: Uint8Array; pages: number }> {
+  const LH = LOGO_H * k
+  const fs = 0.6 + 0.4 * k            // taille du texte des cases à cocher
   const doc = await PDFDocument.create()
   const font = await doc.embedFont(StandardFonts.Helvetica)
   const bold = await doc.embedFont(StandardFonts.HelveticaBold)
@@ -96,7 +109,7 @@ export async function buildPlanPdf(d: PlanPdfData, logo: Uint8Array | null = nul
   if (logo) {
     try {
       const img = await doc.embedPng(logo)
-      page.drawImage(img, { x: MX, y: yOf(MT + LOGO_H), width: (LOGO_H * img.width) / img.height, height: LOGO_H })
+      page.drawImage(img, { x: MX, y: yOf(MT + LH), width: (LH * img.width) / img.height, height: LH })
     } catch {
       text('Plurial Novilia', MX, MT + 20, 16, bold, RED)
     }
@@ -104,12 +117,12 @@ export async function buildPlanPdf(d: PlanPdfData, logo: Uint8Array | null = nul
     text('Plurial Novilia', MX, MT + 20, 16, bold, RED)
   }
   const title = 'PLAN DE PRÉVENTION'
-  text(title, PAGE_W - MX - bold.widthOfTextAtSize(clean(title), 16), MT + LOGO_H - 20, 16, bold, NAVY)
+  text(title, PAGE_W - MX - bold.widthOfTextAtSize(clean(title), 16), MT + LH - 20, 16, bold, NAVY)
   const sub = `relatif à la commande n° ${d.orderNumber}`
-  text(sub, PAGE_W - MX - bold.widthOfTextAtSize(clean(sub), 8.5), MT + LOGO_H - 6, 8.5, bold, RED)
-  const ruleT = MT + LOGO_H + 8
+  text(sub, PAGE_W - MX - bold.widthOfTextAtSize(clean(sub), 8.5), MT + LH - 6, 8.5, bold, RED)
+  const ruleT = MT + LH + 8
   page.drawLine({ start: { x: MX, y: yOf(ruleT) }, end: { x: PAGE_W - MX, y: yOf(ruleT) }, thickness: 1.6, color: RED })
-  top = ruleT + 14
+  top = ruleT + 14 * k
 
   // Tableau à libellés sur une seule ligne
   type Inline = { label: string; value: string; flex?: number; strong?: boolean }
@@ -123,7 +136,7 @@ export async function buildPlanPdf(d: PlanPdfData, logo: Uint8Array | null = nul
       const size = c.strong ? 10 : 9
       return { w, lblW, size, f, lines: wrap(clean(c.value || '—'), f, size, w - lblW - 12) }
     })
-    const h = Math.max(22, Math.max(...measured.map((m) => m.lines.length)) * lineH + 9)
+    const h = Math.max(22 * k, Math.max(...measured.map((m) => m.lines.length)) * lineH + 9 * k)
     ensure(h)
     let x = MX
     measured.forEach((m, i) => {
@@ -146,7 +159,7 @@ export async function buildPlanPdf(d: PlanPdfData, logo: Uint8Array | null = nul
       const w = (CW * (c.flex ?? 1)) / total
       return { w, lines: wrap(clean(c.value || '—'), font, 8.8, w - 14) }
     })
-    const h = Math.max(38, 20 + Math.max(...measured.map((m) => m.lines.length)) * 11 + 4)
+    const h = Math.max(38 * k, 20 + Math.max(...measured.map((m) => m.lines.length)) * 11 + 4 * k)
     ensure(h)
     let x = MX
     measured.forEach((m, i) => {
@@ -160,7 +173,7 @@ export async function buildPlanPdf(d: PlanPdfData, logo: Uint8Array | null = nul
     top += h
   }
 
-  const gap = (g: number) => { top += g }
+  const gap = (g: number) => { top += g * k }
   const contact = d.redactor
     ? [d.redactor.name || 'Responsable d’intervention', [d.redactor.phone && `Tél. ${d.redactor.phone}`, d.redactor.email].filter(Boolean).join(' · ')].filter(Boolean).join('\n')
     : 'Responsable d’intervention'
@@ -189,7 +202,8 @@ export async function buildPlanPdf(d: PlanPdfData, logo: Uint8Array | null = nul
   ])
 
   // Cases à cocher
-  const CELL_W = CW / 3
+  const COLS = 4
+  const CELL_W = CW / COLS
   const drawBox = (x: number, boxTop: number, checked: boolean) => {
     page.drawRectangle({ x, y: yOf(boxTop + 7.5), width: 7.5, height: 7.5, borderColor: NAVY, borderWidth: 0.7 })
     if (checked) {
@@ -203,26 +217,28 @@ export async function buildPlanPdf(d: PlanPdfData, logo: Uint8Array | null = nul
     gap(9)
     fillRect(MX, top + 1, 2.5, 11, RED)
     text(title, MX + 8, top + 10, 9.5, bold, NAVY)
-    top += 17
+    top += 17 * k
   }
   const familyHeader = (f: string) => {
     ensure(16)
-    fillRect(MX, top, CW, 15, TINT)
-    frame(MX, top, CW, 15)
-    text(f.toUpperCase(), MX + 6, top + 10.5, 6.5, bold, NAVY)
-    top += 15
+    fillRect(MX, top, CW, 14 * k, TINT)
+    frame(MX, top, CW, 14 * k)
+    text(f.toUpperCase(), MX + 6, top + 10 * k + 0.5, 6.5, bold, NAVY)
+    top += 14 * k
   }
   const checkGrid = (items: { label: string; checked: boolean }[]) => {
-    for (let i = 0; i < items.length; i += 3) {
-      const chunk = items.slice(i, i + 3)
-      const lines = chunk.map((c) => wrap(clean(c.label), font, 7.6, CELL_W - 22))
-      const h = Math.max(18, Math.max(...lines.map((l) => l.length)) * 9.5 + 7)
+    for (let i = 0; i < items.length; i += COLS) {
+      const chunk = items.slice(i, i + COLS)
+      const lines = chunk.map((c) => wrap(clean(c.label), font, 7.6 * fs, CELL_W - 20))
+      const lineH = 9.2 * fs
+      const h = Math.max(17 * k, Math.max(...lines.map((l) => l.length)) * lineH + 6 * k)
       ensure(h)
-      chunk.forEach((c, k) => {
-        const x = MX + k * CELL_W
+      chunk.forEach((c, n) => {
+        const x = MX + n * CELL_W
         frame(x, top, CELL_W, h)
-        drawBox(x + 7, top + 5, c.checked)
-        lines[k].forEach((l, j) => text(l, x + 19, top + 11 + j * 9.5, 7.6, font))
+        drawBox(x + 6, top + (h - 7.5) / 2, c.checked)
+        const first = top + h / 2 - ((lines[n].length - 1) * lineH) / 2 + 2.6 * fs
+        lines[n].forEach((l, j) => text(l, x + 17, first + j * lineH, 7.6 * fs, font))
       })
       top += h
     }
@@ -256,7 +272,7 @@ export async function buildPlanPdf(d: PlanPdfData, logo: Uint8Array | null = nul
     p.drawText(clean(label), { x: MX, y: MB, size: 6.5, font, color: MUTED })
   })
 
-  return doc.save()
+  return { bytes: await doc.save(), pages: pages.length }
 }
 
 /** Nom de fichier : modèle administrable ({entreprise}, {commande}, {secteur}), caractères interdits retirés. */

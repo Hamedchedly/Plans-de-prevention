@@ -317,7 +317,7 @@ export function CompanyProposalsSection() {
   useEffect(() => { void load() }, [])
 
   const decide = async (p: CompanyProposal, approve: boolean, modified: boolean) => {
-    const fields = modified ? { ...p.payload, ...drafts[p.id] } : null
+    const fields = modified && drafts[p.id] ? { ...p.payload, ...drafts[p.id] } : null
     const { error } = await supabase.rpc('decide_company_proposal', {
       p_id: p.id, p_approve: approve, p_comment: comments[p.id] || null, p_fields: fields,
     })
@@ -328,13 +328,17 @@ export function CompanyProposalsSection() {
   return (
     <Card className="space-y-3">
       <h3 className="text-sm font-semibold">Fiches entreprise proposées ({rows.length})</h3>
+      <p className="text-xs text-muted-foreground">Les saisies des chargés sont en surbrillance : vérifiez, complétez ou modifiez avant de valider.</p>
       {err && <Notice tone="error">{err}</Notice>}
       {rows.length === 0 && <Notice>Aucune fiche en attente.</Notice>}
       {rows.map((p) => {
         const draft = { ...p.payload, ...drafts[p.id] }
         return (
-          <div key={p.id} className="space-y-2 rounded-md border border-border p-3">
-            <p className="text-sm">Entreprise <span className="font-mono">{p.isis_code}</span> · proposée le {new Date(p.created_at).toLocaleDateString('fr-FR')}</p>
+          <div key={p.id} className="space-y-2 rounded-md border-2 border-amber-400 bg-amber-50 p-3 dark:bg-amber-950/30">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded bg-amber-400 px-1.5 py-0.5 text-[11px] font-semibold text-amber-950">Saisie utilisateur à valider</span>
+              <p className="text-sm">Entreprise <span className="font-mono">{p.isis_code}</span> · saisie le {new Date(p.created_at).toLocaleDateString('fr-FR')}</p>
+            </div>
             <div className="grid gap-2 sm:grid-cols-2">
               {COMPANY_FIELDS.map((f) => (
                 <div key={f.key}>
@@ -347,8 +351,7 @@ export function CompanyProposalsSection() {
             <input className={fieldClass} placeholder="Commentaire (facultatif)" value={comments[p.id] ?? ''}
               onChange={(e) => setComments((c) => ({ ...c, [p.id]: e.target.value }))} />
             <div className="flex flex-wrap gap-2">
-              <Button onClick={() => void decide(p, true, false)}>Valider telle quelle</Button>
-              <Button variant="ghost" onClick={() => void decide(p, true, true)} disabled={!drafts[p.id]}>Valider avec modifications</Button>
+              <Button onClick={() => void decide(p, true, !!drafts[p.id])}>{drafts[p.id] ? 'Valider avec mes modifications' : 'Valider'}</Button>
               <Button variant="danger" onClick={() => void decide(p, false, false)}>Refuser</Button>
             </div>
           </div>

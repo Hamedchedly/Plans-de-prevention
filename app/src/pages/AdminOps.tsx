@@ -3,7 +3,20 @@ import { supabase } from '../lib/supabase'
 import { Badge, Button, Card, EmptyState, Notice, errMsg, fieldClass } from '../components/ui'
 import { DEFAULT_ALERT, DEFAULT_FOOTER } from '../lib/planPdf'
 import { DEFAULT_MAIL_CORPS, DEFAULT_MAIL_OBJET } from '../lib/sheet'
-import { UserCheck } from 'lucide-react'
+import { Download, UserCheck } from 'lucide-react'
+
+/** Export CSV compatible Excel (séparateur ;, BOM UTF-8). */
+export function downloadCsv(filename: string, rows: (string | number | null | undefined)[][]) {
+  const esc = (v: string | number | null | undefined) => {
+    const t = v == null ? '' : String(v)
+    return /[";\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t
+  }
+  const body = rows.map((r) => r.map(esc).join(';')).join('\r\n')
+  const url = URL.createObjectURL(new Blob(['\uFEFF' + body], { type: 'text/csv;charset=utf-8' }))
+  const a = document.createElement('a')
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
 
 type Creator = { code: string; orders: number; user_id: string | null; full_name: string | null; phone: string | null; email: string | null; role: string | null; is_active: boolean | null }
 type Creators = { ACTIF_COMPLET: Creator[]; ACTIF_INCOMPLET: Creator[]; INACTIF: Creator[]; NON_INSCRIT: Creator[] }
@@ -40,7 +53,13 @@ export function CreatorsSection() {
             <h2 className="font-semibold">Chargés d’opérations créateurs de commandes</h2>
             <p className="text-sm text-muted-foreground">{total} chargé(s) ayant au moins une commande. Les contacts alimentent « Personne à alerter » des fiches.</p>
           </div>
-          <Button variant="ghost" onClick={() => void load()} disabled={loading}>Actualiser</Button>
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={() => void load()} disabled={loading}>Actualiser</Button>
+            <Button variant="ghost" disabled={!data} onClick={() => data && downloadCsv('chargés_operations.csv', [
+              ['Groupe', 'Code', 'Commandes', 'Nom', 'Téléphone', 'Mail'],
+              ...GROUPS.flatMap((g) => data[g.key].map((c) => [g.title, c.code, c.orders, c.full_name, c.phone, c.email])),
+            ])}><Download className="h-4 w-4" aria-hidden="true" />CSV</Button>
+          </div>
         </div>
       </Card>
       {err && <Notice tone="error">{err}</Notice>}
@@ -139,6 +158,21 @@ export function KpiSection() {
           <input type="date" className={`${fieldClass} md:w-44`} value={to} onChange={(e) => setTo(e.target.value)} />
         </label>
         <Button onClick={() => void load()} disabled={busy || !from || !to || from > to}>Afficher</Button>
+        <Button variant="ghost" disabled={!kpi} onClick={() => kpi && downloadCsv(`indicateurs_${from}_${to}.csv`, [
+          ['Indicateur', 'Valeur'],
+          ['Dans le périmètre', kpi.perimetre.dans_perimetre],
+          ['Hors périmètre', kpi.perimetre.hors_perimetre],
+          ['Forcées à la main', kpi.perimetre.forcees],
+          ['Exclusions en attente', kpi.perimetre.exclusions_en_attente],
+          ['À qualifier', kpi.statuts.NON_QUALIFIEE ?? 0],
+          ['Fiches créées (période)', kpi.fiches_creees_periode],
+          ['Envoyées (période)', kpi.envoyees_periode],
+          ['Retours reçus (période)', kpi.retours_periode],
+          ['Délai moyen envoi → retour (jours)', kpi.delai_moyen_retour_jours ?? ''],
+          [],
+          ['Chargé', 'Dans le périmètre', 'À qualifier', 'Fiches', 'Envoyées', 'Retournées', 'Délai moyen (jours)'],
+          ...kpi.par_charge.map((r) => [r.code, r.dans_perimetre, r.a_qualifier, r.fiches, r.envoyees, r.retournees, r.delai_jours ?? '']),
+        ])}><Download className="h-4 w-4" aria-hidden="true" />CSV</Button>
         <p className="w-full text-xs text-muted-foreground">
           Les dates de fiche viennent du journal : les fiches créées avant ce journal n’ont pas de date de rédaction.
         </p>

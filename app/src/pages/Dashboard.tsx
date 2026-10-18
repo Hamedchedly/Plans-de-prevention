@@ -14,7 +14,9 @@ import { Ban, ArrowRightLeft, CheckCheck, Download, Eye, Inbox, Info, Mail, Penc
 import { buildSheetPdf, buildSheetsZip, contactFor, downloadBlob, fetchContacts, fetchSavedLines, openPdf, planFileName, readSettings, DEFAULT_MAIL_CORPS, DEFAULT_MAIL_OBJET, type Contact, type Line } from '../lib/sheet'
 import MailDialog from '../components/MailDialog'
 
-type Tab = 'NON_QUALIFIEE' | 'A_ENVOYER' | 'EN_ATTENTE_RETOUR' | 'ARCHIVEE' | 'ENVOYE_MANUELLEMENT' | 'DEMANDES' | 'CORBEILLE'
+type Tab = 'NON_QUALIFIEE' | 'A_ENVOYER' | 'EN_ATTENTE_RETOUR' | 'ARCHIVEE' | 'ENVOYE_MANUELLEMENT' | 'DEMANDES' | 'EXCLUES' | 'HORS_REGLE' | 'CORBEILLE'
+/** Vues hors périmètre : réintégration possible par le responsable. */
+const SCOPE_TABS: Tab[] = ['EXCLUES', 'HORS_REGLE']
 
 const MAIN_TABS: { key: Tab; label: string }[] = [
   { key: 'NON_QUALIFIEE', label: 'À qualifier' },
@@ -25,6 +27,8 @@ const MORE_TABS: { key: Tab; label: string; managerOnly?: boolean }[] = [
   { key: 'ARCHIVEE', label: 'Archivées' },
   { key: 'ENVOYE_MANUELLEMENT', label: 'Envoyées manuellement' },
   { key: 'DEMANDES', label: 'Exclusions en attente' },
+  { key: 'EXCLUES', label: 'Exclues manuellement', managerOnly: true },
+  { key: 'HORS_REGLE', label: 'Hors périmètre (règle)', managerOnly: true },
   { key: 'CORBEILLE', label: 'Corbeille', managerOnly: true },
 ]
 const PLAN_LABEL: Record<string, string> = {
@@ -167,8 +171,17 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
 
   const cutoffOf = (p: number) => PRESETS[p].days == null ? null : todayDay() - (PRESETS[p].days as number)
 
-  const inTab = (o: OrderRow, t: Tab) =>
-    o.scope_status === 'IN_SCOPE' && o.plan_status === t
+  const inTab = (o: OrderRow, t: Tab) => {
+    if (t === 'EXCLUES') return o.scope_status === 'OUT_OF_SCOPE' && o.scope_override
+    if (t === 'HORS_REGLE') return o.scope_status === 'OUT_OF_SCOPE' && !o.scope_override
+    return o.scope_status === 'IN_SCOPE' && o.plan_status === t
+  }
+  const isScopeTab = SCOPE_TABS.includes(tab)
+  // Fiches créées ou envoyées dont la personne à alerter n'est pas complète
+  const sansContact = rows.filter((o) => o.scope_status === 'IN_SCOPE'
+    && (o.plan_status === 'A_ENVOYER' || o.plan_status === 'EN_ATTENTE_RETOUR')
+    && !contacts.get(o.operator_code ?? '')?.complete)
+  const sansContactCodes = [...new Set(sansContact.map((o) => o.operator_code ?? '—'))]
 
   const terms = tokens(q)
   const matches = (o: OrderRow) => {
@@ -205,7 +218,7 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
   const list = isTrashView ? trashed.filter(matches) : visible
   const shownRows = list.slice(0, limit)
   const count = (t: Tab) => (t === 'CORBEILLE' ? trashedCount : base.filter((o) => inTab(o, t)).length)
-  const actionableVisible = visible.filter((o) => ACTIONABLE.includes(tab) && o.scope_status === 'IN_SCOPE')
+  const actionableVisible = visible.filter((o) => (ACTIONABLE.includes(tab) && o.scope_status === 'IN_SCOPE') || (isScopeTab && isManager))
   const activeMore = MORE_TABS.find((t) => t.key === tab)
 
   // Retour à 15 lignes dès qu'on change d'onglet ou de filtre.
@@ -242,6 +255,19 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
   }
   const reintegrate = (o: OrderRow) =>
     void runAction('set_order_scope', { p_order: o.order_number, p_scope: 'IN_SCOPE', p_override: true, p_comment: null }, `Commande ${o.order_number} réintégrée au périmètre.`)
+  const reintegrateMany = async (numbers: string[]) => {
+    if (!numbers.length) return
+    if (!window.confirm(`Réintégrer ${numbers.length} commande(s) au périmètre ?\nElles seront à qualifier.`)) return
+    setBusy(true); setErr(null)
+    for (const n of numbers) {
+      const { error } = await supabase.rpc('set_order_scope', { p_order: n, p_scope: 'IN_SCOPE', p_override: true, p_comment: null })
+      if (error) { setErr(`${n} : ${error.message}`); break }
+    }
+    setBusy(false)
+    setSelected(new Set())
+    setNotice(`${numbers.length} commande(s) réintégrée(s) au périmètre.`)
+    await load()
+  }
   const setTrashedState = (numbers: string[], toTrash: boolean) => {
     if (toTrash && !window.confirm(`Mettre ${numbers.length} commande(s) à la corbeille ? Elles sortent des listes ; elles peuvent être restaurées à tout moment.`)) return
     void runAction('set_orders_trashed', { p_orders: numbers, p_trashed: toTrash },
@@ -398,17 +424,24 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
         </div>
       </div>
 
-      {selected.size > 0 && (ACTIONABLE.includes(tab) || manualTab) && (
+      {selected.size > 0 && (ACTIONABLE.includes(tab) || manualTab || isScopeTab) && (
         <div className="inline-flex max-w-full flex-wrap items-center gap-2 self-start rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
           <span className="mr-auto font-medium">{selected.size} sélectionnée(s)</span>
           {tab === 'NON_QUALIFIEE' && <Button onClick={() => setWizard({ orders: selectedOrders, mode: 'create' })} disabled={busy || !ref}>Créer les fiches</Button>}
           {tab === 'A_ENVOYER' && <Button onClick={() => void downloadSelectedZip()} disabled={busy || !ref}>Télécharger les PDF (ZIP)</Button>}
           {ACTIONABLE.includes(tab) && <Button variant="ghost" onClick={() => sendManually([...selected])} disabled={busy}>Déjà envoyée manuellement</Button>}
           {manualTab && <Button variant="ghost" onClick={() => restoreManual([...selected])} disabled={busy}>Remettre à traiter</Button>}
+          {isScopeTab && isManager && <Button onClick={() => void reintegrateMany([...selected])} disabled={busy}>Réintégrer au périmètre</Button>}
           <Button variant="ghost" onClick={() => setSelected(new Set())}>Tout désélectionner</Button>
         </div>
       )}
 
+      {sansContact.length > 0 && (
+        <Notice tone="warn">
+          {sansContact.length} fiche(s) créée(s) ou envoyée(s) dont la personne à alerter n’est pas complète ({sansContactCodes.join(', ')}).
+          Le PDF affiche alors « Responsable d’intervention ». Complétez l’identité (Administration › Chargés d’opérations ou Vérifier mes infos).
+        </Notice>
+      )}
       {err && <Notice tone="error">{err}</Notice>}
       {notice && <Notice tone="ok">{notice}</Notice>}
 
@@ -426,7 +459,7 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
             <table className="w-full text-sm">
               <thead className="bg-muted/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  {ACTIONABLE.includes(tab) && (
+                  {(ACTIONABLE.includes(tab) || isScopeTab) && (
                     <th className="px-3 py-2"><input type="checkbox" aria-label="Tout sélectionner" checked={allChecked} onChange={toggleAll} /></th>
                   )}
                   <th className="px-3 py-2 font-medium">Commande</th>
@@ -443,11 +476,11 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
                 {shownRows.map((o) => {
                   const sg = suggestions.get(o.order_number)
                   const assigned = o.nature_id != null
-                  const canSelect = ACTIONABLE.includes(tab) && o.scope_status === 'IN_SCOPE'
+                  const canSelect = (ACTIONABLE.includes(tab) && o.scope_status === 'IN_SCOPE') || (isScopeTab && isManager)
                   const companyName = o.isis_code ? companies.get(o.isis_code)?.name : null
                   return (
                     <tr key={o.order_number} className="align-top hover:bg-muted/30">
-                      {ACTIONABLE.includes(tab) && (
+                      {(ACTIONABLE.includes(tab) || isScopeTab) && (
                         <td className="px-3 py-2.5">
                           {canSelect && <input type="checkbox" aria-label={`Sélectionner ${o.order_number}`}
                             checked={selected.has(o.order_number)} onChange={() => toggle(o.order_number)} />}

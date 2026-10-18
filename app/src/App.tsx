@@ -94,7 +94,7 @@ export default function App() {
                     <div className="truncate text-sm font-medium">{profile.full_name || profile.email}</div>
                     <div className="truncate text-xs text-muted-foreground">{profile.email}</div>
                   </div>
-                  <button role="menuitem" onClick={() => { setUserMenu(false); setProfileOpen(true) }} className="block w-full px-3 py-2 text-left text-sm hover:bg-muted">Mon profil</button>
+                  <button role="menuitem" onClick={() => { setUserMenu(false); setProfileOpen(true) }} className="block w-full px-3 py-2 text-left text-sm hover:bg-muted">Vérifier mes infos</button>
                   <button role="menuitem" onClick={() => signOut()} className="block w-full px-3 py-2 text-left text-sm text-destructive hover:bg-muted">Se déconnecter</button>
                 </div>
               </>

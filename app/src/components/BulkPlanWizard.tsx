@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Referentiel } from '../lib/refdata'
-import { computeMeasures, searchNatures, type NatureRef } from '../lib/rules'
+import { computeMeasures, fold, searchNatures, tokens, type NatureRef } from '../lib/rules'
 import { fmtFr, defaultPeriod } from '../lib/period'
 import { natureCandidates, type OrderSuggestion } from '../lib/natureSuggest'
 import { supabase } from '../lib/supabase'
-import { derive, contactFor, fetchContacts, measuresFor, periodLabel, savePlans, buildSheetsZip, downloadBlob, buildSheetPdf, unique, planFileName, type Contact, type Line } from '../lib/sheet'
+import { derive, natureIdsOf, contactFor, fetchContacts, measuresFor, savePlans, buildSheetsZip, downloadBlob, buildSheetPdf, unique, planFileName, type Contact, type Line } from '../lib/sheet'
 import type { OrderRow } from '../lib/types'
 import type { CompanyRow } from '../pages/AdminCompanies'
 import { Badge, Button, Card, Notice, errMsg, fieldClass } from './ui'
@@ -63,15 +63,17 @@ export default function BulkPlanWizard({
     const natureId = sg?.confident && sg.natureId != null ? sg.natureId : null
     const nature = natureId != null ? ref.natures.find((n) => n.id === natureId) : undefined
     const lots = unique([...(nature?.lots ?? []), ...(nature && sg?.lot != null ? [sg.lot] : [])])
-    const d = derive(ref, natureId, lots)
+    const d = derive(ref, natureId != null ? [natureId] : [], lots)
     return {
-      orderNumber: o.order_number, natureId, lots, risks: d.risks, measures: d.measures,
+      orderNumber: o.order_number, natureId, extraNatures: [], lots, risks: d.risks, measures: d.measures,
       companyFills: false, period: defaultPeriod(o.order_date, o.period_start, o.period_end),
     }
   }))
   const [cur, setCur] = useState(0)
   const [step, setStep] = useState(0)
-  const [queries, setQueries] = useState<Record<string, string>>({})
+  const [queries, setQueries] = useState<Record<string, string>>({})   // clé « commande:champ »
+  const [lotSearch, setLotSearch] = useState('')
+  const [natureOpen, setNatureOpen] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState<string | null>(null)
@@ -86,16 +88,24 @@ export default function BulkPlanWizard({
   const updateLine = (orderNumber: string, change: (l: Line) => Partial<Line>) =>
     setLines((prev) => prev.map((l) => (l.orderNumber === orderNumber ? { ...l, ...change(l) } : l)))
 
-  const chooseNature = (natureId: number | null) => updateLine(line.orderNumber, (l) => {
-    const n = natureId != null ? ref.natures.find((x) => x.id === natureId) : undefined
-    const lots = unique([...l.lots, ...(n?.lots ?? [])])
-    const d = derive(ref, natureId, lots, l.measures)
-    return { natureId, lots, risks: d.risks, measures: d.measures }
+  // Natures multiples : la nature retenue (gras) est la première activée ; les autres restent activées.
+  const toggleNature = (natureId: number) => updateLine(line.orderNumber, (l) => {
+    const current = natureIdsOf(l)
+    const wasOn = current.includes(natureId)
+    const next = wasOn ? current.filter((x) => x !== natureId) : [...current, natureId]
+    const main = l.natureId != null && next.includes(l.natureId) ? l.natureId : (next[0] ?? null)
+    const added = wasOn ? [] : (ref.natures.find((n) => n.id === natureId)?.lots ?? [])
+    const lots = unique([...l.lots, ...added])
+    const d = derive(ref, next, lots, l.measures)
+    return { natureId: main, extraNatures: next.filter((x) => x !== main), lots, risks: unique([...l.risks, ...d.risks]), measures: d.measures }
   })
+  const retainNature = (natureId: number) => updateLine(line.orderNumber, (l) => ({
+    natureId, extraNatures: natureIdsOf(l).filter((x) => x !== natureId),
+  }))
   const toggleLot = (code: number) => updateLine(line.orderNumber, (l) => {
     const lots = l.lots.includes(code) ? l.lots.filter((c) => c !== code) : [...l.lots, code]
-    const d = derive(ref, l.natureId, lots, l.measures)
-    return { lots, risks: d.risks, measures: d.measures }
+    const d = derive(ref, natureIdsOf(l), lots, l.measures)
+    return { lots, risks: unique([...l.risks, ...d.risks]), measures: d.measures }
   })
   const toggleRisk = (code: string) => updateLine(line.orderNumber, (l) => {
     const risks = l.risks.includes(code) ? l.risks.filter((c) => c !== code) : [...l.risks, code]
@@ -117,18 +127,12 @@ export default function BulkPlanWizard({
     const name = companyOf(isis).name.trim()
     return name || isis
   }
-  const proposeCorrections = async () => {
-    setBusy(true); setErr(null)
-    try {
-      for (const [isis, e] of edits) {
-        const before = companies.get(isis)
-        if ((before?.name ?? '') === e.name && (before?.os_email ?? '') === e.os_email) continue
-        const { error } = await supabase.rpc('propose_company', { p_isis: isis, p_fields: { name: e.name, os_email: e.os_email } })
-        if (error) throw new Error(`${isis} : ${error.message}`)
-      }
-      setProgress('Corrections proposées : elles seront validées par le Super Admin.')
-    } catch (e) { setErr(errMsg(e)) } finally { setBusy(false) }
-  }
+  // Saisie d'entreprise : envoyée au Super Admin pour validation à la création de la fiche (surbrillance dans sa page).
+  const changedCompanies = () => [...edits.entries()].filter(([isis, e]) => {
+    const before = companies.get(isis)
+    return (before?.name ?? '') !== e.name.trim() || (before?.os_email ?? '') !== e.os_email.trim()
+  })
+  const missingCompanies = lines.filter((l) => { const isis = isisOf(l.orderNumber); return !!isis && !companyOf(isis).name.trim() })
 
   // ---- aperçu PDF (étape finale) : construit à partir des données de la fiche
   useEffect(() => {
@@ -152,11 +156,18 @@ export default function BulkPlanWizard({
   // ---- validation : la fiche est créée (statut « Fiche créée ») même sans export
   const validate = async () => {
     setBusy(true); setErr(null); setProgress(null)
-    const failures = await savePlans(lines, byNumber, ref)
+    const sent = changedCompanies()
+    const proposalFailures: string[] = []
+    for (const [isis, e] of sent) {
+      const { error } = await supabase.rpc('propose_company', { p_isis: isis, p_fields: { name: e.name.trim(), os_email: e.os_email.trim() } })
+      if (error) proposalFailures.push(`Entreprise ${isis} : ${error.message}`)
+    }
+    const failures = [...proposalFailures, ...(await savePlans(lines, byNumber, ref))]
     setBusy(false)
-    if (failures.length) { setErr(`${failures.length} fiche(s) non enregistrée(s) :\n${failures.join('\n')}`); return }
+    if (failures.length) { setErr(`${failures.length} élément(s) non enregistré(s) :\n${failures.join('\n')}`); return }
     setCreated(true)
-    setProgress(`${lines.length} fiche(s) ${mode === 'edit' ? 'mise(s) à jour' : 'créée(s)'}. Vous pouvez prévisualiser, modifier ou télécharger les PDF.`)
+    const corrections = sent.length ? ` ${sent.length} correction(s) d’entreprise envoyée(s) au Super Admin pour validation.` : ''
+    setProgress(`${lines.length} fiche(s) ${mode === 'edit' ? 'mise(s) à jour' : 'créée(s)'}.${corrections} Vous pouvez prévisualiser, modifier ou télécharger les PDF.`)
   }
 
   // ---- téléchargement des PDF (ZIP) des fiches enregistrées
@@ -183,28 +194,88 @@ export default function BulkPlanWizard({
     if (step > 0) setStep(step - 1)
     else if (cur > 0) { setCur(cur - 1); setStep(BY_ORDER_STEPS - 1) }
   }
-  const canNext = step !== 0 || line.natureId != null
+  const companyNameMissing = (orderNumber: string) => { const isis = isisOf(orderNumber); return !!isis && !companyOf(isis).name.trim() }
+  const canNext = (step !== 0 || line.natureId != null) && (step !== 2 || !companyNameMissing(line.orderNumber))
 
   // ---- recherche de nature (préremplie avec le libellé source)
-  const query = queries[line.orderNumber] ?? order?.nature_text ?? ''
-  const searchHits = useMemo(() => (query.trim() ? searchNatures(query, ref.natures, ref.vocab, ref.lotNameByCode, 8) : []), [query, ref])
+  const qv = (field: 'nature' | 'risk' | 'measure') => queries[`${line.orderNumber}:${field}`] ?? ''
+  const setQv = (field: 'nature' | 'risk' | 'measure', value: string) => setQueries((q) => ({ ...q, [`${line.orderNumber}:${field}`]: value }))
+  const natureQ = qv('nature')
+  const natureHits = useMemo(
+    () => (natureQ.trim() ? searchNatures(natureQ, ref.natures, ref.vocab, ref.lotNameByCode, 60).map((h) => h.nature) : null),
+    [natureQ, ref])
+  const natureGroups = useMemo(() => {
+    const g = new Map<number, NatureRef[]>()
+    for (const n of ref.natures) {
+      const key = n.lots.length ? Math.min(...n.lots) : 0
+      g.set(key, [...(g.get(key) ?? []), n])
+    }
+    return [...g.entries()].sort((a, b) => a[0] - b[0]).map(([code, items]) => ({
+      code,
+      name: code ? (ref.lotNameByCode.get(code) ?? `Lot ${code}`) : 'Sans lot',
+      items: [...items].sort((a, b) => a.label.localeCompare(b.label, 'fr')),
+    }))
+  }, [ref])
   const topCandidates = useMemo(() => (order ? natureCandidates(order, ref, 3) : []), [order, ref])
-  const suggestedLots = unique([
+  const selectedIds = natureIdsOf(line)
+  const natureState = (id: number): 'retained' | 'selected' | 'off' =>
+    id === line.natureId ? 'retained' : selectedIds.includes(id) ? 'selected' : 'off'
+  const stateClass = (st: 'retained' | 'selected' | 'off') =>
+    st === 'retained' ? 'border-emerald-600 bg-emerald-50 font-bold text-emerald-900'
+      : st === 'selected' ? 'border-primary bg-primary/10 font-medium'
+      : 'border-border hover:bg-muted'
+
+  const natureRow = (n: NatureRef, badge?: string) => {
+    const st = natureState(n.id)
+    return (
+      <button key={n.id} type="button" onClick={() => toggleNature(n.id)} aria-pressed={st !== 'off'}
+        className={`flex w-full items-start justify-between gap-3 rounded-md border px-3 py-2 text-left text-sm transition-colors ${stateClass(st)}`}>
+        <span className="min-w-0">
+          <span className="block">{st !== 'off' ? (st === 'retained' ? '★ ' : '✓ ') : ''}{n.label}</span>
+          <span className="block text-xs font-normal text-muted-foreground">{n.groupLabel ?? ''}{n.id < 0 ? ' · proposition en attente' : ''}</span>
+        </span>
+        {badge && <Badge tone={st === 'off' ? 'default' : 'ok'}>{badge}</Badge>}
+      </button>
+    )
+  }
+
+  const lotQ = tokens(lotSearch)
+  const lotMatches = (lot: { code: number; name: string }) => !lotQ.length || lotQ.every((t) => fold(`${lot.name} ${lot.code}`).includes(t))
+  const suggestedLotsAll = unique([
     ...(nature?.lots ?? []),
     ...(!nature && topCandidates[0] ? topCandidates[0].nature.lots : []),
     ...(sg?.confident && sg.lot != null ? [sg.lot] : []),
   ])
-  const otherLots = ref.lots.filter((lot) => !suggestedLots.includes(lot.code))
+  const suggestedLots = suggestedLotsAll
+  const visibleLots = ref.lots.filter(lotMatches)
+  const otherLots = visibleLots.filter((lot) => !suggestedLots.includes(lot.code))
 
-  const natureButton = (n: NatureRef, badge?: string) => (
-    <button key={n.id} type="button" onClick={() => chooseNature(n.id)}
-      className={`flex w-full items-start justify-between gap-3 rounded-md border px-3 py-2 text-left text-sm transition-colors ${line.natureId === n.id ? 'border-primary bg-primary/10' : 'border-border hover:bg-muted'}`}>
-      <span>
-        <span className="block font-medium">{n.label}</span>
-        <span className="block text-xs text-muted-foreground">{n.groupLabel ?? ''}</span>
+  // Recherche de risques et de mesures : chaque clic ajoute ou retire l'élément
+  const hitsOf = <T extends { code: string; label: string; family: string }>(items: T[], query: string) => {
+    const t = tokens(query)
+    if (!t.length) return []
+    return items.filter((i) => { const hay = fold(`${i.label} ${i.family}`); return t.every((x) => hay.includes(x)) }).slice(0, 12)
+  }
+  const riskQ = qv('risk')
+  const measureQ = qv('measure')
+  const riskHits = hitsOf(ref.risks, riskQ)
+  const measureHits = hitsOf(ref.measures, measureQ)
+  const measureLabel = useMemo(() => new Map(ref.measures.map((m) => [m.code, m.label])), [ref])
+  const addRow = (key: string, label: string, family: string, on: boolean, onToggle: () => void) => (
+    <button key={key} type="button" onClick={onToggle} aria-pressed={on}
+      className={`flex w-full items-center gap-3 rounded-md border px-3 py-1.5 text-left text-sm transition-colors ${on ? 'border-emerald-600 bg-emerald-50' : 'border-border hover:bg-muted'}`}>
+      <span className="min-w-0 flex-1">
+        <span className="block">{label}</span>
+        <span className="block text-xs text-muted-foreground">{family}</span>
       </span>
-      {badge && <Badge tone={line.natureId === n.id ? 'ok' : 'default'}>{badge}</Badge>}
+      <span className={`shrink-0 text-xs ${on ? 'font-medium text-emerald-800' : 'text-primary'}`}>{on ? '✓ Ajouté' : '+ Ajouter'}</span>
     </button>
+  )
+  const chip = (label: string, onRemove: () => void) => (
+    <span key={label} className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-0.5 text-xs">
+      {label}
+      <button type="button" onClick={onRemove} aria-label={`Retirer ${label}`} className="text-muted-foreground hover:text-foreground">×</button>
+    </span>
   )
 
   const riskGroups = useMemo(() => {
@@ -274,29 +345,53 @@ export default function BulkPlanWizard({
             {step === 0 && (
               <div className="space-y-4">
                 <Card className="space-y-3">
-                  <h3 className="text-sm font-semibold">Nature</h3>
+                  <h3 className="text-sm font-semibold">Natures</h3>
                   {topCandidates.length > 0 && (
                     <div className="space-y-1.5">
                       <p className="text-xs text-muted-foreground">Suggestions</p>
-                      {topCandidates.map((h) => natureButton(h.nature, h.score >= 0.5 ? 'fiable' : 'à confirmer'))}
+                      {topCandidates.map((h) => natureRow(h.nature, h.score >= 0.5 ? 'fiable' : 'à confirmer'))}
+                    </div>
+                  )}
+                  {selectedIds.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-xs text-muted-foreground">Natures activées ({selectedIds.length}) · la nature retenue est en gras</p>
+                      {selectedIds.map((id) => {
+                        const n = ref.natures.find((x) => x.id === id)
+                        if (!n) return null
+                        const retained = id === line.natureId
+                        return (
+                          <div key={id} className={`flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm ${stateClass(retained ? 'retained' : 'selected')}`}>
+                            <span className="min-w-0 flex-1 truncate">{retained ? '★ Retenue : ' : ''}{n.label}</span>
+                            {!retained && <Button variant="ghost" className="h-7 px-2 text-xs" onClick={() => retainNature(id)}>Retenir</Button>}
+                            <Button variant="ghost" className="h-7 px-2 text-xs" onClick={() => toggleNature(id)}>Retirer</Button>
+                          </div>
+                        )
+                      })}
                     </div>
                   )}
                   <div className="space-y-1.5">
-                    <label className="block text-xs text-muted-foreground">Rechercher une autre nature</label>
-                    <input className={fieldClass} value={query} onChange={(e) => setQueries((q) => ({ ...q, [line.orderNumber]: e.target.value }))} />
-                    {searchHits.length > 0 && (
-                      <div className="max-h-64 space-y-1.5 overflow-y-auto pr-1">
-                        {searchHits.map((h) => natureButton(h.nature))}
+                    <label className="block text-xs text-muted-foreground">Rechercher ou choisir dans la liste par lot</label>
+                    <div className="flex gap-2">
+                      <input className={fieldClass} value={natureQ} placeholder="Tapez un mot (ex. peinture, joint, ascenseur)"
+                        onFocus={() => setNatureOpen(true)}
+                        onChange={(e) => { setQv('nature', e.target.value); setNatureOpen(true) }} />
+                      <Button variant="ghost" onClick={() => setNatureOpen((o) => !o)} aria-expanded={natureOpen}>{natureOpen ? 'Fermer' : 'Liste'}</Button>
+                    </div>
+                    {natureOpen && (
+                      <div className="max-h-72 space-y-3 overflow-y-auto rounded-md border border-border p-2">
+                        {natureHits ? (
+                          natureHits.length ? natureHits.map((n) => natureRow(n)) : <p className="p-2 text-xs text-muted-foreground">Aucune nature trouvée.</p>
+                        ) : (
+                          natureGroups.map((g) => (
+                            <div key={g.code}>
+                              <p className="mb-1 text-xs font-semibold text-muted-foreground">{g.name}</p>
+                              <div className="space-y-1">{g.items.map((n) => natureRow(n))}</div>
+                            </div>
+                          ))
+                        )}
                       </div>
                     )}
                   </div>
-                  {nature && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="text-muted-foreground">Nature retenue :</span>
-                      <span className="font-medium">{nature.label}</span>
-                      <Button variant="ghost" className="ml-auto h-7 px-2 text-xs" onClick={() => chooseNature(null)}>Retirer</Button>
-                    </div>
-                  )}
                 </Card>
 
                 <Card className="space-y-3">
@@ -304,9 +399,11 @@ export default function BulkPlanWizard({
                     <h3 className="text-sm font-semibold">Lots concernés</h3>
                     <p className="text-xs text-muted-foreground">Les lots suggérés par la nature et l’analyse sont en tête ; cochez ou décochez librement.</p>
                   </div>
-                  {suggestedLots.length > 0 && (
+                  <input className={`${fieldClass} md:w-64`} value={lotSearch} placeholder="Rechercher un lot" aria-label="Rechercher un lot"
+                    onChange={(e) => setLotSearch(e.target.value)} />
+                  {suggestedLots.length > 0 && visibleLots.some((lot) => suggestedLots.includes(lot.code)) && (
                     <div className="flex flex-wrap gap-1.5">
-                      {ref.lots.filter((lot) => suggestedLots.includes(lot.code)).map((lot) => (
+                      {visibleLots.filter((lot) => suggestedLots.includes(lot.code)).map((lot) => (
                         <LotChip key={lot.code} name={lot.name} on={line.lots.includes(lot.code)} suggested onClick={() => toggleLot(lot.code)} />
                       ))}
                     </div>
@@ -315,6 +412,7 @@ export default function BulkPlanWizard({
                     {otherLots.map((lot) => (
                       <LotChip key={lot.code} name={lot.name} on={line.lots.includes(lot.code)} onClick={() => toggleLot(lot.code)} />
                     ))}
+                    {visibleLots.length === 0 && <p className="text-xs text-muted-foreground">Aucun lot ne correspond.</p>}
                   </div>
                 </Card>
               </div>
@@ -323,40 +421,68 @@ export default function BulkPlanWizard({
             {step === 1 && (
               <div className="space-y-4">
                 <p className="text-xs text-muted-foreground">
-                  Risques proposés par les lots et la nature. Les mesures se mettent à jour quand vous modifiez les risques.
+                  Risques proposés par les lots et les natures. Recherchez pour en ajouter ; les mesures se mettent à jour avec les risques.
                 </p>
                 <Card className="space-y-3">
                   <h3 className="text-sm font-semibold">Risques ({line.risks.length})</h3>
-                  {riskGroups.map(([family, items]) => (
-                    <div key={family}>
-                      <p className="mb-1 text-xs font-medium text-muted-foreground">{family}</p>
-                      <div className="grid gap-1.5 sm:grid-cols-2">
-                        {items.map((r) => (
-                          <label key={r.code} className="flex cursor-pointer items-center gap-2 rounded-md border border-border px-2 py-1.5 text-sm hover:bg-muted/50">
-                            <input type="checkbox" className="accent-primary" checked={line.risks.includes(r.code)} onChange={() => toggleRisk(r.code)} />
-                            <span>{r.label}</span>
-                          </label>
-                        ))}
-                      </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {line.risks.map((code) => chip(ref.riskLabel.get(code) ?? code, () => toggleRisk(code)))}
+                    {line.risks.length === 0 && <span className="text-xs text-muted-foreground">Aucun risque retenu.</span>}
+                  </div>
+                  <input className={fieldClass} value={riskQ} placeholder="Rechercher un risque à ajouter (ex. chute, électrique)" aria-label="Rechercher un risque"
+                    onChange={(e) => setQv('risk', e.target.value)} />
+                  {riskHits.length > 0 && <div className="max-h-64 space-y-1.5 overflow-y-auto pr-1">
+                    {riskHits.map((r) => addRow(r.code, r.label, r.family, line.risks.includes(r.code), () => toggleRisk(r.code)))}
+                  </div>}
+                  <details>
+                    <summary className="cursor-pointer text-xs text-muted-foreground">Parcourir tous les risques par famille</summary>
+                    <div className="mt-2 space-y-3">
+                      {riskGroups.map(([family, items]) => (
+                        <div key={family}>
+                          <p className="mb-1 text-xs font-medium text-muted-foreground">{family}</p>
+                          <div className="grid gap-1.5 sm:grid-cols-2">
+                            {items.map((r) => (
+                              <label key={r.code} className="flex cursor-pointer items-center gap-2 rounded-md border border-border px-2 py-1.5 text-sm hover:bg-muted/50">
+                                <input type="checkbox" className="accent-primary" checked={line.risks.includes(r.code)} onChange={() => toggleRisk(r.code)} />
+                                <span>{r.label}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </details>
                 </Card>
                 <Card className="space-y-3">
                   <h3 className="text-sm font-semibold">Mesures de prévention ({line.measures.length})</h3>
-                  {measureGroups.map(([family, items]) => (
-                    <div key={family}>
-                      <p className="mb-1 text-xs font-medium text-muted-foreground">{family}</p>
-                      <div className="grid gap-1.5 sm:grid-cols-2">
-                        {items.map((m) => (
-                          <label key={m.code} className="flex cursor-pointer items-center gap-2 rounded-md border border-border px-2 py-1.5 text-sm hover:bg-muted/50">
-                            <input type="checkbox" className="accent-primary" checked={line.measures.includes(m.code)} onChange={() => toggleMeasure(m.code)} />
-                            <span className="flex-1">{m.label}</span>
-                            <span className="text-[10px] text-muted-foreground">{computedMeasures.has(m.code) ? 'auto' : m.ruleType === 'MANUAL' ? 'manuel' : ''}</span>
-                          </label>
-                        ))}
-                      </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {line.measures.map((code) => chip(measureLabel.get(code) ?? code, () => toggleMeasure(code)))}
+                    {line.measures.length === 0 && <span className="text-xs text-muted-foreground">Aucune mesure retenue.</span>}
+                  </div>
+                  <input className={fieldClass} value={measureQ} placeholder="Rechercher une mesure à ajouter" aria-label="Rechercher une mesure"
+                    onChange={(e) => setQv('measure', e.target.value)} />
+                  {measureHits.length > 0 && <div className="max-h-64 space-y-1.5 overflow-y-auto pr-1">
+                    {measureHits.map((m) => addRow(m.code, m.label, m.family, line.measures.includes(m.code), () => toggleMeasure(m.code)))}
+                  </div>}
+                  <details>
+                    <summary className="cursor-pointer text-xs text-muted-foreground">Parcourir toutes les mesures par famille</summary>
+                    <div className="mt-2 space-y-3">
+                      {measureGroups.map(([family, items]) => (
+                        <div key={family}>
+                          <p className="mb-1 text-xs font-medium text-muted-foreground">{family}</p>
+                          <div className="grid gap-1.5 sm:grid-cols-2">
+                            {items.map((m) => (
+                              <label key={m.code} className="flex cursor-pointer items-center gap-2 rounded-md border border-border px-2 py-1.5 text-sm hover:bg-muted/50">
+                                <input type="checkbox" className="accent-primary" checked={line.measures.includes(m.code)} onChange={() => toggleMeasure(m.code)} />
+                                <span className="flex-1">{m.label}</span>
+                                <span className="text-[10px] text-muted-foreground">{computedMeasures.has(m.code) ? 'auto' : m.ruleType === 'MANUAL' ? 'manuel' : ''}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </details>
                 </Card>
               </div>
             )}
@@ -367,16 +493,18 @@ export default function BulkPlanWizard({
                   <h3 className="text-sm font-semibold">Entreprise</h3>
                   {order?.isis_code ? (
                     <div className="grid gap-3 sm:grid-cols-2">
-                      <label className="block text-xs text-muted-foreground">Nom de l’entreprise (n° {order.isis_code})
-                        <input className={fieldClass} value={companyOf(order.isis_code).name} onChange={(e) => setEdit(order.isis_code!, 'name', e.target.value)} placeholder="Nom de l’entreprise" />
+                      <label className="block text-xs text-muted-foreground">Nom de l’entreprise * (n° {order.isis_code})
+                        <input className={`${fieldClass} ${companyNameMissing(line.orderNumber) ? 'border-red-500' : ''}`} value={companyOf(order.isis_code).name}
+                          aria-invalid={companyNameMissing(line.orderNumber)}
+                          onChange={(e) => setEdit(order.isis_code!, 'name', e.target.value)} placeholder="Nom de l’entreprise" />
                       </label>
                       <label className="block text-xs text-muted-foreground">Email OS
                         <input className={fieldClass} value={companyOf(order.isis_code).os_email} onChange={(e) => setEdit(order.isis_code!, 'os_email', e.target.value)} placeholder="Email OS" />
                       </label>
-                      <div className="sm:col-span-2 flex flex-wrap items-center gap-2">
-                        <Button variant="ghost" onClick={() => void proposeCorrections()} disabled={busy || !edits.size}>Proposer les corrections au Super Admin</Button>
-                        <span className="text-xs text-muted-foreground">Les corrections sont validées par le Super Admin ; la fiche peut être créée sans elles.</span>
-                      </div>
+                      <p className="sm:col-span-2 text-xs text-muted-foreground">
+                        Le nom est obligatoire. Une modification est envoyée au Super Admin à la création de la fiche, pour validation.
+                      </p>
+                      {companyNameMissing(line.orderNumber) && <p className="sm:col-span-2 text-xs text-red-700">Renseignez le nom de l’entreprise pour continuer.</p>}
                     </div>
                   ) : (
                     <Notice>Aucune entreprise rattachée à cette commande.</Notice>
@@ -423,11 +551,12 @@ export default function BulkPlanWizard({
                       <tbody>
                         {lines.map((l, i) => {
                           const n = l.natureId != null ? ref.natures.find((x) => x.id === l.natureId) : undefined
+                          const extra = l.extraNatures.length
                           return (
                             <tr key={l.orderNumber} onClick={() => setPreviewIndex(i)}
                               className={`cursor-pointer border-t border-border ${i === previewIndex ? 'bg-primary/10' : 'hover:bg-muted/50'}`}>
                               <td className="px-2 py-1.5 font-mono">{l.orderNumber}</td>
-                              <td className="px-2 py-1.5">{n?.label ?? <span className="text-amber-700">à choisir</span>}</td>
+                              <td className="px-2 py-1.5">{n?.label ?? <span className="text-amber-700">à choisir</span>}{extra > 0 && <span className="text-muted-foreground"> +{extra}</span>}</td>
                               <td className="px-2 py-1.5">{l.lots.length}</td>
                               <td className="px-2 py-1.5">{l.risks.length}</td>
                               <td className="px-2 py-1.5">{l.companyFills ? 'entreprise' : `${fmtFr(l.period.start)}`}</td>
@@ -458,9 +587,12 @@ export default function BulkPlanWizard({
                 {lines.some((l) => l.natureId == null) && (
                   <Notice tone="error">Certaines commandes n’ont pas de nature : revenez à l’étape 1.</Notice>
                 )}
+                {missingCompanies.length > 0 && (
+                  <Notice tone="error">Nom d’entreprise manquant pour {missingCompanies.map((l) => l.orderNumber).join(', ')} : revenez à l’étape 3.</Notice>
+                )}
                 {identityMissing && <IdentityNotice codes={operatorsIncomplete} />}
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button onClick={() => void validate()} disabled={busy || !lines.length || lines.some((l) => l.natureId == null)}>
+                  <Button onClick={() => void validate()} disabled={busy || !lines.length || lines.some((l) => l.natureId == null) || missingCompanies.length > 0}>
                     {busy ? 'Enregistrement…' : mode === 'edit' ? `Enregistrer les modifications (${lines.length})` : `Valider et créer ${lines.length > 1 ? `les ${lines.length} fiches` : 'la fiche'}`}
                   </Button>
                   <Button variant="ghost" onClick={() => void download()} disabled={busy || !created || identityMissing}>Télécharger les PDF (ZIP)</Button>
@@ -478,6 +610,7 @@ export default function BulkPlanWizard({
             {step !== OVERVIEW && `${STEPS[step]} · commande ${cur + 1} / ${lines.length}`}
           </span>
           {step === 0 && !canNext && <span className="text-xs text-amber-700">Choisissez une nature pour continuer</span>}
+          {step === 2 && !canNext && <span className="text-xs text-amber-700">Le nom de l’entreprise est obligatoire</span>}
           {step !== OVERVIEW && (
             <Button onClick={goNext} disabled={busy || !canNext}>
               {step === BY_ORDER_STEPS - 1 && cur === lines.length - 1 ? 'Aperçu et validation' : step === BY_ORDER_STEPS - 1 ? 'Commande suivante' : 'Suivant'}

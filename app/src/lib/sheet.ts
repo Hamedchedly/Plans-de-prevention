@@ -13,7 +13,8 @@ import type { OrderRow } from './types'
 export interface Period { start: string; end: string }
 export interface Line {
   orderNumber: string
-  natureId: number | null
+  natureId: number | null      // nature principale (retenue)
+  extraNatures: number[]       // autres natures activées pour la fiche
   lots: number[]
   risks: string[]          // risques cochés
   measures: string[]       // mesures cochées
@@ -38,10 +39,14 @@ export function redactorOf(profile: ProfileLike | null | undefined): Redactor | 
 export const identityIncomplete = (profile: ProfileLike | null | undefined) =>
   !profile || !profile.first_name?.trim() || !profile.last_name?.trim() || !profile.phone?.trim() || !(profile.contact_email?.trim() || profile.email?.trim())
 
-/** Risques proposés pour une nature et des lots, et mesures qui en découlent (mêmes règles que l'éditeur). */
-export function derive(ref: Referentiel, natureId: number | null, lots: number[], previousMeasures: string[] = []) {
-  const nature = natureId != null ? ref.natures.find((n) => n.id === natureId) : undefined
-  const proposal = proposeRisks(ref.lotDefaults, lots, nature ? [nature] : [])
+/** Toutes les natures d'une fiche, la retenue en premier. */
+export const natureIdsOf = (l: Pick<Line, 'natureId' | 'extraNatures'>): number[] =>
+  [...new Set([...(l.natureId != null ? [l.natureId] : []), ...l.extraNatures])]
+
+/** Risques proposés pour des natures et des lots, et mesures qui en découlent (mêmes règles que l'éditeur). */
+export function derive(ref: Referentiel, natureIds: number[], lots: number[], previousMeasures: string[] = []) {
+  const natures = natureIds.map((id) => ref.natures.find((n) => n.id === id)).filter((n): n is NonNullable<typeof n> => !!n)
+  const proposal = proposeRisks(ref.lotDefaults, lots, natures)
   const risks = [...proposal.keys()]
   return { risks, proposal, measures: measuresFor(ref, risks, previousMeasures) }
 }
@@ -58,12 +63,12 @@ export const periodLabel = (l: Line) =>
 
 /** Données du PDF pour une fiche. */
 export function sheetPdfInput(l: Line, o: OrderRow, ref: Referentiel, companyName: string, redactor: Redactor | null): PlanPdfData {
-  const n = l.natureId != null ? ref.natures.find((x) => x.id === l.natureId) : undefined
+  const labels = natureIdsOf(l).map((id) => ref.natures.find((x) => x.id === id)?.label).filter((x): x is string => !!x)
   return {
     orderNumber: o.order_number,
     orderDate: o.order_date ? fmtFr(o.order_date) : '',
     lotNames: l.lots.map((c) => ref.lotNameByCode.get(c) ?? `Lot ${c}`),
-    taskLabel: n?.label ?? o.nature_text ?? '',
+    taskLabel: labels.join(' ; ') || o.nature_text || '',
     activity: o.nature_text ?? o.description ?? '',
     zone: [o.address, o.city, o.tranche_name].filter(Boolean).join(' · '),
     period: l.companyFills ? DOTTED_PERIOD : `du ${periodLabel(l)}`,
@@ -84,15 +89,22 @@ export async function fetchSavedLines(orders: OrderRow[], ref: Referentiel): Pro
     supabase.from('order_risks').select('order_number,risk_code,checked').in('order_number', numbers),
     supabase.from('order_measures').select('order_number,measure_code,checked').in('order_number', numbers),
   ])
-  for (const r of [lotsR, risksR, measuresR]) if (r.error) throw new Error(r.error.message)
+  // Table des natures multiples (hors types générés) : lecture typée à la main
+  const naturesR = await supabase.from('order_natures').select('order_number,nature_id').in('order_number', numbers) as
+    unknown as { data: { order_number: string; nature_id: number }[] | null; error: { message: string } | null }
+  for (const r of [lotsR, risksR, measuresR, naturesR]) if (r.error) throw new Error(r.error.message)
   for (const o of orders) {
     const lots = (lotsR.data ?? []).filter((x) => x.order_number === o.order_number).map((x) => x.lot_code as number)
     const risks = (risksR.data ?? []).filter((x) => x.order_number === o.order_number && x.checked).map((x) => x.risk_code as string)
     const measures = (measuresR.data ?? []).filter((x) => x.order_number === o.order_number && x.checked).map((x) => x.measure_code as string)
     const natureId = o.nature_id ?? (o.nature_proposal_id ? -o.nature_proposal_id : null)
+    const extraNatures = (naturesR.data ?? [])
+      .filter((x) => x.order_number === o.order_number && x.nature_id !== natureId)
+      .map((x) => x.nature_id as number)
     out.set(o.order_number, {
       orderNumber: o.order_number,
       natureId,
+      extraNatures,
       lots,
       risks,
       measures,
@@ -111,7 +123,7 @@ export async function savePlans(lines: Line[], byNumber: Map<string, OrderRow>, 
     if (!o) continue
     try {
       const n = l.natureId != null ? ref.natures.find((x) => x.id === l.natureId) : undefined
-      const proposal = derive(ref, l.natureId, l.lots).proposal
+      const proposal = derive(ref, natureIdsOf(l), l.lots).proposal
       const computed = new Set(computeMeasures(new Set(l.risks), ref.rules))
       const { error } = await supabase.rpc('save_plan', {
         p_order: o.order_number,
@@ -130,6 +142,9 @@ export async function savePlans(lines: Line[], byNumber: Map<string, OrderRow>, 
         p_end: l.companyFills ? null : l.period.end,
       })
       if (pErr) throw new Error(pErr.message)
+      const saved = natureIdsOf(l).filter((id) => id > 0)
+      const { error: nErr } = await supabase.rpc('save_plan_natures', { p_order: o.order_number, p_natures: saved })
+      if (nErr) throw new Error(nErr.message)
     } catch (e) {
       failures.push(`${l.orderNumber} : ${e instanceof Error ? e.message : String(e)}`)
     }

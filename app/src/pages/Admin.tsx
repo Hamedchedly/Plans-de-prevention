@@ -10,13 +10,15 @@ import { DataSection } from './AdminData'
 import { startImpersonation } from '../lib/impersonation'
 import ProfileDialog from '../components/ProfileDialog'
 import { CreatorsSection, KpiSection, TemplatesSection } from './AdminOps'
+import ImportPage from './Import'
 
-type Section = 'validations' | 'tracabilite' | 'perimetre' | 'referentiels' | 'entreprises' | 'donnees' | 'alertes' | 'utilisateurs' | 'fichiers' | 'chargés' | 'indicateurs' | 'modeles'
+type Section = 'validations' | 'tracabilite' | 'perimetre' | 'referentiels' | 'entreprises' | 'donnees' | 'alertes' | 'utilisateurs' | 'fichiers' | 'chargés' | 'indicateurs' | 'modeles' | 'import'
 
 const SECTIONS: { key: Section; label: string; superOnly: boolean }[] = [
   { key: 'alertes', label: 'Alertes', superOnly: false },
   { key: 'indicateurs', label: 'Indicateurs', superOnly: false },
   { key: 'chargés', label: 'Chargés d’opérations', superOnly: false },
+  { key: 'import', label: 'Import Excel', superOnly: false },
   { key: 'validations', label: 'Validations', superOnly: true },
   { key: 'tracabilite', label: 'Traçabilité', superOnly: true },
   { key: 'perimetre', label: 'Périmètre', superOnly: true },
@@ -52,6 +54,7 @@ export default function Admin() {
       {section === 'modeles' && isSuper && <TemplatesSection />}
       {section === 'indicateurs' && <KpiSection />}
       {section === 'chargés' && <CreatorsSection />}
+      {section === 'import' && <ImportPage />}
     </div>
   )
 }

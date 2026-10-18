@@ -7,7 +7,6 @@ import type { OrderRow } from './lib/types'
 import { Notice } from './components/ui'
 import Dashboard, { type DashboardView } from './pages/Dashboard'
 import PlanEditor from './pages/PlanEditor'
-import ImportPage from './pages/Import'
 import Admin from './pages/Admin'
 import Indicateurs from './pages/Indicateurs'
 
@@ -86,10 +85,11 @@ const orderRoute = createRoute({
   path: '/commandes/$numero',
   component: OrderPage,
 })
+// L'import Excel est désormais une section de l'administration ; l'ancienne adresse redirige.
 const importRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/import',
-  component: () => <ManagerOnly><ImportPage /></ManagerOnly>,
+  beforeLoad: () => { throw redirect({ to: '/administration' }) },
 })
 const indicateursRoute = createRoute({
   getParentRoute: () => rootRoute,

@@ -8,6 +8,10 @@ export interface Profile {
   operator_code: string | null
   sector_codes: string[]
   is_active: boolean
+  first_name: string | null
+  last_name: string | null
+  phone: string | null
+  contact_email: string | null
 }
 
 export type ScopeStatus = 'IN_SCOPE' | 'OUT_OF_SCOPE'
@@ -36,6 +40,8 @@ export interface OrderRow {
   nature_proposal_id: number | null
   scope_request_status: ScopeRequestStatus
   scope_request_reason: string | null
+  period_start: string | null
+  period_end: string | null
 }
 
 export type AlertStatus = 'A_VALIDER' | 'APPLIQUE_A_VALIDER' | 'VALIDE' | 'MODIFIE' | 'IGNORE'

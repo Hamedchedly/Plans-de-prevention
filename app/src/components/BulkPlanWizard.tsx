@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth'
 import type { Referentiel } from '../lib/refdata'
 import { computeMeasures, proposeRisks, type NatureRef } from '../lib/rules'
 import { buildPlanPdf, planFileName } from '../lib/planPdf'
+import { defaultPeriod, fmtFr } from '../lib/period'
 import type { OrderRow } from '../lib/types'
 import type { CompanyRow } from '../pages/AdminCompanies'
 import { Badge, Button, Card, Notice, errMsg, fieldClass } from './ui'
@@ -37,6 +38,18 @@ export default function BulkPlanWizard({
   onDone: (message: string) => void
 }) {
   const { profile } = useAuth()
+  const identityMissing = !profile || !profile.first_name?.trim() || !profile.last_name?.trim() || !profile.phone?.trim() || !(profile.contact_email?.trim() || profile.email?.trim())
+  const redactorOf = () => (profile ? {
+    name: [profile.first_name, profile.last_name].filter(Boolean).join(' ') || profile.full_name || '',
+    email: profile.contact_email || profile.email || '',
+    phone: profile.phone || '',
+  } : null)
+  const [periods, setPeriods] = useState<Map<string, { start: string; end: string }>>(() =>
+    new Map(orders.map((o) => [o.order_number, defaultPeriod(o.order_date, o.period_start, o.period_end)])))
+  const periodText = (n: string) => {
+    const p = periods.get(n)
+    return p ? `${fmtFr(p.start)} au ${fmtFr(p.end)}` : ''
+  }
   const [step, setStep] = useState(0)
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -122,13 +135,14 @@ export default function BulkPlanWizard({
           taskLabel: nature?.label ?? order.nature_text ?? '',
           activity: order.nature_text ?? order.description ?? '',
           zone: [order.address, order.city, order.tranche_name].filter(Boolean).join(' · '),
+          period: periodText(order.order_number),
           companyLabel: companyLabel(order.isis_code),
           risks: [...risks.keys()].map((c) => ref.riskLabel.get(c) ?? c),
           measures: [...measures].map((c) => ({
             family: ref.measures.find((m) => m.code === c)?.family ?? 'Autres',
             label: ref.measures.find((m) => m.code === c)?.label ?? c,
           })),
-          redactor: profile ? { name: profile.full_name ?? '', email: profile.email ?? '' } : null,
+          redactor: redactorOf(),
           date: new Date().toLocaleDateString('fr-FR'),
         })
         const blob = new Blob([bytes as BlobPart], { type: 'application/pdf' })
@@ -138,7 +152,7 @@ export default function BulkPlanWizard({
     })()
     return () => { alive = false; if (url) URL.revokeObjectURL(url); setPreviewUrl(null) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, previewIndex, current?.orderNumber, current?.natureId, current?.lots.join(','), edits])
+  }, [step, previewIndex, current?.orderNumber, current?.natureId, current?.lots.join(','), edits, periods])
 
   // ---- étape 4 : création des fiches et export ZIP
   const exportAll = async () => {
@@ -165,6 +179,9 @@ export default function BulkPlanWizard({
           p_measures: [...measures].map((code) => ({ code, checked: true, origin: 'AUTO' })),
         })
         if (error) throw new Error(error.message)
+        const per = periods.get(order.order_number) ?? defaultPeriod(order.order_date)
+        const { error: pErr } = await supabase.rpc('set_plan_period', { p_order: order.order_number, p_start: per.start, p_end: per.end })
+        if (pErr) throw new Error(pErr.message)
 
         const base = planFileName(template, {
           entreprise: companyLabel(order.isis_code) || order.order_number,
@@ -181,13 +198,14 @@ export default function BulkPlanWizard({
           taskLabel: nature?.label ?? order.nature_text ?? '',
           activity: order.nature_text ?? order.description ?? '',
           zone: [order.address, order.city, order.tranche_name].filter(Boolean).join(' · '),
+          period: periodText(order.order_number),
           companyLabel: companyLabel(order.isis_code),
           risks: [...risks.keys()].map((c) => ref.riskLabel.get(c) ?? c),
           measures: [...measures].map((c) => ({
             family: ref.measures.find((m) => m.code === c)?.family ?? 'Autres',
             label: ref.measures.find((m) => m.code === c)?.label ?? c,
           })),
-          redactor: profile ? { name: profile.full_name ?? '', email: profile.email ?? '' } : null,
+          redactor: redactorOf(),
           date: new Date().toLocaleDateString('fr-FR'),
         })
         zip.file(name, bytes)
@@ -338,7 +356,32 @@ export default function BulkPlanWizard({
               })}
               {lines.length > 5 && <div className="text-muted-foreground">… {lines.length - 5} autre(s)</div>}
             </div>
-            <Button onClick={() => void exportAll()} disabled={busy || !lines.length}>
+            {identityMissing && (
+              <Notice tone="error">Votre identité est incomplète : renseignez prénom, nom, téléphone et mail via « Mon profil » avant de créer des fiches.</Notice>
+            )}
+            <div className="overflow-x-auto rounded-md border border-border">
+              <table className="w-full text-sm">
+                <thead className="bg-muted text-left text-xs text-muted-foreground">
+                  <tr><th className="px-3 py-2">Commande</th><th className="px-3 py-2">Début</th><th className="px-3 py-2">Fin</th></tr>
+                </thead>
+                <tbody>
+                  {lines.map((l) => {
+                    const per = periods.get(l.orderNumber) ?? defaultPeriod(byNumber.get(l.orderNumber)?.order_date ?? null)
+                    return (
+                      <tr key={l.orderNumber} className="border-t border-border">
+                        <td className="px-3 py-2 font-mono text-xs">{l.orderNumber}</td>
+                        <td className="px-3 py-2"><input type="date" className={fieldClass} value={per.start}
+                          onChange={(e) => setPeriods((prev) => new Map(prev).set(l.orderNumber, defaultPeriod(e.target.value)))} /></td>
+                        <td className="px-3 py-2"><input type="date" className={fieldClass} value={per.end}
+                          onChange={(e) => setPeriods((prev) => new Map(prev).set(l.orderNumber, { start: per.start, end: e.target.value }))} /></td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-xs text-muted-foreground">Par défaut : du jour de la commande à deux mois plus tard. Modifiable pour chaque fiche.</p>
+            <Button onClick={() => void exportAll()} disabled={busy || !lines.length || identityMissing}>
               {busy ? 'Création en cours…' : `Créer les ${lines.length} fiche(s) et exporter le ZIP`}
             </Button>
           </div>

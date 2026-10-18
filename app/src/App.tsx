@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard'
 import PlanEditor from './pages/PlanEditor'
 import ImportPage from './pages/Import'
 import Admin from './pages/Admin'
+import ProfileDialog from './components/ProfileDialog'
 
 type Page = 'commandes' | 'import' | 'administration'
 
@@ -15,6 +16,7 @@ export default function App() {
   const { session, profile, loading, signOut } = useAuth()
   const [page, setPage] = useState<Page>('commandes')
   const [editing, setEditing] = useState<OrderRow | null>(null)
+  const [profileOpen, setProfileOpen] = useState(false)
 
   if (loading) return <div className="p-8 text-sm text-muted-foreground">Chargement…</div>
   if (!session) return <Login />
@@ -61,9 +63,11 @@ export default function App() {
               {n.label}
             </Button>
           ))}
+          <Button variant="ghost" onClick={() => setProfileOpen(true)}>Mon profil</Button>
           <Button variant="ghost" onClick={() => signOut()}>Quitter</Button>
         </div>
       </header>
+      {profileOpen && session && <ProfileDialog userId={session.user.id} isSelf onClose={() => setProfileOpen(false)} />}
       <main className="mx-auto max-w-7xl px-4 py-6">
         {editing ? (
           <PlanEditor order={editing} onBack={() => setEditing(null)} />

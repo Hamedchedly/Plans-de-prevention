@@ -7,10 +7,11 @@ export interface PlanPdfData {
   taskLabel: string
   activity: string
   zone: string
+  period: string
   companyLabel: string
   risks: string[]
   measures: { family: string; label: string }[]
-  redactor: { name: string; email: string } | null
+  redactor: { name: string; email: string; phone: string } | null
   date: string
 }
 
@@ -101,9 +102,10 @@ export async function buildPlanPdf(d: PlanPdfData): Promise<Uint8Array> {
   row('Entreprise', d.companyLabel)
   row('Nature de l’activité', d.activity)
   row('Zone concernée', d.zone)
+  row('Période d’intervention', d.period)
 
   section('Procédure en cas d’accident / incident')
-  row('Personne à alerter', 'Responsable d’intervention')
+  row('Personne à alerter', d.redactor ? [d.redactor.name, d.redactor.phone, d.redactor.email].filter(Boolean).join(' · ') : 'Responsable d’intervention')
   row('Procédure d’alerte', '15 SAMU · 18 POMPIERS · 114 URGENCES · 17 POLICE SECOURS')
 
   section('Risques identifiés')
@@ -121,6 +123,7 @@ export async function buildPlanPdf(d: PlanPdfData): Promise<Uint8Array> {
 
   section('Validation de la fiche')
   row('Rédacteur de la fiche', d.redactor?.name ?? '—')
+  row('Téléphone', d.redactor?.phone || '—')
   row('Adresse mail', d.redactor?.email ?? '—')
   row('Date de rédaction', d.date)
   row('Signature de l’entreprise', ' ')

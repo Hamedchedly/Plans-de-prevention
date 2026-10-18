@@ -5,6 +5,7 @@ import { computeMeasures, fold, proposeRisks, searchNatures, type NatureRef } fr
 import type { OrderRow, PlanStatus } from '../lib/types'
 import { Badge, Button, Card, Notice, fieldClass, errMsg } from '../components/ui'
 import { logActivity, logError } from '../lib/activity'
+import { defaultPeriod } from '../lib/period'
 import { buildLotTree, type TreeLot } from '../lib/lotTree'
 
 type RiskState = { checked: boolean; origin: 'LOT_DEFAUT' | 'NATURE' | 'MANUEL' }
@@ -72,6 +73,7 @@ export default function PlanEditor({ order, onBack }: { order: OrderRow; onBack:
   const [expanded, setExpanded] = useState<string | null>(null)
   const [showAdd, setShowAdd] = useState(false)
   const [lotQuery, setLotQuery] = useState('')
+  const [period, setPeriod] = useState(() => defaultPeriod(order.order_date, order.period_start, order.period_end))
   const [removed, setRemoved] = useState<string[]>([])
   const [msg, setMsg] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -351,6 +353,8 @@ export default function PlanEditor({ order, onBack }: { order: OrderRow; onBack:
         p_measures: [...draft.measures].map(([code, s]) => ({ code, checked: s.checked, origin: s.origin })),
       })
       if (error) throw new Error(error.message)
+      const { error: pErr } = await supabase.rpc('set_plan_period', { p_order: order.order_number, p_start: period.start, p_end: period.end })
+      if (pErr) throw new Error(pErr.message)
       if (status === 'NON_QUALIFIEE') setStatus('A_ENVOYER')
       setMsg('Plan enregistré.')
     } catch (e) { logError('enregistrement du plan', e); setErr(errMsg(e)) } finally { setBusy(false) }
@@ -397,6 +401,14 @@ export default function PlanEditor({ order, onBack }: { order: OrderRow; onBack:
 
       <Card>
         <div className="grid gap-2 text-sm sm:grid-cols-3">
+          <div className="flex flex-wrap items-center gap-2 sm:col-span-3">
+            <span className="text-muted-foreground">Période d’intervention :</span>
+            <input type="date" className={fieldClass + ' w-auto'} value={period.start} disabled={!editable}
+              onChange={(e) => setPeriod(defaultPeriod(e.target.value))} />
+            <span className="text-muted-foreground">au</span>
+            <input type="date" className={fieldClass + ' w-auto'} value={period.end} disabled={!editable}
+              onChange={(e) => setPeriod({ start: period.start, end: e.target.value })} />
+          </div>
           <div><span className="text-muted-foreground">Code NAAC : </span><strong>{order.naac_code ?? '—'}</strong></div>
           <div className={!detected && corps ? 'rounded bg-amber-100 px-2 py-1 ring-2 ring-amber-400' : ''}>
             <span className="text-muted-foreground">Corps d’état : </span>{corps ?? '—'}

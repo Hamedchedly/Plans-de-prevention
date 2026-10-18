@@ -8,6 +8,7 @@ import { Badge, Button, Card, Notice, errMsg, fieldClass } from '../components/u
 import { CompaniesSection, CompanyProposalsSection } from './AdminCompanies'
 import { DataSection } from './AdminData'
 import { startImpersonation } from '../lib/impersonation'
+import ProfileDialog from '../components/ProfileDialog'
 
 type Section = 'validations' | 'tracabilite' | 'perimetre' | 'referentiels' | 'entreprises' | 'donnees' | 'alertes' | 'utilisateurs' | 'fichiers'
 
@@ -487,6 +488,7 @@ function UsersSection() {
   const patch = (id: string, p: Partial<Profile>) => setUsers(users.map((u) => (u.user_id === id ? { ...u, ...p } : u)))
 
   const { session } = useAuth()
+  const [identityFor, setIdentityFor] = useState<string | null>(null)
   const canImpersonate = (u: Profile) => !!session && u.user_id !== session.user.id && u.is_active && u.role !== 'SUPER_ADMIN'
   const impersonate = async (u: Profile) => {
     if (!session) return
@@ -509,6 +511,7 @@ function UsersSection() {
   return (
     <div className="space-y-3">
       <h2 className="font-semibold">Utilisateurs et droits</h2>
+      {identityFor && <ProfileDialog userId={identityFor} isSelf={identityFor === session?.user.id} onClose={() => setIdentityFor(null)} />}
       <p className="text-sm text-muted-foreground">Un compte doit d’abord être créé dans Supabase Auth ; son profil apparaît ici automatiquement.</p>
       {err && <Notice tone="error">{err}</Notice>}
       {msg && <Notice tone="ok">{msg}</Notice>}
@@ -534,6 +537,7 @@ function UsersSection() {
                 <td className="px-3 py-2 text-right whitespace-nowrap">
                   <Button variant="ghost" onClick={() => void impersonate(u)}
                     disabled={!canImpersonate(u)} title={canImpersonate(u) ? '' : 'Indisponible pour ce compte'}>Se connecter en tant que</Button>
+                  <Button variant="ghost" onClick={() => setIdentityFor(u.user_id)} className="ml-2">Identité</Button>
                   <Button onClick={() => void save(u)} className="ml-2">Enregistrer</Button>
                 </td>
               </tr>

@@ -2,7 +2,7 @@ import JSZip from 'jszip'
 import { supabase } from './supabase'
 import type { Referentiel } from './refdata'
 import { computeMeasures, proposeRisks } from './rules'
-import { buildPlanPdf, planFileName } from './planPdf'
+import { buildPlanPdf, brandLogo, planFileName, DOTTED_PERIOD, type PlanPdfData } from './planPdf'
 import { defaultPeriod, fmtFr } from './period'
 import type { OrderRow } from './types'
 
@@ -57,23 +57,20 @@ export const periodLabel = (l: Line) =>
   l.companyFills ? 'À renseigner par l’entreprise' : `${fmtFr(l.period.start)} au ${fmtFr(l.period.end)}`
 
 /** Données du PDF pour une fiche. */
-export function sheetPdfInput(l: Line, o: OrderRow, ref: Referentiel, companyName: string, redactor: Redactor | null) {
+export function sheetPdfInput(l: Line, o: OrderRow, ref: Referentiel, companyName: string, redactor: Redactor | null): PlanPdfData {
   const n = l.natureId != null ? ref.natures.find((x) => x.id === l.natureId) : undefined
   return {
     orderNumber: o.order_number,
+    orderDate: o.order_date ? fmtFr(o.order_date) : '',
     lotNames: l.lots.map((c) => ref.lotNameByCode.get(c) ?? `Lot ${c}`),
     taskLabel: n?.label ?? o.nature_text ?? '',
     activity: o.nature_text ?? o.description ?? '',
     zone: [o.address, o.city, o.tranche_name].filter(Boolean).join(' · '),
-    period: periodLabel(l),
+    period: l.companyFills ? DOTTED_PERIOD : `du ${periodLabel(l)}`,
     companyLabel: companyName,
-    risks: l.risks.map((c) => ref.riskLabel.get(c) ?? c),
-    measures: l.measures.map((c) => ({
-      family: ref.measures.find((m) => m.code === c)?.family ?? 'Autres',
-      label: ref.measures.find((m) => m.code === c)?.label ?? c,
-    })),
+    riskOptions: [...ref.riskLabel.entries()].map(([code, label]) => ({ label, checked: l.risks.includes(code) })),
+    measureOptions: ref.measures.map((m) => ({ family: m.family || 'Autres', label: m.label, checked: l.measures.includes(m.code) })),
     redactor,
-    date: new Date().toLocaleDateString('fr-FR'),
   }
 }
 
@@ -141,7 +138,7 @@ export async function savePlans(lines: Line[], byNumber: Map<string, OrderRow>, 
 }
 
 export async function buildSheetPdf(l: Line, o: OrderRow, ref: Referentiel, companyName: string, redactor: Redactor | null): Promise<Uint8Array> {
-  return buildPlanPdf(sheetPdfInput(l, o, ref, companyName, redactor))
+  return buildPlanPdf(sheetPdfInput(l, o, ref, companyName, redactor), await brandLogo())
 }
 
 /** Tous les PDF d'une sélection, regroupés dans un ZIP nommé selon le modèle défini par le Super Admin. */

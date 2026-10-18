@@ -551,6 +551,7 @@ function UsersSection() {
   return (
     <div className="space-y-3">
       <h2 className="font-semibold">Utilisateurs et droits</h2>
+      <NoAccountCodes />
       {identityFor && <ProfileDialog userId={identityFor} isSelf={identityFor === session?.user.id} onClose={() => setIdentityFor(null)} />}
       <div className="space-y-3 rounded-lg border border-border bg-card p-4">
         <div>
@@ -631,5 +632,40 @@ function UsersSection() {
         </table>
       </div>
     </div>
+  )
+}
+
+/** Codes chargés ayant créé des commandes mais sans compte : à inviter pour que personne ne soit oublié. */
+function NoAccountCodes() {
+  const [rows, setRows] = useState<{ code: string; orders: number }[] | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+  useEffect(() => {
+    void supabase.rpc('list_order_creators').then(({ data, error }) => {
+      if (error) { setErr(error.message); return }
+      const groups = data as { NON_INSCRIT?: { code: string; orders: number }[] } | null
+      setRows((groups?.NON_INSCRIT ?? []).slice().sort((a, b) => b.orders - a.orders))
+    })
+  }, [])
+  if (err) return <Notice tone="error">{err}</Notice>
+  if (!rows) return null
+  return (
+    <Card className="space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 className="text-sm font-semibold">Chargés sans compte ({rows.length})</h3>
+        <span className="text-xs text-muted-foreground">Codes ayant créé des commandes, sans compte. À inviter ici ; le détail est dans « Chargés d’opérations ».</span>
+      </div>
+      {rows.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Tous les chargés créateurs ont un compte.</p>
+      ) : (
+        <div className="flex flex-wrap gap-1.5">
+          {rows.map((r) => (
+            <span key={r.code} className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/50 px-2 py-1 font-mono text-xs">
+              {r.code}
+              <span className="font-sans text-muted-foreground">· {r.orders} cmd</span>
+            </span>
+          ))}
+        </div>
+      )}
+    </Card>
   )
 }

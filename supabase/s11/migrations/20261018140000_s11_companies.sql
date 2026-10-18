@@ -1,4 +1,5 @@
--- Entreprises (identifiées par leur numéro ENTN_NUM) : fiches validées + propositions des utilisateurs à valider.
+-- Entreprises (identifiées par leur numéro ENTN_NUM) : fiches validées + propositions à valider.
+-- Accès uniquement par fonctions (security definer) : pas de politique RLS, pas de DELETE (suppression = archivage).
 
 create table if not exists plans_prevention.companies (
   isis_code text primary key,
@@ -8,6 +9,7 @@ create table if not exists plans_prevention.companies (
   director_email text,
   director_phone text,
   company_phone text,
+  archived boolean not null default false,
   updated_by uuid references auth.users(id),
   updated_at timestamptz not null default now(),
   validated_by uuid references auth.users(id)
@@ -28,13 +30,7 @@ create index if not exists company_proposals_status_idx on plans_prevention.comp
 
 alter table plans_prevention.companies enable row level security;
 alter table plans_prevention.company_proposals enable row level security;
-create policy companies_read on plans_prevention.companies for select to authenticated using (plans_prevention.is_active_user());
-create policy company_proposals_read on plans_prevention.company_proposals for select to authenticated
-  using (plans_prevention.is_super_admin() or created_by = auth.uid());
-grant select on plans_prevention.companies to authenticated;
-grant select on plans_prevention.company_proposals to authenticated;
 
--- Champs saisissables (liste blanche)
 create or replace function plans_prevention.company_fields(p jsonb)
 returns jsonb language sql immutable as $$
   select jsonb_build_object(
@@ -46,7 +42,20 @@ returns jsonb language sql immutable as $$
     'company_phone', nullif(trim(p->>'company_phone'), ''))
 $$;
 
--- Un utilisateur propose des informations : elles restent en attente de validation.
+create or replace function plans_prevention.companies_list()
+returns setof plans_prevention.companies language plpgsql stable security definer set search_path = '' as $$
+begin
+  if not plans_prevention.is_active_user() then raise exception 'Accès refusé'; end if;
+  return query select * from plans_prevention.companies where not archived order by isis_code;
+end $$;
+
+create or replace function plans_prevention.company_proposals_list(p_status text default 'EN_ATTENTE')
+returns setof plans_prevention.company_proposals language plpgsql stable security definer set search_path = '' as $$
+begin
+  if not plans_prevention.is_super_admin() then raise exception 'Réservé au Super Admin'; end if;
+  return query select * from plans_prevention.company_proposals where status = p_status order by created_at;
+end $$;
+
 create or replace function plans_prevention.propose_company(p_isis text, p_fields jsonb)
 returns bigint language plpgsql security definer set search_path = '' as $$
 declare v_id bigint;
@@ -61,7 +70,6 @@ begin
   return v_id;
 end $$;
 
--- Le Super Admin valide, modifie (p_fields) ou refuse une proposition.
 create or replace function plans_prevention.decide_company_proposal(p_id bigint, p_approve boolean, p_comment text, p_fields jsonb default null)
 returns void language plpgsql security definer set search_path = '' as $$
 declare r plans_prevention.company_proposals; v_fields jsonb; v_status text;
@@ -78,16 +86,13 @@ begin
     values (r.isis_code, v_fields->>'name', v_fields->>'os_email', v_fields->>'director_name', v_fields->>'director_email', v_fields->>'director_phone', v_fields->>'company_phone', auth.uid(), now(), auth.uid())
     on conflict (isis_code) do update set name = excluded.name, os_email = excluded.os_email, director_name = excluded.director_name,
       director_email = excluded.director_email, director_phone = excluded.director_phone, company_phone = excluded.company_phone,
-      updated_by = excluded.updated_by, updated_at = now(), validated_by = excluded.validated_by;
+      updated_by = excluded.updated_by, updated_at = now(), validated_by = excluded.validated_by, archived = false;
   end if;
-  update plans_prevention.company_proposals
-     set status = v_status, decided_by = auth.uid(), decided_at = now(), decision_comment = p_comment
-   where id = p_id;
+  update plans_prevention.company_proposals set status = v_status, decided_by = auth.uid(), decided_at = now(), decision_comment = p_comment where id = p_id;
   insert into plans_prevention.audit_logs(actor_user_id, action, entity, entity_id, payload)
   values (auth.uid(), 'COMPANY_DECIDED', 'company_proposals', p_id::text, jsonb_build_object('status', v_status, 'isis_code', r.isis_code, 'comment', p_comment));
 end $$;
 
--- Saisie directe par le Super Admin (import Excel) : rows = [{isis_code, name, ...}]
 create or replace function plans_prevention.upsert_companies(p_rows jsonb)
 returns integer language plpgsql security definer set search_path = '' as $$
 declare x jsonb; v_n integer := 0; v_fields jsonb;
@@ -100,28 +105,32 @@ begin
     values (trim(x->>'isis_code'), v_fields->>'name', v_fields->>'os_email', v_fields->>'director_name', v_fields->>'director_email', v_fields->>'director_phone', v_fields->>'company_phone', auth.uid(), now(), auth.uid())
     on conflict (isis_code) do update set name = excluded.name, os_email = excluded.os_email, director_name = excluded.director_name,
       director_email = excluded.director_email, director_phone = excluded.director_phone, company_phone = excluded.company_phone,
-      updated_by = excluded.updated_by, updated_at = now(), validated_by = excluded.validated_by;
+      updated_by = excluded.updated_by, updated_at = now(), validated_by = excluded.validated_by, archived = false;
     v_n := v_n + 1;
   end loop;
   insert into plans_prevention.audit_logs(actor_user_id, action, entity, entity_id, payload)
-  values (auth.uid(), 'COMPANY_IMPORT', 'companies', null, jsonb_build_object('rows', v_n));
+  values (auth.uid(), 'COMPANY_IMPORT', 'companies', 'import', jsonb_build_object('rows', v_n));
   return v_n;
 end $$;
 
-create or replace function plans_prevention.delete_company(p_isis text)
+create or replace function plans_prevention.archive_company(p_isis text)
 returns void language plpgsql security definer set search_path = '' as $$
 begin
   if not plans_prevention.is_super_admin() then raise exception 'Réservé au Super Admin'; end if;
-  delete from plans_prevention.companies where isis_code = p_isis;
+  update plans_prevention.companies set archived = true, updated_by = auth.uid(), updated_at = now() where isis_code = p_isis;
   insert into plans_prevention.audit_logs(actor_user_id, action, entity, entity_id, payload)
-  values (auth.uid(), 'COMPANY_DELETED', 'companies', p_isis, '{}'::jsonb);
+  values (auth.uid(), 'COMPANY_ARCHIVED', 'companies', p_isis, '{}'::jsonb);
 end $$;
 
 revoke execute on function plans_prevention.propose_company(text,jsonb) from public, anon;
 revoke execute on function plans_prevention.decide_company_proposal(bigint,boolean,text,jsonb) from public, anon;
 revoke execute on function plans_prevention.upsert_companies(jsonb) from public, anon;
-revoke execute on function plans_prevention.delete_company(text) from public, anon;
+revoke execute on function plans_prevention.archive_company(text) from public, anon;
+revoke execute on function plans_prevention.companies_list() from public, anon;
+revoke execute on function plans_prevention.company_proposals_list(text) from public, anon;
 grant execute on function plans_prevention.propose_company(text,jsonb) to authenticated;
 grant execute on function plans_prevention.decide_company_proposal(bigint,boolean,text,jsonb) to authenticated;
 grant execute on function plans_prevention.upsert_companies(jsonb) to authenticated;
-grant execute on function plans_prevention.delete_company(text) to authenticated;
+grant execute on function plans_prevention.archive_company(text) to authenticated;
+grant execute on function plans_prevention.companies_list() to authenticated;
+grant execute on function plans_prevention.company_proposals_list(text) to authenticated;

@@ -23,7 +23,7 @@ export const COMPANY_FIELDS: { key: keyof Omit<CompanyRow, 'isis_code'>; label: 
 ]
 
 export async function fetchCompanies(): Promise<CompanyRow[]> {
-  const { data, error } = await supabase.from('companies').select('*').order('isis_code')
+  const { data, error } = await supabase.rpc('companies_list')
   if (error) throw new Error(error.message)
   return (data ?? []) as CompanyRow[]
 }
@@ -71,7 +71,7 @@ export function CompaniesSection() {
     try {
       const [c, comps, prop] = await Promise.all([
         fetchOrderCounts(), fetchCompanies(),
-        supabase.from('company_proposals').select('isis_code').eq('status', 'EN_ATTENTE'),
+        supabase.rpc('company_proposals_list', { p_status: 'EN_ATTENTE' }),
       ])
       if (prop.error) throw new Error(prop.error.message)
       setCounts(c); setCompanies(comps)
@@ -156,7 +156,7 @@ export function CompaniesSection() {
 
   const remove = async (isis: string) => {
     if (!window.confirm(`Supprimer la fiche de l’entreprise ${isis} ? Les commandes ne sont pas modifiées.`)) return
-    const { error } = await supabase.rpc('delete_company', { p_isis: isis })
+    const { error } = await supabase.rpc('archive_company', { p_isis: isis })
     if (error) { setErr(error.message); return }
     await load()
   }
@@ -255,8 +255,7 @@ export function CompanyProposalsSection() {
 
   const load = async () => {
     setErr(null)
-    const { data, error } = await supabase.from('company_proposals').select('id,isis_code,payload,created_by,created_at')
-      .eq('status', 'EN_ATTENTE').order('created_at')
+    const { data, error } = await supabase.rpc('company_proposals_list', { p_status: 'EN_ATTENTE' })
     if (error) { setErr(error.message); return }
     setRows((data ?? []) as CompanyProposal[])
   }

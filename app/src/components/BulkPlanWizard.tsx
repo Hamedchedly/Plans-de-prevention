@@ -9,8 +9,7 @@ import { defaultPeriod, fmtFr } from '../lib/period'
 import type { OrderRow } from '../lib/types'
 import type { CompanyRow } from '../pages/AdminCompanies'
 import { Badge, Button, Card, Notice, errMsg, fieldClass } from './ui'
-
-export interface OrderSuggestion { nature: string | null; natureId: number | null; lot: number | null }
+import type { OrderSuggestion } from '../lib/natureSuggest'
 
 interface Line { orderNumber: string; natureId: number | null; lots: number[] }
 interface CompanyEdit { name: string; os_email: string }
@@ -55,26 +54,37 @@ export default function BulkPlanWizard({
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState<string | null>(null)
 
+  // Pré-sélection uniquement pour une suggestion fiable (même règle que la liste et l'éditeur).
   const [lines, setLines] = useState<Line[]>(() => orders.map((o) => {
     const sg = suggestions.get(o.order_number)
-    const nature = sg?.natureId != null ? ref.natures.find((n) => n.id === sg.natureId) : undefined
+    const nature = sg?.confident && sg.natureId != null ? ref.natures.find((n) => n.id === sg.natureId) : undefined
     const lots = new Set<number>(nature?.lots ?? [])
-    if (sg?.lot != null) lots.add(sg.lot)
+    if (nature && sg?.lot != null) lots.add(sg.lot)
     return { orderNumber: o.order_number, natureId: nature?.id ?? null, lots: [...lots] }
   }))
 
   const byNumber = useMemo(() => new Map(orders.map((o) => [o.order_number, o])), [orders])
   const isisOf = (orderNumber: string) => byNumber.get(orderNumber)?.isis_code ?? null
 
-  // ---- étape 1 : groupes par nature
+  // ---- étape 1 : commandes sans nature (à choisir) et groupes par nature
+  const pendingLines = useMemo(() => lines.filter((l) => l.natureId == null), [lines])
   const groups = useMemo(() => {
     const g = new Map<string, Line[]>()
     for (const l of lines) {
-      const key = l.natureId == null ? 'none' : String(l.natureId)
+      if (l.natureId == null) continue
+      const key = String(l.natureId)
       g.set(key, [...(g.get(key) ?? []), l])
     }
     return [...g.entries()]
   }, [lines])
+
+  const setLineNature = (orderNumber: string, natureId: number | null) => {
+    setLines((prev) => prev.map((l) => {
+      if (l.orderNumber !== orderNumber) return l
+      const nature = natureId != null ? ref.natures.find((n) => n.id === natureId) : undefined
+      return { ...l, natureId, lots: [...new Set([...l.lots, ...(nature?.lots ?? [])])] }
+    }))
+  }
 
   const setGroupNature = (key: string, natureId: number | null) => {
     setLines((prev) => prev.map((l) => {
@@ -243,7 +253,9 @@ export default function BulkPlanWizard({
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4" role="dialog" aria-modal="true">
       <div className="my-8 w-full max-w-4xl space-y-4 rounded-lg border border-border bg-card p-5 shadow-lg">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="mr-auto font-semibold">Création groupée de fiches · {lines.length} commande(s)</h2>
+          <h2 className="mr-auto font-semibold">
+            {lines.length === 1 ? `Créer la fiche · ${lines[0].orderNumber}` : `Création groupée de fiches · ${lines.length} commande(s)`}
+          </h2>
           <Button variant="ghost" onClick={onClose} disabled={busy}>Fermer</Button>
         </div>
 
@@ -258,9 +270,49 @@ export default function BulkPlanWizard({
 
         {step === 0 && (
           <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">Une ligne par nature commandée. Le lot suggéré est coché ; modifiez la nature ou les lots pour tout le groupe.</p>
+            {pendingLines.length > 0 && (
+              <Card className="space-y-3 border-amber-300">
+                <div>
+                  <h3 className="text-sm font-semibold">Nature à choisir ({pendingLines.length})</h3>
+                  <p className="text-xs text-muted-foreground">
+                    La correspondance n’est pas assez sûre pour être pré-sélectionnée. Choisissez la nature parmi les propositions, ou dans la liste complète.
+                  </p>
+                </div>
+                {pendingLines.map((l) => {
+                  const o = byNumber.get(l.orderNumber)
+                  const sg = suggestions.get(l.orderNumber)
+                  return (
+                    <div key={l.orderNumber} className="space-y-2 rounded-md border border-border p-3">
+                      <div className="text-sm">
+                        <span className="font-mono text-xs">{l.orderNumber}</span>
+                        <span className="ml-2">{o?.nature_text || o?.description || '—'}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {(sg?.candidates ?? []).map((n) => (
+                          <button key={n.id} type="button" onClick={() => setLineNature(l.orderNumber, n.id)}
+                            className="rounded-md border border-border bg-background px-3 py-1.5 text-left text-xs hover:border-primary hover:bg-primary/5">
+                            <span className="block font-medium">{n.label}</span>
+                            <span className="text-muted-foreground">{n.groupLabel ?? ''}</span>
+                          </button>
+                        ))}
+                        {!(sg?.candidates ?? []).length && <span className="text-xs text-muted-foreground">Aucune proposition automatique.</span>}
+                      </div>
+                      <select className={fieldClass} value="" onChange={(e) => e.target.value && setLineNature(l.orderNumber, Number(e.target.value))}>
+                        <option value="">Autre nature…</option>
+                        {natureOptions.map(([g, ns]) => (
+                          <optgroup key={g} label={g}>
+                            {ns.map((n) => <option key={n.id} value={n.id}>{n.label}{n.pending ? ' (en attente)' : ''}</option>)}
+                          </optgroup>
+                        ))}
+                      </select>
+                    </div>
+                  )
+                })}
+              </Card>
+            )}
+            {groups.length > 0 && <p className="text-sm text-muted-foreground">Chaque nature retenue regroupe ses commandes ; le lot suggéré est coché et modifiable pour tout le groupe.</p>}
             {groups.map(([key, items]) => {
-              const nature = key !== 'none' ? ref.natures.find((n) => String(n.id) === key) : undefined
+              const nature = ref.natures.find((n) => String(n.id) === key)
               const lotsOfGroup = new Set(items.flatMap((l) => l.lots))
               return (
                 <Card key={key}>
@@ -391,7 +443,12 @@ export default function BulkPlanWizard({
           <Button variant="ghost" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0 || busy}>Précédent</Button>
           <span className="mr-auto" />
           {step < STEPS.length - 1 && (
-            <Button onClick={() => setStep((s) => s + 1)} disabled={busy || !lines.length}>Suivant</Button>
+            <div className="flex items-center gap-3">
+              {step === 0 && pendingLines.length > 0 && (
+                <span className="text-xs text-amber-700">{pendingLines.length} commande(s) sans nature choisie</span>
+              )}
+              <Button onClick={() => setStep((s) => s + 1)} disabled={busy || !lines.length || (step === 0 && pendingLines.length > 0)}>Suivant</Button>
+            </div>
           )}
         </div>
       </div>

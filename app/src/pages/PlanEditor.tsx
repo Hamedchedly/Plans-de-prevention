@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { corpsMatch, getReferentiel, lotFromCorpsEtat, type Referentiel } from '../lib/refdata'
 import { computeMeasures, fold, proposeRisks, searchNatures, type NatureRef } from '../lib/rules'
+import { autoNature } from '../lib/natureSuggest'
 import type { OrderRow, PlanStatus } from '../lib/types'
 import { Badge, Button, Card, Notice, fieldClass, errMsg } from '../components/ui'
 import { logActivity, logError } from '../lib/activity'
@@ -21,7 +22,6 @@ interface Draft {
 
 const MIN_CHARS = 1
 /** Score minimal pour présélectionner une nature à partir du libellé source de la commande. */
-const SUGGEST_MIN_SCORE = 0.5
 
 /** Corps d'état sans lot : signalé une fois par commande et par corps d'état (journal des erreurs du Super Admin). */
 const reportedUnmatched = new Set<string>()
@@ -116,10 +116,9 @@ export default function PlanEditor({ order, onBack }: { order: OrderRow; onBack:
           ? r.natures.filter((n) => n.id === order.nature_id || n.proposalId === order.nature_proposal_id)
           : []
         // aucune nature retenue : présélection de la nature la plus proche du libellé source
-        const suggestText = (order.nature_text ?? '').trim() || (order.description ?? '').trim()
-        if (!hasNature && suggestText) {
-          const top = searchNatures(suggestText, r.natures, r.vocab, r.lotNameByCode, 1)[0]
-          if (top && top.score >= SUGGEST_MIN_SCORE) natures = [top.nature]
+        if (!hasNature) {
+          const auto = autoNature(order, r)
+          if (auto) natures = [auto]
         }
 
         const lots = new Map<number, LotState>()

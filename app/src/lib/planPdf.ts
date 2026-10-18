@@ -232,21 +232,17 @@ export async function buildPlanPdf(d: PlanPdfData, logo: Uint8Array | null = nul
     checkGrid(d.measureOptions.filter((m) => m.family === f))
   }
 
-  // Bas de page à droite : nom de l'entreprise et signature
+  // Bas de page à droite : nom de l'entreprise, puis « Signature » en gris clair
   const SIG_W = 250
-  const SIG_LBL = 100
-  const SIG_H1 = 22
-  const SIG_H2 = 58
+  const SIG_H = 70
   const sigX = PAGE_W - MX - SIG_W
-  const sigTop = CONTENT_BOTTOM - SIG_H1 - SIG_H2
+  const sigTop = CONTENT_BOTTOM - SIG_H
   if (top + 8 > sigTop) newPage()
-  fillRect(sigX, sigTop, SIG_LBL, SIG_H1 + SIG_H2, TINT)
-  frame(sigX, sigTop, SIG_W, SIG_H1)
-  frame(sigX, sigTop + SIG_H1, SIG_W, SIG_H2)
-  vline(sigX + SIG_LBL, sigTop, SIG_H1 + SIG_H2)
-  text('Nom de l’entreprise', sigX + 6, sigTop + 14, 7, bold, NAVY)
-  text(d.companyLabel, sigX + SIG_LBL + 6, sigTop + 14, 9, font)
-  text('Signature', sigX + 6, sigTop + SIG_H1 + 11, 7, bold, NAVY)
+  const nameW = bold.widthOfTextAtSize(clean(d.companyLabel || ' '), 10)
+  text(d.companyLabel, PAGE_W - MX - nameW, sigTop + 12, 10, bold, NAVY)
+  const sigLabel = 'Signature'
+  const sigW = font.widthOfTextAtSize(sigLabel, 8)
+  text(sigLabel, PAGE_W - MX - sigW, sigTop + SIG_H - 2, 8, font, MUTED)
 
   // Pied de page
   pages.forEach((p, i) => {

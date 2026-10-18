@@ -15,6 +15,7 @@ Dernière mise à jour : 2026-10-18. Statut : **Fait** (codé et poussé sur `ma
 | Entreprise et date d'intervention (case « à renseigner par l’entreprise ») | Fait | Assistant de fiche, étape 3 |
 | Validation : la fiche est créée (statut « Fiche créée ») même sans export | Fait | Assistant → « Valider et créer » |
 | Prévisualisation, modification, téléchargement PDF d'une fiche créée | Fait | Commandes → icônes |
+| Fiche PDF au modèle : logo du bailleur, couleurs, tableaux, risques et mesures cochés, bas de page (entreprise, signature) | Fait, à valider en impression | Export PDF et ZIP |
 | Export ZIP groupé (nom selon le modèle défini par le Super Admin) | Fait | Commandes → sélection → ZIP |
 | Éditeur avancé (natures, lots, mesures détaillées) | Fait | Commandes → icône « Éditeur avancé » |
 | Envoi par mailto | À faire | — |
@@ -30,7 +31,7 @@ Dernière mise à jour : 2026-10-18. Statut : **Fait** (codé et poussé sur `ma
 | Sujet | Statut |
 |---|---|
 | Entreprises : modification directe par le Super Admin (journalisée) et propositions validées | Fait |
-| Identité des utilisateurs (nom, prénom, téléphone, mail) | Fait |
+| Identité des utilisateurs (nom, prénom, téléphone, mail), saisie par le Super Admin ou à l'inscription | Fait |
 | Période d'intervention par défaut (date de commande + 2 mois), modifiable | Fait |
 | Correspondance corps d'état → lots NAAC, alerte pour les corps non rattachés | Fait |
 | Arbre des lots NAAC (GT / GE / CP) : verdict donné | En attente de validation |
@@ -58,5 +59,6 @@ Dernière mise à jour : 2026-10-18. Statut : **Fait** (codé et poussé sur `ma
 | Version V2 : portail entreprise | À faire |
 
 ## Questions ouvertes
-- Contact « Personne à alerter » du PDF : rédacteur courant ou contact fixe du secteur ?
+- Contact « Personne à alerter » du PDF : décidé, c'est la personne à appeler, à savoir le rédacteur de la fiche. Proposition à valider : prendre le chargé de la commande plutôt que l'utilisateur qui exporte (utile quand un Super Admin génère les fiches d'autres chargés).
+- Périmètre : cinq commandes (dont 5132524 et 5132234 exclues manuellement) sont hors périmètre depuis la règle GT/GE/CP du 18/10 ; décision à prendre.
 - Arbre NAAC : validation du verdict (une même famille de corps d'état, la famille de la commande décide).

@@ -350,19 +350,13 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
         </div>
       </div>
 
-      {ACTIONABLE.includes(tab) && selected.size > 0 && (
-        <div className="flex flex-wrap items-center gap-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
-          <span className="font-medium">{selected.size} sélectionnée(s)</span>
+      {selected.size > 0 && (ACTIONABLE.includes(tab) || manualTab) && (
+        <div className="flex w-full flex-wrap items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+          <span className="mr-auto font-medium">{selected.size} sélectionnée(s)</span>
           {tab === 'NON_QUALIFIEE' && <Button onClick={() => setWizard({ orders: selectedOrders, mode: 'create' })} disabled={busy || !ref}>Créer les fiches</Button>}
           {tab === 'A_ENVOYER' && <Button onClick={() => void downloadSelectedZip()} disabled={busy || !ref}>Télécharger les PDF (ZIP)</Button>}
-          <Button variant="ghost" onClick={() => sendManually([...selected])} disabled={busy}>Déjà envoyée manuellement</Button>
-          <Button variant="ghost" onClick={() => setSelected(new Set())}>Tout désélectionner</Button>
-        </div>
-      )}
-      {manualTab && selected.size > 0 && (
-        <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
-          <span className="font-medium">{selected.size} sélectionnée(s)</span>
-          <Button variant="ghost" onClick={() => restoreManual([...selected])} disabled={busy}>Remettre à traiter</Button>
+          {ACTIONABLE.includes(tab) && <Button variant="ghost" onClick={() => sendManually([...selected])} disabled={busy}>Déjà envoyée manuellement</Button>}
+          {manualTab && <Button variant="ghost" onClick={() => restoreManual([...selected])} disabled={busy}>Remettre à traiter</Button>}
           <Button variant="ghost" onClick={() => setSelected(new Set())}>Tout désélectionner</Button>
         </div>
       )}

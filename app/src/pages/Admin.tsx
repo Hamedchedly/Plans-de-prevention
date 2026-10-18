@@ -6,10 +6,11 @@ import { importReferentielV4 } from '../lib/referentiel'
 import type { AlertRow, Profile, Role } from '../lib/types'
 import { Badge, Button, Card, Notice, errMsg, fieldClass } from '../components/ui'
 
-type Section = 'perimetre' | 'referentiels' | 'alertes' | 'utilisateurs'
+type Section = 'validations' | 'perimetre' | 'referentiels' | 'alertes' | 'utilisateurs'
 
 const SECTIONS: { key: Section; label: string; superOnly: boolean }[] = [
   { key: 'alertes', label: 'Alertes', superOnly: false },
+  { key: 'validations', label: 'Validations', superOnly: true },
   { key: 'perimetre', label: 'Périmètre', superOnly: true },
   { key: 'referentiels', label: 'Référentiels', superOnly: true },
   { key: 'utilisateurs', label: 'Utilisateurs', superOnly: true },
@@ -28,6 +29,7 @@ export default function Admin() {
         ))}
       </div>
       {section === 'alertes' && <AlertsSection />}
+      {section === 'validations' && isSuper && <ValidationsSection />}
       {section === 'perimetre' && isSuper && <ScopeSection />}
       {section === 'referentiels' && isSuper && <ReferentielSection userId={profile?.user_id ?? ''} />}
       {section === 'utilisateurs' && isSuper && <UsersSection />}
@@ -87,6 +89,102 @@ function AlertsSection() {
         </Card>
       ))}
       {shown.length === 0 && <Notice>Aucune alerte à traiter.</Notice>}
+    </div>
+  )
+}
+
+interface Proposal {
+  id: number; kind: 'NATURE_NOUVELLE' | 'NATURE_REGLE' | 'CORPS_NAAC'; nature_id: number | null
+  payload: { label?: string; lots?: number[]; risks?: string[]; measures?: string[]; naac?: string; corps_label?: string; lot_code?: number }
+  reason: string | null; created_by: string; created_at: string
+}
+
+/** Ce que le Super Admin doit valider avant généralisation : propositions de référentiel et demandes d'exclusion. */
+function ValidationsSection() {
+  const [proposals, setProposals] = useState<Proposal[]>([])
+  const [requests, setRequests] = useState<{ order_number: string; scope_request_reason: string | null; scope_request_by: string | null }[]>([])
+  const [lots, setLots] = useState<Record<number, string>>({})
+  const [emails, setEmails] = useState<Record<string, string>>({})
+  const [comments, setComments] = useState<Record<string, string>>({})
+  const [err, setErr] = useState<string | null>(null)
+
+  const load = async () => {
+    setErr(null)
+    const [p, r, l, pr] = await Promise.all([
+      supabase.from('referential_proposals').select('id,kind,nature_id,payload,reason,created_by,created_at').eq('status', 'EN_ATTENTE').order('created_at'),
+      supabase.from('orders').select('order_number,scope_request_reason,scope_request_by').eq('scope_request_status', 'EN_ATTENTE'),
+      supabase.from('lots').select('code,name'),
+      supabase.from('profiles').select('user_id,email'),
+    ])
+    const e = [p, r, l, pr].find((x) => x.error)?.error
+    if (e) { setErr(e.message); return }
+    setProposals((p.data ?? []) as Proposal[])
+    setRequests((r.data ?? []) as typeof requests)
+    setLots(Object.fromEntries((l.data ?? []).map((x: { code: number; name: string }) => [x.code, x.name])))
+    setEmails(Object.fromEntries((pr.data ?? []).map((x: { user_id: string; email: string | null }) => [x.user_id, x.email ?? x.user_id])))
+  }
+  useEffect(() => { void load() }, [])
+
+  const decideProposal = async (p: Proposal, approve: boolean) => {
+    const c = comments[`p${p.id}`] ?? null
+    const { error } = p.kind === 'CORPS_NAAC'
+      ? await supabase.rpc('decide_corps_naac', { p_id: p.id, p_approve: approve, p_comment: c })
+      : await supabase.rpc('decide_referential', { p_id: p.id, p_status: approve ? 'APPROUVEE' : 'REFUSEE', p_comment: c })
+    if (error) setErr(error.message); else void load()
+  }
+
+  const decideRequest = async (orderNumber: string, approve: boolean) => {
+    const { error } = await supabase.rpc('decide_scope_exclusion', { p_order: orderNumber, p_approve: approve, p_comment: comments[`o${orderNumber}`] ?? null })
+    if (error) setErr(error.message); else void load()
+  }
+
+  const describe = (p: Proposal) => {
+    const names = (ids: number[] = []) => ids.map((i) => lots[i] ?? i).join(', ') || '—'
+    if (p.kind === 'CORPS_NAAC') return `Correspondance ${p.payload.naac} · « ${p.payload.corps_label} » → ${lots[p.payload.lot_code ?? 0] ?? '—'}`
+    if (p.kind === 'NATURE_NOUVELLE') return `Nouvelle nature : « ${p.payload.label} » · lots : ${names(p.payload.lots)}`
+    return `Règle de la nature n°${p.nature_id} · lots : ${names(p.payload.lots)} · risques : ${(p.payload.risks ?? []).join(', ') || '—'}`
+  }
+
+  return (
+    <div className="space-y-4">
+      <h2 className="font-semibold">Validations en attente</h2>
+      <p className="text-sm text-muted-foreground">Rien n’est généralisé aux autres utilisateurs avant votre décision. Vous pouvez approuver, refuser ou commenter.</p>
+      {err && <Notice tone="error">{err}</Notice>}
+
+      <h3 className="pt-2 text-sm font-semibold">Référentiel ({proposals.length})</h3>
+      {proposals.map((p) => (
+        <Card key={p.id}>
+          <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <Badge>{p.kind === 'NATURE_NOUVELLE' ? 'Nouvelle nature' : p.kind === 'NATURE_REGLE' ? 'Règle de nature' : 'Correspondance NAAC'}</Badge>
+            <span>par {emails[p.created_by] ?? p.created_by}</span>
+            <span>{new Date(p.created_at).toLocaleString('fr-FR')}</span>
+          </div>
+          <p className="text-sm">{describe(p)}</p>
+          {p.reason && <p className="mt-1 text-xs text-muted-foreground">Motif : {p.reason}</p>}
+          <div className="mt-3 flex flex-wrap gap-2">
+            <input className={fieldClass + ' min-w-[200px] flex-1'} placeholder="Commentaire (optionnel)" value={comments[`p${p.id}`] ?? ''}
+              onChange={(e) => setComments({ ...comments, [`p${p.id}`]: e.target.value })} />
+            <Button onClick={() => void decideProposal(p, true)}>Approuver</Button>
+            <Button variant="ghost" onClick={() => void decideProposal(p, false)}>Refuser</Button>
+          </div>
+        </Card>
+      ))}
+      {proposals.length === 0 && <Notice>Aucune proposition de référentiel en attente.</Notice>}
+
+      <h3 className="pt-2 text-sm font-semibold">Exclusions du périmètre ({requests.length})</h3>
+      {requests.map((r) => (
+        <Card key={r.order_number}>
+          <div className="font-mono text-xs text-muted-foreground">{r.order_number}</div>
+          <p className="mt-1 text-sm">Motif : {r.scope_request_reason ?? '—'}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <input className={fieldClass + ' min-w-[200px] flex-1'} placeholder="Commentaire (optionnel)" value={comments[`o${r.order_number}`] ?? ''}
+              onChange={(e) => setComments({ ...comments, [`o${r.order_number}`]: e.target.value })} />
+            <Button onClick={() => void decideRequest(r.order_number, true)}>Exclure</Button>
+            <Button variant="ghost" onClick={() => void decideRequest(r.order_number, false)}>Garder dans le périmètre</Button>
+          </div>
+        </Card>
+      ))}
+      {requests.length === 0 && <Notice>Aucune demande d’exclusion en attente.</Notice>}
     </div>
   )
 }

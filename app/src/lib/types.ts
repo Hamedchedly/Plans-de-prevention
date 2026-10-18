@@ -11,6 +11,8 @@ export interface Profile {
 }
 
 export type ScopeStatus = 'IN_SCOPE' | 'OUT_OF_SCOPE'
+export type PlanStatus = 'NON_QUALIFIEE' | 'A_ENVOYER' | 'EN_ATTENTE_RETOUR' | 'ARCHIVEE'
+export type ScopeRequestStatus = 'AUCUNE' | 'EN_ATTENTE' | 'APPROUVEE' | 'REFUSEE'
 export type QualificationStatus = 'AUTO' | 'A_QUALIFIER' | 'QUALIFIED'
 
 export interface OrderRow {
@@ -30,6 +32,10 @@ export interface OrderRow {
   scope_override: boolean
   qualification_status: QualificationStatus
   nature_id: number | null
+  plan_status: PlanStatus
+  nature_proposal_id: number | null
+  scope_request_status: ScopeRequestStatus
+  scope_request_reason: string | null
 }
 
 export type AlertStatus = 'A_VALIDER' | 'APPLIQUE_A_VALIDER' | 'VALIDE' | 'MODIFIE' | 'IGNORE'

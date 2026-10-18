@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import seed from '../data/referentiel_v4.json'
+import { computeMeasures, type MeasureRule, type RuleType } from './rules'
 
 /**
  * Charge le référentiel V4 (proposé, non validé) dans le schéma.
@@ -34,6 +35,12 @@ export async function importReferentielV4(userId: string): Promise<string> {
   const natureIds = seed.natures.map((n) => idByLabel.get(n.label)).filter((x): x is number => typeof x === 'number')
   ok(await supabase.from('nature_lots').delete().in('nature_id', natureIds))
   ok(await supabase.from('nature_risks').delete().in('nature_id', natureIds))
+  ok(await supabase.from('nature_measures').delete().in('nature_id', natureIds))
+  // mesures par nature = mesures des risques (défauts des lots + écarts de la nature)
+  const defaultsByLot = new Map<number, string[]>()
+  seed.lot_risks.filter((x) => x.is_default).forEach((x) => defaultsByLot.set(x.lot, [...(defaultsByLot.get(x.lot) ?? []), x.risk]))
+  const rulesList: MeasureRule[] = seed.measures.map((m) => ({ code: m.code, label: m.label, family: m.family, ruleType: m.rule_type as RuleType, risks: m.risks }))
+  const nm: { nature_id: number; measure_code: string }[] = []
   const nl: { nature_id: number; lot_code: number }[] = []
   const nr: { nature_id: number; risk_code: string }[] = []
   for (const n of seed.natures) {
@@ -41,9 +48,12 @@ export async function importReferentielV4(userId: string): Promise<string> {
     if (typeof id !== 'number') continue
     n.lots.forEach((lot) => nl.push({ nature_id: id, lot_code: lot }))
     n.extra_risks.forEach((r) => nr.push({ nature_id: id, risk_code: r }))
+    const risksOfNature = new Set([...n.lots.flatMap((l) => defaultsByLot.get(l) ?? []), ...n.extra_risks])
+    computeMeasures(risksOfNature, rulesList).forEach((m) => nm.push({ nature_id: id, measure_code: m }))
   }
   for (const part of chunk(nl)) ok(await supabase.from('nature_lots').insert(part))
   for (const part of chunk(nr)) ok(await supabase.from('nature_risks').insert(part))
+  for (const part of chunk(nm)) ok(await supabase.from('nature_measures').insert(part))
 
   ok(await supabase.from('vocabulary').upsert(seed.vocabulary, { onConflict: 'term' }))
   // alertes : ne jamais écraser une décision existante

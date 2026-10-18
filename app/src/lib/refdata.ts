@@ -1,5 +1,7 @@
 import { supabase } from './supabase'
-import type { MeasureRule, NatureRef, VocabEntry } from './rules'
+import { fold, type MeasureRule, type NatureRef, type VocabEntry } from './rules'
+
+export interface NaacCorps { naac: string; corpsLabel: string; lotCode: number | null; validated: boolean }
 
 export interface Referentiel {
   lots: { code: number; name: string }[]
@@ -11,77 +13,118 @@ export interface Referentiel {
   lotDefaults: Map<number, string[]>
   natures: NatureRef[]
   vocab: VocabEntry[]
+  naacCorps: NaacCorps[]
 }
 
-function check<T>(res: { data: T | null; error: { message: string } | null }): T {
-  if (res.error) throw new Error(res.error.message)
-  return (res.data ?? []) as T
+async function run<T>(p: PromiseLike<{ data: T | null; error: { message: string } | null }>): Promise<T> {
+  const { data, error } = await p
+  if (error) throw new Error(error.message)
+  return (data ?? []) as T
 }
 
-/** Lit tout le référentiel en une fois (quelques centaines de lignes). */
+interface ProposalRow {
+  id: number
+  kind: 'NATURE_NOUVELLE' | 'NATURE_REGLE' | 'CORPS_NAAC'
+  nature_id: number | null
+  payload: { label?: string; lots?: number[]; risks?: string[]; measures?: string[]; naac?: string; corps_label?: string; lot_code?: number }
+}
+
+/**
+ * Référentiel commun (validé) + overlay des propositions de la session de l'utilisateur (non validées).
+ * Les propositions des autres utilisateurs n'apparaissent qu'après approbation du Super Admin.
+ */
 export async function loadReferentiel(): Promise<Referentiel> {
-  const [lots, risks, measures, mrr, lotRisks, natures, nl, nr, vocab] = await Promise.all([
-    supabase.from('lots').select('code,name').order('code'),
-    supabase.from('risks').select('code,label,family').order('code'),
-    supabase.from('measures').select('code,label,family,rule_type').order('code'),
-    supabase.from('measure_risk_rules').select('measure_code,risk_code'),
-    supabase.from('lot_risks').select('lot_code,risk_code,is_default'),
-    supabase.from('natures').select('id,label,group_label,model_code').order('label'),
-    supabase.from('nature_lots').select('nature_id,lot_code'),
-    supabase.from('nature_risks').select('nature_id,risk_code'),
-    supabase.from('vocabulary').select('term,equivalents'),
-  ].map((p) => p as unknown as Promise<{ data: unknown; error: { message: string } | null }>)) as unknown as [
-    { data: { code: number; name: string }[]; error: null | { message: string } },
-    { data: { code: string; label: string; family: string }[]; error: null | { message: string } },
-    { data: { code: string; label: string; family: string; rule_type: MeasureRule['ruleType'] }[]; error: null | { message: string } },
-    { data: { measure_code: string; risk_code: string }[]; error: null | { message: string } },
-    { data: { lot_code: number; risk_code: string; is_default: boolean }[]; error: null | { message: string } },
-    { data: { id: number; label: string; group_label: string | null; model_code: string | null }[]; error: null | { message: string } },
-    { data: { nature_id: number; lot_code: number }[]; error: null | { message: string } },
-    { data: { nature_id: number; risk_code: string }[]; error: null | { message: string } },
-    { data: { term: string; equivalents: string[] }[]; error: null | { message: string } },
-  ]
-  const lotsRows = check(lots)
-  const riskRows = check(risks)
-  const measureRows = check(measures)
-  const mrrRows = check(mrr)
-  const lotRiskRows = check(lotRisks)
-  const natureRows = check(natures)
-  const nlRows = check(nl)
-  const nrRows = check(nr)
-  const vocabRows = check(vocab)
+  const [lots, risks, measures, mrr, lotRisks, natures, nl, nr, nm, vocab, naac] = await Promise.all([
+    run<{ code: number; name: string }[]>(supabase.from('lots').select('code,name').order('code')),
+    run<{ code: string; label: string; family: string }[]>(supabase.from('risks').select('code,label,family').order('code')),
+    run<{ code: string; label: string; family: string; rule_type: MeasureRule['ruleType'] }[]>(
+      supabase.from('measures').select('code,label,family,rule_type').order('code')),
+    run<{ measure_code: string; risk_code: string }[]>(supabase.from('measure_risk_rules').select('measure_code,risk_code')),
+    run<{ lot_code: number; risk_code: string; is_default: boolean }[]>(supabase.from('lot_risks').select('lot_code,risk_code,is_default')),
+    run<{ id: number; label: string; group_label: string | null; model_code: string | null }[]>(
+      supabase.from('natures').select('id,label,group_label,model_code').order('label')),
+    run<{ nature_id: number; lot_code: number }[]>(supabase.from('nature_lots').select('nature_id,lot_code')),
+    run<{ nature_id: number; risk_code: string }[]>(supabase.from('nature_risks').select('nature_id,risk_code')),
+    run<{ nature_id: number; measure_code: string }[]>(supabase.from('nature_measures').select('nature_id,measure_code')),
+    run<{ term: string; equivalents: string[] }[]>(supabase.from('vocabulary').select('term,equivalents')),
+    run<{ naac: string; corps_label: string; lot_code: number | null; validated: boolean }[]>(
+      supabase.from('naac_corps_etat').select('naac,corps_label,lot_code,validated')),
+  ])
 
-  const lotsByNature = new Map<number, number[]>()
-  nlRows.forEach((r) => lotsByNature.set(r.nature_id, [...(lotsByNature.get(r.nature_id) ?? []), r.lot_code]))
-  const extraByNature = new Map<number, string[]>()
-  nrRows.forEach((r) => extraByNature.set(r.nature_id, [...(extraByNature.get(r.nature_id) ?? []), r.risk_code]))
-  const risksByMeasure = new Map<string, string[]>()
-  mrrRows.forEach((r) => risksByMeasure.set(r.measure_code, [...(risksByMeasure.get(r.measure_code) ?? []), r.risk_code]))
-  const lotDefaults = new Map<number, string[]>()
-  lotRiskRows.filter((r) => r.is_default).forEach((r) => lotDefaults.set(r.lot_code, [...(lotDefaults.get(r.lot_code) ?? []), r.risk_code]))
+  const group = <T,>(rows: T[], key: (r: T) => number | string, val: (r: T) => string | number) => {
+    const m = new Map<number | string, (string | number)[]>()
+    rows.forEach((r) => m.set(key(r), [...(m.get(key(r)) ?? []), val(r)]))
+    return m
+  }
+  const lotsByNature = group(nl, (r) => r.nature_id, (r) => r.lot_code) as Map<number, number[]>
+  const extraByNature = group(nr, (r) => r.nature_id, (r) => r.risk_code) as Map<number, string[]>
+  const measuresByNature = group(nm, (r) => r.nature_id, (r) => r.measure_code) as Map<number, string[]>
+  const risksByMeasure = group(mrr, (r) => r.measure_code, (r) => r.risk_code) as Map<string, string[]>
+  const lotDefaults = group(lotRisks.filter((r) => r.is_default), (r) => r.lot_code, (r) => r.risk_code) as Map<number, string[]>
+
+  const baseNatures: NatureRef[] = natures.map((n) => ({
+    id: n.id, label: n.label, groupLabel: n.group_label, modelCode: n.model_code,
+    lots: lotsByNature.get(n.id) ?? [], extraRisks: extraByNature.get(n.id) ?? [], measures: measuresByNature.get(n.id) ?? [],
+  }))
+  const naacCorps: NaacCorps[] = naac.map((c) => ({ naac: c.naac, corpsLabel: c.corps_label, lotCode: c.lot_code, validated: c.validated }))
+
+  // overlay : propositions en attente de l'utilisateur courant
+  const { data: auth } = await supabase.auth.getUser()
+  const own = auth.user
+    ? await run<ProposalRow[]>(supabase.from('referential_proposals').select('id,kind,nature_id,payload')
+        .eq('status', 'EN_ATTENTE').eq('created_by', auth.user.id))
+    : []
+  const allNatures = [...baseNatures]
+  for (const p of own) {
+    const pl = p.payload
+    if (p.kind === 'NATURE_NOUVELLE') {
+      allNatures.push({ id: -p.id, label: pl.label ?? '', groupLabel: 'En attente de validation', modelCode: null,
+        lots: pl.lots ?? [], extraRisks: pl.risks ?? [], measures: pl.measures ?? [], pending: true, proposalId: p.id })
+    } else if (p.kind === 'NATURE_REGLE') {
+      const i = allNatures.findIndex((n) => n.id === p.nature_id)
+      if (i >= 0) allNatures[i] = { ...allNatures[i], lots: pl.lots ?? [], extraRisks: pl.risks ?? [], measures: pl.measures ?? [], pending: true, proposalId: p.id }
+    } else if (p.kind === 'CORPS_NAAC' && pl.naac && pl.corps_label) {
+      const existing = naacCorps.find((c) => c.naac === pl.naac && c.corpsLabel === pl.corps_label)
+      if (existing) { existing.lotCode = pl.lot_code ?? null; existing.validated = false }
+      else naacCorps.push({ naac: pl.naac, corpsLabel: pl.corps_label, lotCode: pl.lot_code ?? null, validated: false })
+    }
+  }
 
   return {
-    lots: lotsRows,
-    lotNameByCode: new Map(lotsRows.map((l) => [l.code, l.name])),
-    risks: riskRows,
-    riskLabel: new Map(riskRows.map((r) => [r.code, r.label])),
-    measures: measureRows.map((m) => ({ code: m.code, label: m.label, family: m.family, ruleType: m.rule_type })),
-    rules: measureRows.map((m) => ({
-      code: m.code, label: m.label, family: m.family, ruleType: m.rule_type,
-      risks: risksByMeasure.get(m.code) ?? [],
-    })),
+    lots,
+    lotNameByCode: new Map(lots.map((l) => [l.code, l.name])),
+    risks,
+    riskLabel: new Map(risks.map((r) => [r.code, r.label])),
+    measures: measures.map((m) => ({ code: m.code, label: m.label, family: m.family, ruleType: m.rule_type })),
+    rules: measures.map((m) => ({ code: m.code, label: m.label, family: m.family, ruleType: m.rule_type, risks: risksByMeasure.get(m.code) ?? [] })),
     lotDefaults,
-    natures: natureRows.map((n) => ({
-      id: n.id, label: n.label, groupLabel: n.group_label, modelCode: n.model_code,
-      lots: lotsByNature.get(n.id) ?? [], extraRisks: extraByNature.get(n.id) ?? [],
-    })),
-    vocab: vocabRows,
+    natures: allNatures,
+    vocab,
+    naacCorps,
   }
 }
 
-/** Rapprochement suivi budgétaire → lot : mots du libellé de corps d'état comparés aux noms de lots. */
+/** Corps d'état proche d'un libellé de suivi budgétaire (ex. « (i) Electricité » ≈ « Electricité »). */
+export function corpsMatch(label: string, corps: Referentiel['naacCorps'], naac: string | null): NaacCorps | null {
+  if (!naac) return null
+  const target = fold(label).replace(/\s+/g, ' ').trim()
+  for (const c of corps) {
+    if (c.naac !== naac) continue
+    const bare = fold(c.corpsLabel.replace(/^\([a-z]+\)\s*/i, '')).trim()
+    if (fold(c.corpsLabel).trim() === target || (bare && target.includes(bare))) return c
+  }
+  return null
+}
+
+let cache: Promise<Referentiel> | null = null
+/** Référentiel chargé une fois par session ; `force` le recharge (après une proposition par exemple). */
+export function getReferentiel(force = false): Promise<Referentiel> {
+  if (force || !cache) cache = loadReferentiel().catch((e) => { cache = null; throw e })
+  return cache
+}
+
+/** Rapprochement approximatif libellé → lot (repli quand la correspondance NAAC ne suffit pas). */
 export function lotFromCorpsEtat(label: string, lots: { code: number; name: string }[]): { code: number; confidence: number } | null {
-  const fold = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]/g, ' ')
   const words = fold(label).split(/\s+/).filter((w) => w.length >= 4)
   let best: { code: number; confidence: number } | null = null
   for (const lot of lots) {
@@ -93,11 +136,4 @@ export function lotFromCorpsEtat(label: string, lots: { code: number; name: stri
     }
   }
   return best
-}
-
-let cache: Promise<Referentiel> | null = null
-/** Référentiel chargé une seule fois par session (invalidé après un rechargement). */
-export function getReferentiel(force = false): Promise<Referentiel> {
-  if (force || !cache) cache = loadReferentiel().catch((e) => { cache = null; throw e })
-  return cache
 }

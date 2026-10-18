@@ -11,12 +11,15 @@ export interface MeasureRule {
 }
 
 export interface NatureRef {
-  id: number
+  id: number                 // négatif = proposition de la session, pas encore validée
   label: string
   groupLabel: string | null
   modelCode: string | null
   lots: number[]
   extraRisks: string[]
+  measures?: string[]
+  pending?: boolean
+  proposalId?: number
 }
 
 export interface VocabEntry { term: string; equivalents: string[] }

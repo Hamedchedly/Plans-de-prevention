@@ -5,12 +5,18 @@ import { fold, tokens } from '../lib/rules'
 import type { OrderRow } from '../lib/types'
 import { Badge, Button, Card, Notice, fieldClass, errMsg } from '../components/ui'
 
-type Tab = 'PERIMETRE' | 'A_QUALIFIER' | 'HORS_PERIMETRE'
+type Tab = 'NON_QUALIFIEE' | 'A_ENVOYER' | 'EN_ATTENTE_RETOUR' | 'ARCHIVEE' | 'DEMANDES' | 'HORS_PERIMETRE'
 const TABS: { key: Tab; label: string }[] = [
-  { key: 'A_QUALIFIER', label: 'À qualifier' },
-  { key: 'PERIMETRE', label: 'Dans le périmètre' },
+  { key: 'NON_QUALIFIEE', label: 'À qualifier' },
+  { key: 'A_ENVOYER', label: 'À envoyer' },
+  { key: 'EN_ATTENTE_RETOUR', label: 'En attente retour' },
+  { key: 'ARCHIVEE', label: 'Archivées' },
+  { key: 'DEMANDES', label: 'Exclusions en attente' },
   { key: 'HORS_PERIMETRE', label: 'Hors périmètre' },
 ]
+const PLAN_LABEL: Record<string, string> = {
+  NON_QUALIFIEE: 'Non qualifiée', A_ENVOYER: 'À envoyer', EN_ATTENTE_RETOUR: 'En attente retour', ARCHIVEE: 'Archivée',
+}
 
 async function fetchAllOrders(): Promise<OrderRow[]> {
   const page = 1000
@@ -32,7 +38,7 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
   const [rows, setRows] = useState<OrderRow[]>([])
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState<string | null>(null)
-  const [tab, setTab] = useState<Tab>('A_QUALIFIER')
+  const [tab, setTab] = useState<Tab>('NON_QUALIFIEE')
   const [q, setQ] = useState('')
   const [sector, setSector] = useState('S11')
   const [operator, setOperator] = useState('')
@@ -47,9 +53,9 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
   const operators = useMemo(() => [...new Set(rows.map((r) => r.operator_code).filter(Boolean))] as string[], [rows])
 
   const inTab = (o: OrderRow, t: Tab) =>
-    t === 'PERIMETRE' ? o.scope_status === 'IN_SCOPE'
-      : t === 'A_QUALIFIER' ? o.scope_status === 'IN_SCOPE' && o.qualification_status !== 'QUALIFIED'
-        : o.scope_status === 'OUT_OF_SCOPE'
+    t === 'HORS_PERIMETRE' ? o.scope_status === 'OUT_OF_SCOPE'
+      : t === 'DEMANDES' ? o.scope_request_status === 'EN_ATTENTE'
+        : o.scope_status === 'IN_SCOPE' && o.plan_status === t
 
   const terms = tokens(q)
   const matches = (o: OrderRow) => {
@@ -62,12 +68,18 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
   const visible = base.filter((o) => inTab(o, tab))
   const count = (t: Tab) => base.filter((o) => inTab(o, t)).length
 
-  const toggleScope = async (o: OrderRow) => {
-    const next = o.scope_status === 'IN_SCOPE' ? 'OUT_OF_SCOPE' : 'IN_SCOPE'
-    const comment = next === 'OUT_OF_SCOPE' ? window.prompt('Motif de sortie du périmètre (optionnel) :') ?? null : null
-    const { error } = await supabase.rpc('set_order_scope', { p_order: o.order_number, p_scope: next, p_override: true, p_comment: comment })
+  const requestExclusion = async (o: OrderRow) => {
+    const reason = window.prompt('Motif de l’exclusion du périmètre (obligatoire, 5 caractères minimum) :')
+    if (reason === null) return
+    const { error } = await supabase.rpc('request_scope_exclusion', { p_order: o.order_number, p_reason: reason })
     if (error) { setErr(error.message); return }
-    setRows((rs) => rs.map((r) => (r.order_number === o.order_number ? { ...r, scope_status: next, scope_override: true } : r)))
+    setRows((rs) => rs.map((r) => (r.order_number === o.order_number ? { ...r, scope_request_status: 'EN_ATTENTE', scope_request_reason: reason.trim() } : r)))
+  }
+
+  const reintegrate = async (o: OrderRow) => {
+    const { error } = await supabase.rpc('set_order_scope', { p_order: o.order_number, p_scope: 'IN_SCOPE', p_override: true, p_comment: null })
+    if (error) { setErr(error.message); return }
+    setRows((rs) => rs.map((r) => (r.order_number === o.order_number ? { ...r, scope_status: 'IN_SCOPE', scope_override: true } : r)))
   }
 
   return (
@@ -137,19 +149,22 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
                     <div className="flex flex-wrap gap-1">
                       <Badge tone={o.scope_status === 'IN_SCOPE' ? 'ok' : 'off'}>{o.scope_status === 'IN_SCOPE' ? 'Périmètre' : 'Hors périmètre'}</Badge>
                       {o.scope_override && <Badge tone="warn">Forcé</Badge>}
-                      {o.qualification_status === 'QUALIFIED' && <Badge tone="ok">Qualifié</Badge>}
+                      {o.scope_status === 'IN_SCOPE' && <Badge>{PLAN_LABEL[o.plan_status]}</Badge>}
+                      {o.naac_code && <Badge>{o.naac_code}</Badge>}
                     </div>
                   </td>
                   <td className="px-3 py-2 text-right whitespace-nowrap">
-                    {o.scope_status === 'IN_SCOPE' && (
+                    {o.scope_status === 'IN_SCOPE' && (o.plan_status === 'NON_QUALIFIEE' || o.plan_status === 'A_ENVOYER') && (
                       <Button onClick={() => onOpen(o)} className="mr-2">
-                        {o.qualification_status === 'QUALIFIED' ? 'Modifier le plan' : 'Qualifier'}
+                        {o.plan_status === 'NON_QUALIFIEE' ? 'Qualifier' : 'Modifier le plan'}
                       </Button>
                     )}
-                    {isManager && (
-                      <Button variant="ghost" onClick={() => void toggleScope(o)}>
-                        {o.scope_status === 'IN_SCOPE' ? 'Exclure' : 'Réintégrer'}
-                      </Button>
+                    {o.scope_status === 'IN_SCOPE' && o.scope_request_status !== 'EN_ATTENTE' && (
+                      <Button variant="ghost" onClick={() => void requestExclusion(o)}>Demander l’exclusion</Button>
+                    )}
+                    {o.scope_request_status === 'EN_ATTENTE' && <Badge tone="warn">Exclusion en attente</Badge>}
+                    {isManager && o.scope_status === 'OUT_OF_SCOPE' && (
+                      <Button variant="ghost" onClick={() => void reintegrate(o)}>Réintégrer</Button>
                     )}
                   </td>
                 </tr>

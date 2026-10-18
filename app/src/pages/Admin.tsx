@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { getReferentiel } from '../lib/refdata'
 import { importReferentielV4 } from '../lib/referentiel'
+import { checkReferentielFile, downloadJson, exportReferentiel, lastReferentielLoad } from '../lib/referentielIO'
 import type { AlertRow, Profile, Role } from '../lib/types'
 import { Badge, Button, Card, Notice, PageHeader, errMsg, fieldClass } from '../components/ui'
 import { CompaniesSection, CompanyProposalsSection } from './AdminCompanies'
@@ -396,23 +397,59 @@ function ReferentielSection({ userId }: { userId: string }) {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
-  const run = async () => {
+  const [last, setLast] = useState<Awaited<ReturnType<typeof lastReferentielLoad>> | undefined>(undefined)
+
+  const refreshLast = () => { lastReferentielLoad().then(setLast).catch((e) => setErr(errMsg(e))) }
+  useEffect(() => { refreshLast() }, [])
+
+  const run = async (task: () => Promise<string>) => {
     setBusy(true); setErr(null); setMsg(null)
     try {
-      setMsg(await importReferentielV4(userId))
+      setMsg(await task())
       await getReferentiel(true)
+      refreshLast()
     } catch (e) { setErr(errMsg(e)) } finally { setBusy(false) }
   }
+
+  const exportRef = () => run(async () => {
+    const data = await exportReferentiel()
+    downloadJson(`referentiel_${new Date().toISOString().slice(0, 10)}.json`, data)
+    return `Référentiel exporté (${data.lots.length} lots, ${data.risks.length} risques, ${data.measures.length} mesures, ${data.natures.length} natures).`
+  })
+
+  const importFile = async (file: File) => {
+    await run(async () => {
+      const data = checkReferentielFile(JSON.parse(await file.text()))
+      return `Fichier « ${file.name} » : ${await importReferentielV4(userId, data)}`
+    })
+  }
+
   return (
-    <Card className="max-w-xl space-y-3">
-      <h2 className="font-semibold">Référentiel V4 (proposé, non validé)</h2>
+    <Card className="max-w-xl space-y-4">
+      <div>
+        <h2 className="font-semibold">Référentiel</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {last === undefined ? 'Chargement de la date…' : last
+            ? <>Dernier chargement : <strong>{new Date(last.created_at).toLocaleString('fr-FR')}</strong> · version « {last.label} »{last.by ? ` · par ${last.by}` : ''}</>
+            : 'Jamais chargé dans la base.'}
+        </p>
+      </div>
       <p className="text-sm text-muted-foreground">
-        Charge lots, risques, mesures, règles risque→mesure, défauts par lot, natures, vocabulaire et alertes.
+        Charger lit le référentiel intégré à l’application (lots, risques, mesures, natures, vocabulaire, alertes).
         Relançable sans doublon ; les décisions déjà prises sur les alertes sont conservées.
+        Importer accepte un fichier au même format ; Exporter télécharge le référentiel actuel de la base.
       </p>
       {err && <Notice tone="error">{err}</Notice>}
       {msg && <Notice tone="ok">{msg}</Notice>}
-      <Button onClick={() => void run()} disabled={busy}>{busy ? 'Chargement…' : 'Charger / recharger le référentiel'}</Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button onClick={() => void run(async () => importReferentielV4(userId))} disabled={busy}>{busy ? 'En cours…' : 'Charger le référentiel intégré'}</Button>
+        <Button variant="ghost" onClick={() => void exportRef()} disabled={busy}>Exporter</Button>
+        <label className={`inline-flex h-10 cursor-pointer items-center rounded-full bg-card px-5 text-sm font-medium shadow-sm hover:bg-muted ${busy ? 'pointer-events-none opacity-50' : ''}`}>
+          Importer un fichier
+          <input type="file" accept="application/json,.json" className="sr-only" disabled={busy}
+            onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void importFile(f) }} />
+        </label>
+      </div>
     </Card>
   )
 }

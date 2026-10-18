@@ -10,11 +10,11 @@ import CompanyDialog from '../components/CompanyDialog'
 import BulkPlanWizard from '../components/BulkPlanWizard'
 import OrderActionDialog from '../components/OrderActionDialog'
 import { fetchCompanies, type CompanyRow } from './AdminCompanies'
-import { Ban, ArrowRightLeft, CheckCheck, Download, Eye, Inbox, Info, Mail, Pencil, RotateCcw, SlidersHorizontal, Trash2 } from 'lucide-react'
+import { Archive, Ban, ArrowRightLeft, CheckCheck, Download, Eye, Inbox, Info, Mail, Pencil, RotateCcw, SlidersHorizontal, Trash2 } from 'lucide-react'
 import { buildSheetPdf, buildSheetsZip, contactFor, downloadBlob, fetchContacts, fetchSavedLines, openPdf, planFileName, readSettings, DEFAULT_MAIL_CORPS, DEFAULT_MAIL_OBJET, type Contact, type Line } from '../lib/sheet'
 import MailDialog from '../components/MailDialog'
 
-type Tab = 'NON_QUALIFIEE' | 'A_ENVOYER' | 'EN_ATTENTE_RETOUR' | 'ARCHIVEE' | 'ENVOYE_MANUELLEMENT' | 'DEMANDES' | 'EXCLUES' | 'HORS_REGLE' | 'CORBEILLE'
+type Tab = 'NON_QUALIFIEE' | 'A_ENVOYER' | 'EN_ATTENTE_RETOUR' | 'SIGNEE' | 'ARCHIVEE' | 'ENVOYE_MANUELLEMENT' | 'DEMANDES' | 'EXCLUES' | 'HORS_REGLE' | 'CORBEILLE'
 /** Vues hors périmètre : réintégration possible par le responsable. */
 const SCOPE_TABS: Tab[] = ['EXCLUES', 'HORS_REGLE']
 
@@ -22,6 +22,7 @@ const MAIN_TABS: { key: Tab; label: string }[] = [
   { key: 'NON_QUALIFIEE', label: 'À qualifier' },
   { key: 'A_ENVOYER', label: 'À envoyer' },
   { key: 'EN_ATTENTE_RETOUR', label: 'En attente retour' },
+  { key: 'SIGNEE', label: 'Signées' },
 ]
 const MORE_TABS: { key: Tab; label: string; managerOnly?: boolean }[] = [
   { key: 'ARCHIVEE', label: 'Archivées' },
@@ -32,7 +33,7 @@ const MORE_TABS: { key: Tab; label: string; managerOnly?: boolean }[] = [
   { key: 'CORBEILLE', label: 'Corbeille', managerOnly: true },
 ]
 const PLAN_LABEL: Record<string, string> = {
-  NON_QUALIFIEE: 'Non qualifiée', A_ENVOYER: 'À envoyer', EN_ATTENTE_RETOUR: 'En attente retour', ARCHIVEE: 'Archivée',
+  NON_QUALIFIEE: 'Non qualifiée', A_ENVOYER: 'À envoyer', EN_ATTENTE_RETOUR: 'En attente retour', SIGNEE: 'Signée', ARCHIVEE: 'Archivée',
   ENVOYE_MANUELLEMENT: 'Envoyée manuellement',
 }
 // Statut affiché : une fiche enregistrée (A_ENVOYER) est une « Fiche créée », en attente d'envoi.
@@ -137,6 +138,8 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
   const load = async () => {
     setLoading(true); setErr(null)
     try {
+      // Archivage automatique à 6 mois (non bloquant si la fonction est indisponible)
+      await supabase.rpc('auto_archive_plans')
       const [orders, referentiel, comps, trashedRes] = await Promise.all([
         fetchAllOrders(), getReferentiel(), fetchCompanies().catch(() => []),
         supabase.from('orders').select('order_number', { count: 'exact', head: true }).not('trashed_at', 'is', null),
@@ -334,8 +337,24 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
   }
 
   const returnReceived = (o: OrderRow) => {
-    if (!window.confirm(`Marquer le retour de l’entreprise pour la commande ${o.order_number} ?\nLa fiche passera en « Archivée ».`)) return
-    void runAction('advance_plan_status', { p_order: o.order_number, p_to: 'ARCHIVEE' }, `Retour enregistré pour la commande ${o.order_number}.`)
+    if (!window.confirm(`Marquer le retour de l’entreprise pour la commande ${o.order_number} ?\nLa fiche passera en « Signée ».`)) return
+    void runAction('advance_plan_status', { p_order: o.order_number, p_to: 'SIGNEE' }, `Retour enregistré : commande ${o.order_number} signée.`)
+  }
+  const archiveOrder = (o: OrderRow) => {
+    if (!window.confirm(`Archiver la commande ${o.order_number} ?`)) return
+    void runAction('advance_plan_status', { p_order: o.order_number, p_to: 'ARCHIVEE' }, `Commande ${o.order_number} archivée.`)
+  }
+  /** Couleur de ligne : rouge = plus d'un mois sans action, gris = obsolète, orange = envoyée sans retour, vert = signée archivée. */
+  const rowTone = (o: OrderRow) => {
+    if (o.scope_status !== 'IN_SCOPE') return ''
+    if (o.plan_status === 'ARCHIVEE') {
+      if (o.archive_reason === 'OBSOLETE') return 'bg-zinc-100 text-zinc-500'
+      if (o.archive_reason === 'ENVOI_SANS_RETOUR') return 'bg-orange-50'
+      if (o.archive_reason === 'SIGNEE_6_MOIS') return 'bg-green-50'
+      return ''
+    }
+    if (o.plan_status === 'NON_QUALIFIEE' && o.order_date && dayOf(o.order_date) < todayDay() - 31) return 'bg-red-50'
+    return ''
   }
 
   const sendManually = (ids: string[]) => {
@@ -559,6 +578,12 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
             ))}
             <span className="ml-auto text-xs text-muted-foreground">Cliquez sur un en-tête pour trier</span>
           </div>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 border-b border-border px-3 py-1.5 text-[11px] text-muted-foreground">
+            <span><span className="mr-1 inline-block h-2 w-2 rounded-sm bg-red-300" />Plus d’un mois sans action</span>
+            <span><span className="mr-1 inline-block h-2 w-2 rounded-sm bg-zinc-300" />Obsolète (6 mois sans action)</span>
+            <span><span className="mr-1 inline-block h-2 w-2 rounded-sm bg-orange-300" />Envoyée sans retour (archivée 6 mois)</span>
+            <span><span className="mr-1 inline-block h-2 w-2 rounded-sm bg-green-300" />Signée (archivée 6 mois)</span>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-muted/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -586,7 +611,7 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
                   const canSelect = canSelectOrder(o)
                   const companyName = o.isis_code ? companies.get(o.isis_code)?.name : null
                   return (
-                    <tr key={o.order_number} className="align-top hover:bg-muted/30">
+                    <tr key={o.order_number} className={`align-top ${rowTone(o) || 'hover:bg-muted/30'}`}>
                       {(ACTIONABLE.includes(tab) || isScopeTab) && (
                         <td className="px-3 py-2.5">
                           {canSelect && <input type="checkbox" aria-label={`Sélectionner ${o.order_number}`}
@@ -652,6 +677,13 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
                                   <IconButton icon={Download} label="Télécharger le PDF" onClick={() => void downloadSheet(o)} />
                                   <IconButton icon={Mail} label="Envoyer par mail" onClick={() => setMailOrder(o)} disabled={busy} />
                                   <IconButton icon={SlidersHorizontal} label="Éditeur avancé (natures, lots, mesures)" onClick={() => onOpen(o)} />
+                                </>
+                              )}
+                              {o.scope_status === 'IN_SCOPE' && o.plan_status === 'SIGNEE' && (
+                                <>
+                                  <IconButton icon={Eye} label="Prévisualiser la fiche" onClick={() => void previewSheet(o)} />
+                                  <IconButton icon={Download} label="Télécharger le PDF" onClick={() => void downloadSheet(o)} />
+                                  <IconButton icon={Archive} label="Archiver" onClick={() => archiveOrder(o)} disabled={busy} />
                                 </>
                               )}
                               {o.scope_status === 'IN_SCOPE' && o.plan_status === 'EN_ATTENTE_RETOUR' && (

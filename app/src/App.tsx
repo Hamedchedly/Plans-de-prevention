@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from './lib/auth'
+import { readImpersonation } from './lib/impersonation'
 import type { OrderRow } from './lib/types'
 import { Button, Card, Notice } from './components/ui'
 import Login from './pages/Login'
@@ -39,8 +40,16 @@ export default function App() {
     { key: 'administration', label: 'Administration', show: isManager },
   ]
 
+  const imp = readImpersonation()
+
   return (
     <div className="min-h-screen">
+      {imp && (
+        <div className="flex flex-wrap items-center gap-3 bg-amber-100 px-4 py-2 text-sm text-amber-900">
+          <span className="mr-auto">Session ouverte en tant que <strong>{imp.targetEmail}</strong> (par {imp.adminEmail ?? 'un Super Admin'}). Toutes les actions sont journalisées.</span>
+          <Button variant="ghost" onClick={() => signOut()}>Quitter la session</Button>
+        </div>
+      )}
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-3">
           <div className="mr-auto">

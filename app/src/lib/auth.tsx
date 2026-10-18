@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import { logActivity } from './activity'
+import { endSession } from './impersonation'
 import type { Profile, Role } from './types'
 
 interface AuthState {
@@ -54,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (err) throw err
       void logActivity('LOGIN', 'auth', data.user?.id ?? '', { email })
     },
-    signOut: async () => { await supabase.auth.signOut() },
+    signOut: async () => { await endSession() },
     refreshProfile: async () => loadProfile(session?.user.id),
     can: (...roles) => !!profile && profile.is_active && roles.includes(profile.role),
   }

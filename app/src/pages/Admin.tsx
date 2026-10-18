@@ -7,6 +7,7 @@ import type { AlertRow, Profile, Role } from '../lib/types'
 import { Badge, Button, Card, Notice, errMsg, fieldClass } from '../components/ui'
 import { CompaniesSection, CompanyProposalsSection } from './AdminCompanies'
 import { DataSection } from './AdminData'
+import { startImpersonation } from '../lib/impersonation'
 
 type Section = 'validations' | 'tracabilite' | 'perimetre' | 'referentiels' | 'entreprises' | 'donnees' | 'alertes' | 'utilisateurs'
 
@@ -438,6 +439,17 @@ function UsersSection() {
 
   const patch = (id: string, p: Partial<Profile>) => setUsers(users.map((u) => (u.user_id === id ? { ...u, ...p } : u)))
 
+  const { session } = useAuth()
+  const canImpersonate = (u: Profile) => !!session && u.user_id !== session.user.id && u.is_active && u.role !== 'SUPER_ADMIN'
+  const impersonate = async (u: Profile) => {
+    if (!session) return
+    if (!window.confirm(`Vous allez vous connecter à la place de ${u.email ?? 'cet utilisateur'}. Votre session actuelle sera fermée et l’opération est journalisée. Continuer ?`)) return
+    setErr(null); setMsg(null)
+    try {
+      await startImpersonation({ user_id: u.user_id, email: u.email }, { id: session.user.id, email: session.user.email ?? null })
+    } catch (e) { setErr(errMsg(e)) }
+  }
+
   const save = async (u: Profile) => {
     setErr(null); setMsg(null)
     const { error } = await supabase.rpc('admin_set_profile', {
@@ -472,7 +484,11 @@ function UsersSection() {
                 <td className="px-3 py-2"><input className={fieldClass} value={u.operator_code ?? ''} onChange={(e) => patch(u.user_id, { operator_code: e.target.value })} /></td>
                 <td className="px-3 py-2"><input className={fieldClass} value={u.sector_codes.join(', ')} onChange={(e) => patch(u.user_id, { sector_codes: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })} /></td>
                 <td className="px-3 py-2"><input type="checkbox" checked={u.is_active} onChange={(e) => patch(u.user_id, { is_active: e.target.checked })} /></td>
-                <td className="px-3 py-2 text-right"><Button onClick={() => void save(u)}>Enregistrer</Button></td>
+                <td className="px-3 py-2 text-right whitespace-nowrap">
+                  <Button variant="ghost" onClick={() => void impersonate(u)}
+                    disabled={!canImpersonate(u)} title={canImpersonate(u) ? '' : 'Indisponible pour ce compte'}>Se connecter en tant que</Button>
+                  <Button onClick={() => void save(u)} className="ml-2">Enregistrer</Button>
+                </td>
               </tr>
             ))}
           </tbody>

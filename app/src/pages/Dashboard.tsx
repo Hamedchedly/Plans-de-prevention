@@ -41,6 +41,17 @@ const STATUS_LABEL: Record<string, string> = { ...PLAN_LABEL, A_ENVOYER: 'Fiche 
 const ACTIONABLE: Tab[] = ['NON_QUALIFIEE', 'A_ENVOYER']
 const PAGE = 15
 
+/** Regroupement des commandes dans la liste (pour sélectionner en lot des cas similaires). */
+type Grouping = 'NONE' | 'LOT' | 'KEYWORD'
+const GROUPINGS: { key: Grouping; label: string }[] = [
+  { key: 'NONE', label: 'Sans regroupement' },
+  { key: 'LOT', label: 'Par lot' },
+  { key: 'KEYWORD', label: 'Par mots-clés (nature)' },
+]
+type SortKey = 'order_number' | 'order_date' | 'company' | 'address' | 'nature' | 'lot' | 'operator' | 'status'
+type Sort = { key: SortKey; dir: 1 | -1 }
+type Section = { group: string | null; rows: OrderRow[] }
+
 /** Périodes par rapport à aujourd'hui : commandes passées depuis N jours. */
 const PRESETS: { label: string; days: number | null }[] = [
   { label: '2 semaines', days: 14 },
@@ -109,6 +120,8 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
   const [preset, setPreset] = useState(DEFAULT_PRESET)
   const [limit, setLimit] = useState(PAGE)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [grouping, setGrouping] = useState<Grouping>('NONE')
+  const [sort, setSort] = useState<Sort>({ key: 'order_date', dir: -1 })
 
   const [wizard, setWizard] = useState<{ orders: OrderRow[]; initial?: Map<string, Line>; mode: 'create' | 'edit' } | null>(null)
   const [actionOrder, setActionOrder] = useState<OrderRow | null>(null)
@@ -216,13 +229,94 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
   const visible = base.filter((o) => inTab(o, tab))
   const isTrashView = tab === 'CORBEILLE'
   const list = isTrashView ? trashed.filter(matches) : visible
-  const shownRows = list.slice(0, limit)
+  const canSelectOrder = (o: OrderRow) => (ACTIONABLE.includes(tab) && o.scope_status === 'IN_SCOPE') || (isScopeTab && isManager)
+  const colCount = (ACTIONABLE.includes(tab) || isScopeTab ? 1 : 0) + 9
+  // Lot affiché (même règle que la colonne « Lot »)
+  const lotLabelOf = (o: OrderRow): string | null => {
+    const sg = suggestions.get(o.order_number)
+    return (o.nature_id != null || sg?.confident) && sg?.lotName ? sg.lotName : null
+  }
+  const groupOf = (o: OrderRow): string => {
+    if (grouping === 'LOT') return lotLabelOf(o) ?? 'Sans lot identifié'
+    const sg = suggestions.get(o.order_number)
+    return sg?.confident && sg.group ? sg.group : 'Sans mot-clé identifié'
+  }
+  const sortText = (o: OrderRow, k: SortKey): string => {
+    switch (k) {
+      case 'order_number': return o.order_number
+      case 'order_date': return o.order_date ?? ''
+      case 'company': return o.isis_code ? companies.get(o.isis_code)?.name || o.isis_code : ''
+      case 'address': return [o.address, o.city].filter(Boolean).join(', ')
+      case 'nature': return o.nature_text ?? ''
+      case 'lot': return lotLabelOf(o) ?? ''
+      case 'operator': return o.operator_code ?? ''
+      case 'status': return o.plan_status
+    }
+  }
+  const compareOrders = (a: OrderRow, b: OrderRow) => {
+    const va = sortText(a, sort.key), vb = sortText(b, sort.key)
+    if ((!va || !vb) && va !== vb) return va ? -1 : 1 // valeurs vides toujours en fin de liste
+    return va.localeCompare(vb, 'fr', { numeric: true, sensitivity: 'base' }) * sort.dir
+      || a.order_number.localeCompare(b.order_number, 'fr', { numeric: true })
+  }
+  const ordered = [...list].sort((a, b) => {
+    if (grouping !== 'NONE') {
+      const ga = groupOf(a), gb = groupOf(b)
+      if (ga !== gb) return Number(ga.startsWith('Sans')) - Number(gb.startsWith('Sans')) || ga.localeCompare(gb, 'fr')
+    }
+    return compareOrders(a, b)
+  })
+  // Pagination appliquée après tri et regroupement
+  const shownRows = ordered.slice(0, limit)
+  const sections: Section[] = []
+  for (const o of shownRows) {
+    const g = grouping === 'NONE' ? null : groupOf(o)
+    const last = sections[sections.length - 1]
+    if (last && last.group === g) last.rows.push(o)
+    else sections.push({ group: g, rows: [o] })
+  }
+  // Ligne d'en-tête de groupe : sélection de tous les cas du groupe
+  const groupRow = (g: string) => {
+    const members = list.filter((o) => canSelectOrder(o) && groupOf(o) === g).map((o) => o.order_number)
+    const total = list.filter((o) => groupOf(o) === g).length
+    const all = members.length > 0 && members.every((n) => selected.has(n))
+    const nSel = members.filter((n) => selected.has(n)).length
+    return (
+      <tr key={`g-${g}`} className="bg-muted/40">
+        <td colSpan={colCount} className="px-3 py-2">
+          <label className="flex flex-wrap items-center gap-3 text-sm font-medium">
+            {members.length > 0 && (
+              <input type="checkbox" aria-label={`Sélectionner le groupe ${g}`} checked={all}
+                onChange={() => setSelected((s) => {
+                  const next = new Set(s)
+                  members.forEach((n) => (all ? next.delete(n) : next.add(n)))
+                  return next
+                })} />
+            )}
+            <span>{g}</span>
+            <span className="text-xs font-normal text-muted-foreground">
+              {total} commande(s){members.length > 0 && ` · ${nSel} sélectionnée(s) sur ${members.length}`}
+            </span>
+          </label>
+        </td>
+      </tr>
+    )
+  }
+  const toggleSort = (k: SortKey) => setSort((s) => (s.key === k ? { key: k, dir: s.dir === 1 ? -1 : 1 } : { key: k, dir: k === 'order_date' ? -1 : 1 }))
+  const sortTh = (k: SortKey, label: string) => (
+    <th className="px-3 py-2 font-medium" aria-sort={sort.key === k ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none'}>
+      <button type="button" onClick={() => toggleSort(k)}
+        className={`inline-flex items-center gap-1 uppercase hover:text-foreground ${sort.key === k ? 'text-foreground' : ''}`}>
+        {label}<span aria-hidden="true">{sort.key === k ? (sort.dir === 1 ? '▲' : '▼') : '↕'}</span>
+      </button>
+    </th>
+  )
   const count = (t: Tab) => (t === 'CORBEILLE' ? trashedCount : base.filter((o) => inTab(o, t)).length)
   const actionableVisible = visible.filter((o) => (ACTIONABLE.includes(tab) && o.scope_status === 'IN_SCOPE') || (isScopeTab && isManager))
   const activeMore = MORE_TABS.find((t) => t.key === tab)
 
   // Retour à 15 lignes dès qu'on change d'onglet ou de filtre.
-  useEffect(() => { setLimit(PAGE) }, [tab, q, sector, operator, lotFilter, groupFilter, preset])
+  useEffect(() => { setLimit(PAGE) }, [tab, q, sector, operator, lotFilter, groupFilter, preset, grouping, sort])
 
   const changeTab = (t: Tab) => { setTab(t); setSelected(new Set()); setMoreOpen(false) }
   const toggle = (n: string) => setSelected((s) => { const next = new Set(s); next.has(n) ? next.delete(n) : next.add(n); return next })
@@ -455,6 +549,16 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
         </Card>
       ) : (
         <div className="overflow-hidden rounded-lg border border-border bg-card">
+          <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2 text-sm">
+            <span className="text-muted-foreground">Regrouper :</span>
+            {GROUPINGS.map((g) => (
+              <button key={g.key} type="button" onClick={() => setGrouping(g.key)} aria-pressed={grouping === g.key}
+                className={`rounded-md border px-2.5 py-1 text-xs ${grouping === g.key ? 'border-primary bg-primary/10 font-semibold text-foreground' : 'border-border text-muted-foreground hover:text-foreground'}`}>
+                {g.label}
+              </button>
+            ))}
+            <span className="ml-auto text-xs text-muted-foreground">Cliquez sur un en-tête pour trier</span>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-muted/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -462,21 +566,24 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
                   {(ACTIONABLE.includes(tab) || isScopeTab) && (
                     <th className="px-3 py-2"><input type="checkbox" aria-label="Tout sélectionner" checked={allChecked} onChange={toggleAll} /></th>
                   )}
-                  <th className="px-3 py-2 font-medium">Commande</th>
-                  <th className="px-3 py-2 font-medium">Entreprise</th>
-                  <th className="px-3 py-2 font-medium">Adresse</th>
-                  <th className="px-3 py-2 font-medium">Nature / description</th>
-                  <th className="px-3 py-2 font-medium">Lot</th>
-                  <th className="px-3 py-2 font-medium">Chargé</th>
-                  <th className="px-3 py-2 font-medium">Statut</th>
+                  {sortTh('order_number', 'Commande')}
+                  {sortTh('order_date', 'Date')}
+                  {sortTh('company', 'Entreprise')}
+                  {sortTh('address', 'Adresse')}
+                  {sortTh('nature', 'Nature / description')}
+                  {sortTh('lot', 'Lot')}
+                  {sortTh('operator', 'Chargé')}
+                  {sortTh('status', 'Statut')}
                   <th className="px-3 py-2 text-right font-medium">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
-                {shownRows.map((o) => {
+              {sections.map((sec, si) => (
+              <tbody key={si} className="divide-y divide-border">
+                {sec.group != null && groupRow(sec.group)}
+                {sec.rows.map((o) => {
                   const sg = suggestions.get(o.order_number)
                   const assigned = o.nature_id != null
-                  const canSelect = (ACTIONABLE.includes(tab) && o.scope_status === 'IN_SCOPE') || (isScopeTab && isManager)
+                  const canSelect = canSelectOrder(o)
                   const companyName = o.isis_code ? companies.get(o.isis_code)?.name : null
                   return (
                     <tr key={o.order_number} className="align-top hover:bg-muted/30">
@@ -488,8 +595,8 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
                       )}
                       <td className="px-3 py-2.5">
                         <div className="font-mono text-xs font-medium">{o.order_number}</div>
-                        <div className="whitespace-nowrap text-xs text-muted-foreground">{o.order_date ?? '—'}</div>
                       </td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-xs text-muted-foreground">{o.order_date ?? '—'}</td>
                       <td className="px-3 py-2.5">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="text-sm">{companyName ?? o.isis_code ?? '—'}</span>
@@ -575,6 +682,7 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
                   )
                 })}
               </tbody>
+              ))}
             </table>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-3 text-sm">

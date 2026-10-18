@@ -5,22 +5,13 @@ import { fold, tokens } from '../lib/rules'
 import { getReferentiel, type Referentiel } from '../lib/refdata'
 import { buildSuggestion, type OrderSuggestion } from '../lib/natureSuggest'
 import type { OrderRow } from '../lib/types'
-import { Badge, Button, Card, Notice, fieldClass, errMsg } from '../components/ui'
+import { Badge, Button, Card, EmptyState, IconButton, Notice, PageHeader, fieldClass, errMsg } from '../components/ui'
 import CompanyDialog from '../components/CompanyDialog'
 import BulkPlanWizard from '../components/BulkPlanWizard'
 import OrderActionDialog from '../components/OrderActionDialog'
 import { fetchCompanies, type CompanyRow } from './AdminCompanies'
-import { Ban, ArrowRightLeft, Download, Eye, Info, Pencil, RotateCcw, SlidersHorizontal, Trash2 } from 'lucide-react'
+import { Ban, ArrowRightLeft, Download, Eye, Inbox, Info, Pencil, RotateCcw, SlidersHorizontal, Trash2 } from 'lucide-react'
 import { buildSheetPdf, buildSheetsZip, downloadBlob, fetchSavedLines, openPdf, redactorOf, planFileName, type Line } from '../lib/sheet'
-
-/** Bouton icône avec libellé accessible et infobulle. */
-function IconButton({ icon: Icon, label, onClick, disabled }: { icon: typeof Info; label: string; onClick: () => void; disabled?: boolean }) {
-  return (
-    <Button variant="ghost" onClick={onClick} disabled={disabled} title={label} aria-label={label} className="h-8 w-8 p-0">
-      <Icon className="h-4 w-4" aria-hidden="true" />
-    </Button>
-  )
-}
 
 type Tab = 'NON_QUALIFIEE' | 'A_ENVOYER' | 'EN_ATTENTE_RETOUR' | 'ARCHIVEE' | 'ENVOYE_MANUELLEMENT' | 'DEMANDES' | 'CORBEILLE'
 
@@ -270,13 +261,11 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Commandes</h1>
-          <p className="text-xs text-muted-foreground">Connecté comme {profile?.email}</p>
-        </div>
-        <Button variant="ghost" onClick={() => void load()} disabled={loading}>Actualiser</Button>
-      </div>
+      <PageHeader
+        title="Commandes"
+        subtitle={<>Connecté comme {profile?.email}</>}
+        actions={<Button variant="ghost" onClick={() => void load()} disabled={loading}>Actualiser</Button>}
+      />
 
       <Card className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
         <div className="md:col-span-2">
@@ -382,7 +371,13 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
       {notice && <Notice tone="ok">{notice}</Notice>}
 
       {loading ? <p className="text-sm text-muted-foreground">Chargement des commandes…</p> : list.length === 0 ? (
-        <Notice>{isTrashView ? 'La corbeille est vide.' : 'Aucune commande dans cette vue pour cette période.'}</Notice>
+        <Card className="p-0">
+          <EmptyState
+            icon={isTrashView ? Trash2 : Inbox}
+            title={isTrashView ? 'La corbeille est vide.' : 'Aucune commande dans cette vue pour cette période.'}
+            hint="Essayez une période plus longue ou modifiez les filtres."
+          />
+        </Card>
       ) : (
         <div className="overflow-hidden rounded-lg border border-border bg-card">
           <div className="overflow-x-auto">

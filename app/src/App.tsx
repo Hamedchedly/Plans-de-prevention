@@ -1,22 +1,22 @@
 import { useState } from 'react'
+import { Link, Outlet, useRouterState } from '@tanstack/react-router'
 import { useAuth } from './lib/auth'
 import { readImpersonation } from './lib/impersonation'
-import type { OrderRow } from './lib/types'
-import { Button, Card, Notice } from './components/ui'
+import { Button, Card } from './components/ui'
 import Login from './pages/Login'
-import Dashboard from './pages/Dashboard'
-import PlanEditor from './pages/PlanEditor'
-import ImportPage from './pages/Import'
-import Admin from './pages/Admin'
 import ProfileDialog from './components/ProfileDialog'
 import CompleteProfile from './components/CompleteProfile'
 
-type Page = 'commandes' | 'import' | 'administration'
+const NAV = [
+  { to: '/commandes', label: 'Commandes', managerOnly: false },
+  { to: '/import', label: 'Import', managerOnly: true },
+  { to: '/administration', label: 'Administration', managerOnly: true },
+] as const
 
-export default function App() {
+/** Mise en page commune : contrôle d'accès, en-tête et navigation. Le contenu de chaque page vient du routeur. */
+export function RootLayout() {
   const { session, profile, loading, signOut } = useAuth()
-  const [page, setPage] = useState<Page>('commandes')
-  const [editing, setEditing] = useState<OrderRow | null>(null)
+  const path = useRouterState({ select: (s) => s.location.pathname })
   const [profileOpen, setProfileOpen] = useState(false)
   const [userMenu, setUserMenu] = useState(false)
 
@@ -39,12 +39,6 @@ export default function App() {
   }
 
   const isManager = profile.role === 'RESPONSABLE' || profile.role === 'SUPER_ADMIN'
-  const navItems: { key: Page; label: string; show: boolean }[] = [
-    { key: 'commandes', label: 'Commandes', show: true },
-    { key: 'import', label: 'Import', show: isManager },
-    { key: 'administration', label: 'Administration', show: isManager },
-  ]
-
   const imp = readImpersonation()
   const initials = (profile.full_name || profile.email || '?').split(/\s+|@/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('')
   const roleLabel: Record<string, string> = { SUPER_ADMIN: 'Super Admin', RESPONSABLE: 'Responsable', CHARGE_OPERATIONS: 'Chargé d’opérations' }
@@ -67,13 +61,14 @@ export default function App() {
             </div>
           </div>
           <nav aria-label="Navigation principale" className="flex items-center gap-1 rounded-lg bg-muted p-1">
-            {navItems.filter((n) => n.show).map((n) => {
-              const active = page === n.key && !editing
+            {NAV.filter((n) => !n.managerOnly || isManager).map((n) => {
+              // La fiche d'une commande (/commandes/:numero) n'active aucun onglet, comme avant.
+              const active = n.to === '/commandes' ? path === '/commandes' : path.startsWith(n.to)
               return (
-                <button key={n.key} onClick={() => { setEditing(null); setPage(n.key) }} aria-current={active ? 'page' : undefined}
+                <Link key={n.to} to={n.to} aria-current={active ? 'page' : undefined}
                   className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${active ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
                   {n.label}
-                </button>
+                </Link>
               )
             })}
           </nav>
@@ -104,17 +99,7 @@ export default function App() {
       </header>
       {profileOpen && session && <ProfileDialog userId={session.user.id} isSelf onClose={() => setProfileOpen(false)} />}
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
-        {editing ? (
-          <PlanEditor order={editing} onBack={() => setEditing(null)} />
-        ) : page === 'commandes' ? (
-          <Dashboard onOpen={setEditing} />
-        ) : page === 'import' && isManager ? (
-          <ImportPage />
-        ) : page === 'administration' && isManager ? (
-          <Admin />
-        ) : (
-          <Notice tone="error">Accès refusé.</Notice>
-        )}
+        <Outlet />
       </main>
     </div>
   )

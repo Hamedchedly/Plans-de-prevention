@@ -52,6 +52,11 @@ const GROUPINGS: { key: Grouping; label: string }[] = [
 type SortKey = 'order_number' | 'order_date' | 'company' | 'address' | 'nature' | 'lot' | 'operator' | 'status'
 type Sort = { key: SortKey; dir: 1 | -1 }
 type Section = { group: string | null; rows: OrderRow[] }
+const SORT_KEYS: SortKey[] = ['order_number', 'order_date', 'company', 'address', 'nature', 'lot', 'operator', 'status']
+const TAB_KEYS = [...MAIN_TABS, ...MORE_TABS].map((t) => t.key)
+
+/** Vue de la liste, conservée dans l'adresse : /commandes?onglet=SIGNEE&regroupement=LOT&tri=order_date&sens=desc */
+export type DashboardView = { onglet?: string; regroupement?: string; tri?: string; sens?: string }
 
 /** Périodes par rapport à aujourd'hui : commandes passées depuis N jours. */
 const PRESETS: { label: string; days: number | null }[] = [
@@ -92,7 +97,11 @@ async function fetchTrashedOrders(): Promise<OrderRow[]> {
   return (data ?? []) as OrderRow[]
 }
 
-export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void }) {
+export default function Dashboard({ onOpen, view, setView }: {
+  onOpen: (o: OrderRow) => void
+  view: DashboardView
+  setView: (patch: DashboardView) => void
+}) {
   const { can, profile } = useAuth()
   const isManager = can('RESPONSABLE', 'SUPER_ADMIN')
 
@@ -111,7 +120,7 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
   const [settings, setSettings] = useState<Record<string, string>>({})
   const [mailOrder, setMailOrder] = useState<OrderRow | null>(null)
 
-  const [tab, setTab] = useState<Tab>('NON_QUALIFIEE')
+  const tab: Tab = TAB_KEYS.includes(view.onglet as Tab) ? (view.onglet as Tab) : 'NON_QUALIFIEE'
   const [moreOpen, setMoreOpen] = useState(false)
   const [q, setQ] = useState('')
   const [sector, setSector] = useState('S11')
@@ -121,8 +130,12 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
   const [preset, setPreset] = useState(DEFAULT_PRESET)
   const [limit, setLimit] = useState(PAGE)
   const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [grouping, setGrouping] = useState<Grouping>('NONE')
-  const [sort, setSort] = useState<Sort>({ key: 'order_date', dir: -1 })
+  const grouping: Grouping = view.regroupement === 'LOT' ? 'LOT' : view.regroupement === 'KEYWORD' ? 'KEYWORD' : 'NONE'
+  const sortKey: SortKey = SORT_KEYS.includes(view.tri as SortKey) ? (view.tri as SortKey) : 'order_date'
+  const sort: Sort = {
+    key: sortKey,
+    dir: view.sens === 'asc' ? 1 : view.sens === 'desc' ? -1 : sortKey === 'order_date' ? -1 : 1,
+  }
 
   const [wizard, setWizard] = useState<{ orders: OrderRow[]; initial?: Map<string, Line>; mode: 'create' | 'edit' } | null>(null)
   const [actionOrder, setActionOrder] = useState<OrderRow | null>(null)
@@ -305,7 +318,10 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
       </tr>
     )
   }
-  const toggleSort = (k: SortKey) => setSort((s) => (s.key === k ? { key: k, dir: s.dir === 1 ? -1 : 1 } : { key: k, dir: k === 'order_date' ? -1 : 1 }))
+  const toggleSort = (k: SortKey) => {
+    const dir = sort.key === k ? -sort.dir : k === 'order_date' ? -1 : 1
+    setView({ tri: k, sens: dir === 1 ? 'asc' : 'desc' })
+  }
   const sortTh = (k: SortKey, label: string) => (
     <th className="px-3 py-2 font-medium" aria-sort={sort.key === k ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none'}>
       <button type="button" onClick={() => toggleSort(k)}
@@ -319,9 +335,9 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
   const activeMore = MORE_TABS.find((t) => t.key === tab)
 
   // Retour à 15 lignes dès qu'on change d'onglet ou de filtre.
-  useEffect(() => { setLimit(PAGE) }, [tab, q, sector, operator, lotFilter, groupFilter, preset, grouping, sort])
+  useEffect(() => { setLimit(PAGE) }, [tab, q, sector, operator, lotFilter, groupFilter, preset, grouping, sort.key, sort.dir])
 
-  const changeTab = (t: Tab) => { setTab(t); setSelected(new Set()); setMoreOpen(false) }
+  const changeTab = (t: Tab) => { setView({ onglet: t }); setSelected(new Set()); setMoreOpen(false) }
   const toggle = (n: string) => setSelected((s) => { const next = new Set(s); next.has(n) ? next.delete(n) : next.add(n); return next })
   const allChecked = actionableVisible.length > 0 && actionableVisible.every((o) => selected.has(o.order_number))
   const toggleAll = () => setSelected(allChecked ? new Set() : new Set(actionableVisible.map((o) => o.order_number)))
@@ -571,7 +587,7 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
           <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2 text-sm">
             <span className="text-muted-foreground">Regrouper :</span>
             {GROUPINGS.map((g) => (
-              <button key={g.key} type="button" onClick={() => setGrouping(g.key)} aria-pressed={grouping === g.key}
+              <button key={g.key} type="button" onClick={() => setView({ regroupement: g.key === 'NONE' ? undefined : g.key })} aria-pressed={grouping === g.key}
                 className={`rounded-md border px-2.5 py-1 text-xs ${grouping === g.key ? 'border-primary bg-primary/10 font-semibold text-foreground' : 'border-border text-muted-foreground hover:text-foreground'}`}>
                 {g.label}
               </button>

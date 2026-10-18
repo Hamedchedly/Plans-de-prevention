@@ -3383,6 +3383,245 @@
       ],
       "extra_risks": [],
       "ref_key": "Refection voirie et abords"
+    },
+    {
+      "label": "Adaptation PMR : aménagement de salle de bains et WC (douche de plain-pied, WC surélevé)",
+      "ref_key": "Adaptation PMR : aménagement de salle de bains et WC (douche de plain-pied, WC surélevé)",
+      "model_code": null,
+      "group_label": "22. Adaptation PMR",
+      "lots": [
+        13,
+        15,
+        10
+      ],
+      "extra_risks": [
+        "R10",
+        "R05"
+      ]
+    },
+    {
+      "label": "Adaptation PMR : barres d'appui, sièges et équipements de confort",
+      "ref_key": "Adaptation PMR : barres d'appui, sièges et équipements de confort",
+      "model_code": null,
+      "group_label": "22. Adaptation PMR",
+      "lots": [
+        8,
+        13
+      ],
+      "extra_risks": [
+        "R10"
+      ]
+    },
+    {
+      "label": "Pose d'un système de télégestion ou de télésurveillance (modem, sonde, antenne 4G)",
+      "ref_key": "Pose d'un système de télégestion ou de télésurveillance (modem, sonde, antenne 4G)",
+      "model_code": null,
+      "group_label": "23. Télégestion, télésurveillance et vidéo",
+      "lots": [
+        18
+      ],
+      "extra_risks": [
+        "R06"
+      ]
+    },
+    {
+      "label": "Pose d'un équipement de vidéoprotection ou de lecture de plaques (LAPI)",
+      "ref_key": "Pose d'un équipement de vidéoprotection ou de lecture de plaques (LAPI)",
+      "model_code": null,
+      "group_label": "23. Télégestion, télésurveillance et vidéo",
+      "lots": [
+        18
+      ],
+      "extra_risks": [
+        "R06",
+        "R07"
+      ]
+    },
+    {
+      "label": "Maintenance et remplacement de désenfumage (commande, DAD, BAES)",
+      "ref_key": "Maintenance et remplacement de désenfumage (commande, DAD, BAES)",
+      "model_code": null,
+      "group_label": "24. Désenfumage et sécurité incendie",
+      "lots": [
+        18
+      ],
+      "extra_risks": [
+        "R06",
+        "R08"
+      ]
+    },
+    {
+      "label": "Pose ou reprise de colonne sèche (incendie)",
+      "ref_key": "Pose ou reprise de colonne sèche (incendie)",
+      "model_code": null,
+      "group_label": "24. Désenfumage et sécurité incendie",
+      "lots": [
+        15,
+        18
+      ],
+      "extra_risks": [
+        "R08"
+      ]
+    },
+    {
+      "label": "Pose de crinoline ou d'échelle pour entretien de désenfumage",
+      "ref_key": "Pose de crinoline ou d'échelle pour entretien de désenfumage",
+      "model_code": null,
+      "group_label": "24. Désenfumage et sécurité incendie",
+      "lots": [
+        12
+      ],
+      "extra_risks": [
+        "R07",
+        "R13"
+      ]
+    },
+    {
+      "label": "Mise en sécurité gaz et remise en service avec GRDF",
+      "ref_key": "Mise en sécurité gaz et remise en service avec GRDF",
+      "model_code": null,
+      "group_label": "25. Gaz, électricité et attestations",
+      "lots": [
+        17
+      ],
+      "extra_risks": [
+        "R08"
+      ]
+    },
+    {
+      "label": "Attestation et mise en conformité électrique (Consuel, raccordement, compteur)",
+      "ref_key": "Attestation et mise en conformité électrique (Consuel, raccordement, compteur)",
+      "model_code": null,
+      "group_label": "25. Gaz, électricité et attestations",
+      "lots": [
+        18
+      ],
+      "extra_risks": [
+        "R06"
+      ]
+    },
+    {
+      "label": "Raccordement de borne de recharge IRVE",
+      "ref_key": "Raccordement de borne de recharge IRVE",
+      "model_code": null,
+      "group_label": "25. Gaz, électricité et attestations",
+      "lots": [
+        18
+      ],
+      "extra_risks": [
+        "R06"
+      ]
+    },
+    {
+      "label": "Remise en état d'un logement après sinistre ou départ (peinture, sols, plomberie, électricité)",
+      "ref_key": "Remise en état d'un logement après sinistre ou départ (peinture, sols, plomberie, électricité)",
+      "model_code": null,
+      "group_label": "26. Réparations et remises en état",
+      "lots": [
+        14,
+        15,
+        18,
+        8
+      ],
+      "extra_risks": [
+        "R14"
+      ]
+    },
+    {
+      "label": "Remise en état des parties communes (peinture, faux plafond, sols, éclairage)",
+      "ref_key": "Remise en état des parties communes (peinture, faux plafond, sols, éclairage)",
+      "model_code": null,
+      "group_label": "26. Réparations et remises en état",
+      "lots": [
+        14,
+        8,
+        18
+      ],
+      "extra_risks": [
+        "R14"
+      ]
+    },
+    {
+      "label": "Remplacement de motorisation de porte, portail ou volet (vérin, treuil, ventouse)",
+      "ref_key": "Remplacement de motorisation de porte, portail ou volet (vérin, treuil, ventouse)",
+      "model_code": null,
+      "group_label": "26. Réparations et remises en état",
+      "lots": [
+        12,
+        11
+      ],
+      "extra_risks": [
+        "R02"
+      ]
+    },
+    {
+      "label": "Condamnation d'accès ou de local (maçonnerie, fermeture)",
+      "ref_key": "Condamnation d'accès ou de local (maçonnerie, fermeture)",
+      "model_code": null,
+      "group_label": "26. Réparations et remises en état",
+      "lots": [
+        3
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Recherche et réparation de fuite (plomberie, colonne, dalle, terrasse)",
+      "ref_key": "Recherche et réparation de fuite (plomberie, colonne, dalle, terrasse)",
+      "model_code": null,
+      "group_label": "28. Réseaux, relevage et fuites",
+      "lots": [
+        15,
+        6
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Curage et inspection vidéo des réseaux d'assainissement",
+      "ref_key": "Curage et inspection vidéo des réseaux d'assainissement",
+      "model_code": null,
+      "group_label": "28. Réseaux, relevage et fuites",
+      "lots": [
+        21
+      ],
+      "extra_risks": []
+    },
+    {
+      "label": "Remplacement de pompe de relevage ou de station de relevage des eaux",
+      "ref_key": "Remplacement de pompe de relevage ou de station de relevage des eaux",
+      "model_code": null,
+      "group_label": "28. Réseaux, relevage et fuites",
+      "lots": [
+        21,
+        15
+      ],
+      "extra_risks": [
+        "R06"
+      ]
+    },
+    {
+      "label": "Création de places de stationnement, local vélo ou abri (aménagement extérieur)",
+      "ref_key": "Création de places de stationnement, local vélo ou abri (aménagement extérieur)",
+      "model_code": null,
+      "group_label": "27. Parkings et espaces extérieurs",
+      "lots": [
+        21,
+        20
+      ],
+      "extra_risks": [
+        "R09"
+      ]
+    },
+    {
+      "label": "Marquage au sol et pose de stop-parking",
+      "ref_key": "Marquage au sol et pose de stop-parking",
+      "model_code": null,
+      "group_label": "27. Parkings et espaces extérieurs",
+      "lots": [
+        21
+      ],
+      "extra_risks": [
+        "R09"
+      ]
     }
   ],
   "vocabulary": [

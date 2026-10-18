@@ -5,8 +5,10 @@ import { getReferentiel } from '../lib/refdata'
 import { importReferentielV4 } from '../lib/referentiel'
 import type { AlertRow, Profile, Role } from '../lib/types'
 import { Badge, Button, Card, Notice, errMsg, fieldClass } from '../components/ui'
+import { CompaniesSection, CompanyProposalsSection } from './AdminCompanies'
+import { DataSection } from './AdminData'
 
-type Section = 'validations' | 'tracabilite' | 'perimetre' | 'referentiels' | 'alertes' | 'utilisateurs'
+type Section = 'validations' | 'tracabilite' | 'perimetre' | 'referentiels' | 'entreprises' | 'donnees' | 'alertes' | 'utilisateurs'
 
 const SECTIONS: { key: Section; label: string; superOnly: boolean }[] = [
   { key: 'alertes', label: 'Alertes', superOnly: false },
@@ -14,6 +16,8 @@ const SECTIONS: { key: Section; label: string; superOnly: boolean }[] = [
   { key: 'tracabilite', label: 'Traçabilité', superOnly: true },
   { key: 'perimetre', label: 'Périmètre', superOnly: true },
   { key: 'referentiels', label: 'Référentiels', superOnly: true },
+  { key: 'entreprises', label: 'Entreprises', superOnly: true },
+  { key: 'donnees', label: 'Base de données', superOnly: true },
   { key: 'utilisateurs', label: 'Utilisateurs', superOnly: true },
 ]
 
@@ -30,10 +34,12 @@ export default function Admin() {
         ))}
       </div>
       {section === 'alertes' && <AlertsSection />}
-      {section === 'validations' && isSuper && <ValidationsSection />}
+      {section === 'validations' && isSuper && <><ValidationsSection /><CompanyProposalsSection /></>}
       {section === 'tracabilite' && isSuper && <TraceSection />}
       {section === 'perimetre' && isSuper && <ScopeSection />}
       {section === 'referentiels' && isSuper && <ReferentielSection userId={profile?.user_id ?? ''} />}
+      {section === 'entreprises' && isSuper && <CompaniesSection />}
+      {section === 'donnees' && isSuper && <DataSection />}
       {section === 'utilisateurs' && isSuper && <UsersSection />}
     </div>
   )

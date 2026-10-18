@@ -5,6 +5,8 @@ import { fold, searchNatures, tokens } from '../lib/rules'
 import { getReferentiel, type Referentiel } from '../lib/refdata'
 import type { OrderRow } from '../lib/types'
 import { Badge, Button, Card, Notice, fieldClass, errMsg } from '../components/ui'
+import CompanyDialog from '../components/CompanyDialog'
+import { fetchCompanies, type CompanyRow } from './AdminCompanies'
 
 type Tab = 'NON_QUALIFIEE' | 'A_ENVOYER' | 'EN_ATTENTE_RETOUR' | 'ARCHIVEE' | 'ENVOYE_MANUELLEMENT' | 'DEMANDES' | 'HORS_PERIMETRE'
 const TABS: { key: Tab; label: string }[] = [
@@ -58,12 +60,16 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
   const [toDay, setToDay] = useState<number | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [busy, setBusy] = useState(false)
+  const [companies, setCompanies] = useState<Map<string, CompanyRow>>(new Map())
+  const [companyFor, setCompanyFor] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
 
   const load = async () => {
     setLoading(true); setErr(null)
     try {
-      const [orders, referentiel] = await Promise.all([fetchAllOrders(), getReferentiel()])
+      const [orders, referentiel, comps] = await Promise.all([fetchAllOrders(), getReferentiel(), fetchCompanies().catch(() => [])])
       setRows(orders); setRef(referentiel)
+      setCompanies(new Map(comps.map((c) => [c.isis_code, c])))
     } catch (e) { setErr(errMsg(e)) } finally { setLoading(false) }
   }
   useEffect(() => { void load() }, [])
@@ -278,7 +284,7 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
                 )}
                 <th className="px-3 py-2">Commande</th>
                 <th className="px-3 py-2">Date</th>
-                <th className="px-3 py-2">Entreprise (n°)</th>
+                <th className="px-3 py-2">Entreprise</th>
                 <th className="px-3 py-2">Adresse</th>
                 <th className="px-3 py-2">Nature / description</th>
                 <th className="px-3 py-2">Lot suggéré</th>
@@ -301,7 +307,9 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
                     )}
                     <td className="px-3 py-2 font-mono text-xs">{o.order_number}</td>
                     <td className="px-3 py-2 whitespace-nowrap">{o.order_date ?? '—'}</td>
-                    <td className="px-3 py-2 font-mono text-xs" title="Le nom de l’entreprise arrivera avec les fiches entreprises (phase 3)">{o.isis_code ?? '—'}</td>
+                    <td className="px-3 py-2 text-xs" title={o.isis_code ? `N° ${o.isis_code}` : undefined}>
+                      {o.isis_code ? (companies.get(o.isis_code)?.name ?? <span className="font-mono">{o.isis_code}</span>) : '—'}
+                    </td>
                     <td className="px-3 py-2">{[o.address, o.city].filter(Boolean).join(', ') || '—'}</td>
                     <td className="px-3 py-2 max-w-md">
                       <div>{o.nature_text ?? '—'}</div>
@@ -323,6 +331,7 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
                       </div>
                     </td>
                     <td className="px-3 py-2 text-right whitespace-nowrap">
+                      {o.isis_code && <Button variant="ghost" onClick={() => setCompanyFor(o.isis_code)} className="mr-2">Infos entreprise</Button>}
                       {o.scope_status === 'IN_SCOPE' && (o.plan_status === 'NON_QUALIFIEE' || o.plan_status === 'A_ENVOYER') && (
                         <Button onClick={() => onOpen(o)} className="mr-2">
                           {o.plan_status === 'NON_QUALIFIEE' ? 'Qualifier' : 'Modifier le plan'}
@@ -343,6 +352,11 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
           </table>
           {visible.length > 300 && <p className="p-3 text-xs text-muted-foreground">300 premières lignes affichées sur {visible.length} : affinez la recherche.</p>}
         </div>
+      )}
+      {notice && <Notice tone="ok">{notice}</Notice>}
+      {companyFor && (
+        <CompanyDialog isis={companyFor} current={companies.get(companyFor)} onClose={() => setCompanyFor(null)}
+          onSent={() => { setCompanyFor(null); setNotice('Informations proposées : elles seront validées par le Super Admin.') }} />
       )}
       <p className="text-xs text-muted-foreground">Connecté comme {profile?.email}.</p>
     </div>

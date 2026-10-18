@@ -508,11 +508,89 @@ function UsersSection() {
     if (error) setErr(error.message); else setMsg(`Profil de ${u.email ?? u.user_id} enregistré.`)
   }
 
+  const blank = { email: '', role: 'CHARGE_OPERATIONS' as Role, operator: '', sectors: 'S11' }
+  const [draft, setDraft] = useState(blank)
+  const [inviting, setInviting] = useState(false)
+  const [invite, setInvite] = useState<{ email: string; link: string } | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  const createInvite = async () => {
+    setErr(null); setMsg(null); setInvite(null); setCopied(false)
+    setInviting(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('invite-user', {
+        body: {
+          email: draft.email, role: draft.role, operator_code: draft.operator || null,
+          sector_codes: draft.sectors.split(',').map((s) => s.trim()).filter(Boolean),
+          redirect_to: window.location.origin,
+        },
+      })
+      if (error) {
+        const body = await (error as { context?: Response }).context?.json?.().catch(() => null) as { error?: string } | null
+        throw new Error(body?.error ?? error.message)
+      }
+      const res = data as { email: string; action_link: string }
+      setInvite({ email: res.email, link: res.action_link })
+      setDraft(blank)
+      await load()
+    } catch (e) { setErr(errMsg(e)) } finally { setInviting(false) }
+  }
+
+  const copyLink = async () => {
+    if (!invite) return
+    try { await navigator.clipboard.writeText(invite.link); setCopied(true) } catch { setCopied(false) }
+  }
+
   return (
     <div className="space-y-3">
       <h2 className="font-semibold">Utilisateurs et droits</h2>
       {identityFor && <ProfileDialog userId={identityFor} isSelf={identityFor === session?.user.id} onClose={() => setIdentityFor(null)} />}
-      <p className="text-sm text-muted-foreground">Un compte doit d’abord être créé dans Supabase Auth ; son profil apparaît ici automatiquement.</p>
+      <div className="space-y-3 rounded-lg border border-border bg-card p-4">
+        <div>
+          <h3 className="text-sm font-semibold">Inviter un utilisateur</h3>
+          <p className="text-xs text-muted-foreground">
+            Le compte est créé, puis un lien à envoyer est généré. La personne l’ouvre, choisit son mot de passe et complète son identité (nom, prénom, téléphone, e-mail).
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <label className="mb-1 block text-xs text-muted-foreground">E-mail</label>
+            <input className={fieldClass} type="email" value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-muted-foreground">Rôle</label>
+            <select className={fieldClass} value={draft.role} onChange={(e) => setDraft({ ...draft, role: e.target.value as Role })}>
+              <option value="SUPER_ADMIN">Super Admin</option>
+              <option value="RESPONSABLE">Responsable</option>
+              <option value="CHARGE_OPERATIONS">Chargé d’opérations</option>
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-muted-foreground">Code chargé (UTIC)</label>
+            <input className={fieldClass} value={draft.operator} onChange={(e) => setDraft({ ...draft, operator: e.target.value })} />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-muted-foreground">Secteurs (séparés par des virgules)</label>
+            <input className={fieldClass} value={draft.sectors} onChange={(e) => setDraft({ ...draft, sectors: e.target.value })} />
+          </div>
+        </div>
+        <Button onClick={() => void createInvite()} disabled={inviting || !draft.email.trim()}>
+          {inviting ? 'Création…' : 'Créer le compte et générer le lien'}
+        </Button>
+        {invite && (
+          <div className="space-y-2 rounded-md border border-emerald-300 bg-emerald-50 p-3">
+            <p className="text-sm font-semibold">Lien d’invitation pour {invite.email}</p>
+            <div className="flex flex-wrap gap-2">
+              <input readOnly className={`${fieldClass} min-w-[260px] flex-1 font-mono text-xs`} value={invite.link} onFocus={(e) => e.target.select()} />
+              <Button variant="ghost" onClick={() => void copyLink()}>{copied ? 'Copié' : 'Copier le lien'}</Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Ce lien est valable une durée limitée (environ une heure) et ne sert qu’une fois. Si la personne ne l’utilise pas à temps, générez-en un nouveau.
+            </p>
+          </div>
+        )}
+      </div>
+      <p className="text-sm text-muted-foreground">Les comptes existants apparaissent ci-dessous ; leur profil peut être modifié à tout moment.</p>
       {err && <Notice tone="error">{err}</Notice>}
       {msg && <Notice tone="ok">{msg}</Notice>}
       <div className="overflow-x-auto rounded-lg border border-border bg-card">

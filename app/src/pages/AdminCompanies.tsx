@@ -52,6 +52,7 @@ const TABS: { key: Tab; label: string; hint: string }[] = [
 const HEADERS = ['Entreprise (n°)', 'Nombre de commandes', 'Nom de l’entreprise', 'Email OS', 'Nom du dirigeant', 'Email du dirigeant', 'Tél. dirigeant', 'Tél. entreprise']
 
 interface Entry { isis: string; count: number; company: CompanyRow | undefined; tab: Tab }
+type FieldKey = keyof Omit<CompanyRow, 'isis_code'>
 
 /** Une ligne par entreprise (numéro ENTN_NUM), triable par nombre de commandes, classée par onglet. */
 export function CompaniesSection() {
@@ -65,6 +66,36 @@ export function CompaniesSection() {
   const [msg, setMsg] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [conflicts, setConflicts] = useState<string[]>([])
+  const [editing, setEditing] = useState(false)
+  const [edits, setEdits] = useState<Record<string, Partial<CompanyRow>>>({})
+  const [saving, setSaving] = useState(false)
+
+  const valueOf = (e: Entry, k: FieldKey) => (edits[e.isis]?.[k] ?? e.company?.[k] ?? '') as string
+  const setField = (isis: string, k: FieldKey, v: string) => setEdits((d) => ({ ...d, [isis]: { ...d[isis], [k]: v } }))
+  const dirtyCount = Object.keys(edits).length
+
+  const saveEdits = async () => {
+    setSaving(true); setErr(null); setMsg(null)
+    let n = 0
+    try {
+      for (const [isis, changes] of Object.entries(edits)) {
+        const base = companies.find((c) => c.isis_code === isis)
+        const fields = Object.fromEntries(COMPANY_FIELDS.map((f) => [f.key, changes[f.key] ?? base?.[f.key] ?? null]))
+        const { error } = await supabase.rpc('admin_save_company', { p_isis: isis, p_fields: fields })
+        if (error) throw new Error(`Entreprise ${isis} : ${error.message}`)
+        n++
+        setEdits((d) => { const x = { ...d }; delete x[isis]; return x })
+      }
+      setEditing(false)
+      setMsg(`${n} fiche(s) enregistrée(s).`)
+      await load()
+    } catch (e) {
+      setErr(`${errMsg(e)} — ${n} fiche(s) enregistrée(s) avant l’erreur, les autres restent modifiables.`)
+      await load()
+    } finally { setSaving(false) }
+  }
+
+  const discardEdits = () => { setEdits({}); setEditing(false) }
 
   const load = async () => {
     setErr(null)
@@ -165,13 +196,28 @@ export function CompaniesSection() {
     <Card className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="mr-auto font-semibold">Entreprises ({entries.length})</h2>
-        <Button variant="ghost" onClick={exportXlsx} disabled={!entries.length}>Exporter Excel</Button>
-        <label className="inline-flex cursor-pointer items-center rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted">
+        {!editing && <Button variant="ghost" onClick={() => setEditing(true)} disabled={!entries.length}>Modifier le tableau</Button>}
+        {editing && (
+          <>
+            <Button variant="ghost" onClick={discardEdits} disabled={saving}>Annuler</Button>
+            <Button onClick={() => void saveEdits()} disabled={saving || dirtyCount === 0}>
+              {saving ? 'Enregistrement…' : `Enregistrer (${dirtyCount})`}
+            </Button>
+          </>
+        )}
+        <Button variant="ghost" onClick={exportXlsx} disabled={!entries.length || editing}>Exporter Excel</Button>
+        <label className={`inline-flex items-center rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted ${editing ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
           Importer Excel
-          <input type="file" accept=".xlsx,.xls" className="hidden" disabled={busy}
+          <input type="file" accept=".xlsx,.xls" className="hidden" disabled={busy || editing}
             onChange={(e) => { const f = e.target.files?.[0]; if (f) void importXlsx(f); e.target.value = '' }} />
         </label>
       </div>
+      {editing && (
+        <Notice>
+          Mode modification : saisissez directement dans les cellules. Les lignes modifiées sont surlignées et seront enregistrées avec le bouton « Enregistrer ».
+          Les changements sont tracés dans le journal (COMPANY_SAVED).
+        </Notice>
+      )}
       <p className="text-xs text-muted-foreground">
         Une ligne par numéro d’entreprise. Exportez, complétez les colonnes d’informations dans Excel, puis réimportez sans changer les en-têtes.
         La colonne « Nombre de commandes » est indicative et n’est pas réimportée.
@@ -216,25 +262,34 @@ export function CompaniesSection() {
             <tr>
               <th className="px-3 py-2">Entreprise (n°)</th>
               <th className="px-3 py-2 text-right">Commandes</th>
-              <th className="px-3 py-2">Nom</th>
-              <th className="px-3 py-2">Email OS</th>
-              <th className="px-3 py-2">Dirigeant</th>
+              {COMPANY_FIELDS.map((f) => <th key={f.key} className="px-3 py-2">{f.label}</th>)}
               <th className="px-3 py-2 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {shown.slice(0, 300).map((e) => (
-              <tr key={e.isis} className="border-t border-border">
-                <td className="px-3 py-2 font-mono text-xs">{e.isis}</td>
-                <td className="px-3 py-2 text-right font-semibold">{e.count}</td>
-                <td className="px-3 py-2">{e.company?.name ?? <span className="text-muted-foreground">manquant</span>}</td>
-                <td className="px-3 py-2">{e.company?.os_email ?? <span className="text-muted-foreground">manquant</span>}</td>
-                <td className="px-3 py-2">{e.company?.director_name ?? <span className="text-muted-foreground">—</span>}</td>
-                <td className="px-3 py-2 text-right">
-                  {e.company && <Button variant="ghost" onClick={() => void remove(e.isis)}>Supprimer</Button>}
-                </td>
-              </tr>
-            ))}
+            {shown.slice(0, 300).map((e) => {
+              const dirty = Boolean(edits[e.isis])
+              return (
+                <tr key={e.isis} className={`border-t border-border ${dirty ? 'bg-amber-50' : ''}`}>
+                  <td className="px-3 py-2 font-mono text-xs">{e.isis}</td>
+                  <td className="px-3 py-2 text-right font-semibold">{e.count}</td>
+                  {COMPANY_FIELDS.map((f) => (
+                    <td key={f.key} className="px-2 py-1.5">
+                      {editing ? (
+                        <input className={`${fieldClass} py-1 text-xs`} value={valueOf(e, f.key)}
+                          placeholder={f.key === 'name' || f.key === 'os_email' ? 'à compléter' : ''}
+                          onChange={(ev) => setField(e.isis, f.key, ev.target.value)} />
+                      ) : (
+                        valueOf(e, f.key) || <span className="text-muted-foreground">{f.key === 'name' || f.key === 'os_email' ? 'manquant' : '—'}</span>
+                      )}
+                    </td>
+                  ))}
+                  <td className="px-3 py-2 text-right">
+                    {!editing && e.company && <Button variant="ghost" onClick={() => void remove(e.isis)}>Supprimer</Button>}
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
         {shown.length === 0 && <p className="p-3 text-sm text-muted-foreground">Aucune entreprise dans cet onglet.</p>}

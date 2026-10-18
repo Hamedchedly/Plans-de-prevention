@@ -9,6 +9,7 @@ import PlanEditor from './pages/PlanEditor'
 import ImportPage from './pages/Import'
 import Admin from './pages/Admin'
 import ProfileDialog from './components/ProfileDialog'
+import CompleteProfile from './components/CompleteProfile'
 
 type Page = 'commandes' | 'import' | 'administration'
 
@@ -20,6 +21,7 @@ export default function App() {
 
   if (loading) return <div className="p-8 text-sm text-muted-foreground">Chargement…</div>
   if (!session) return <Login />
+  if (session.user.user_metadata?.needs_setup === true) return <CompleteProfile />
 
   if (!profile || !profile.is_active) {
     return (

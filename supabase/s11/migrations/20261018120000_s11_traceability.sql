@@ -110,13 +110,7 @@ begin
     jsonb_build_object('status', v_status, 'comment', p_comment, 'lot_code', v_lot));
 end $$;
 
--- 5. Libellés : une nature dont la pose est l'opération principale inclut la dépose
-update plans_prevention.natures
-   set label = label || ' / dépose'
- where lower(translate(label, 'éèêàç', 'eeeac')) ~ '(^|[:(])\s*pos(e|er)\M'
-   and lower(translate(label, 'éèêàç', 'eeeac')) !~ 'depos';
-
--- 6. Droits
+-- 5. Droits
 revoke execute on function plans_prevention.log_activity(text,text,text,jsonb) from public, anon;
 revoke execute on function plans_prevention.set_trace_highlight(bigint,boolean,text) from public, anon;
 revoke execute on function plans_prevention.traceability(timestamptz,timestamptz,uuid,text,boolean) from public, anon;

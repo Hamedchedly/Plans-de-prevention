@@ -5,6 +5,7 @@ import { computeMeasures, fold, proposeRisks, searchNatures, type NatureRef } fr
 import type { OrderRow, PlanStatus } from '../lib/types'
 import { Badge, Button, Card, Notice, fieldClass, errMsg } from '../components/ui'
 import { logError } from '../lib/activity'
+import { orderLots } from '../lib/lotTree'
 
 type RiskState = { checked: boolean; origin: 'LOT_DEFAUT' | 'NATURE' | 'MANUEL' }
 type MeasureState = { checked: boolean; origin: 'AUTO' | 'MANUEL' }
@@ -18,6 +19,8 @@ interface Draft {
 }
 
 const MIN_CHARS = 1
+/** Score minimal pour présélectionner une nature à partir du libellé source de la commande. */
+const SUGGEST_MIN_SCORE = 0.5
 const EDITABLE: PlanStatus[] = ['NON_QUALIFIEE', 'A_ENVOYER']
 const STATUS_LABEL: Record<PlanStatus, string> = {
   NON_QUALIFIEE: 'Non qualifiée', A_ENVOYER: 'À envoyer', EN_ATTENTE_RETOUR: 'En attente retour entreprise', ARCHIVEE: 'Archivée',
@@ -96,13 +99,24 @@ export default function PlanEditor({ order, onBack }: { order: OrderRow; onBack:
         }
         setDetected(det)
 
-        const lots = new Map<number, LotState>()
-        for (const l of lotsR.data ?? []) lots.set(l.lot_code, { source: l.source, confidence: l.confidence })
-        if (lots.size === 0 && det) lots.set(det.lot, { source: det.source, confidence: null })
-
-        const natures = order.nature_id || order.nature_proposal_id
+        const hasNature = !!(order.nature_id || order.nature_proposal_id)
+        let natures: NatureRef[] = hasNature
           ? r.natures.filter((n) => n.id === order.nature_id || n.proposalId === order.nature_proposal_id)
           : []
+        // aucune nature retenue : présélection de la nature la plus proche du libellé source
+        const suggestText = (order.nature_text ?? '').trim() || (order.description ?? '').trim()
+        if (!hasNature && suggestText) {
+          const top = searchNatures(suggestText, r.natures, r.vocab, r.lotNameByCode, 1)[0]
+          if (top && top.score >= SUGGEST_MIN_SCORE) natures = [top.nature]
+        }
+
+        const lots = new Map<number, LotState>()
+        for (const l of lotsR.data ?? []) lots.set(l.lot_code, { source: l.source, confidence: l.confidence })
+        if (lots.size === 0) {
+          // lots repérés automatiquement (corps d'état) + lots portés par la nature suggérée
+          if (det) lots.set(det.lot, { source: det.source, confidence: null })
+          for (const n of natures) for (const lot of n.lots) if (!lots.has(lot)) lots.set(lot, { source: 'NATURE', confidence: null })
+        }
         const risks = new Map<string, RiskState>()
         for (const x of risksR.data ?? []) risks.set(x.risk_code, { checked: x.checked, origin: x.origin })
         const measures = new Map<string, MeasureState>()
@@ -190,16 +204,16 @@ export default function PlanEditor({ order, onBack }: { order: OrderRow; onBack:
   const suggested = detected?.lot ?? null
   const myPending = useMemo(() => (ref ? ref.natures.filter((n) => n.pending) : []), [ref])
   const hitIds = useMemo(() => new Set(hits.map((h) => h.nature.id)), [hits])
+  // lots dans l'ordre hiérarchique (groupe, puis sous-lots indentés)
   const lotOrder = useMemo(() => {
     if (!ref) return []
-    const all = ref.lots.map((l) => l.code).filter((c) => !searching || groups.has(c))
-    return all.sort((a, b) => (a === suggested ? -1 : b === suggested ? 1 : (groups.get(b)?.length ?? 0) - (groups.get(a)?.length ?? 0) || a - b))
-  }, [ref, groups, searching, suggested])
+    return orderLots(ref.lots).filter((x) => !searching || groups.has(x.lot.code))
+  }, [ref, groups, searching])
 
   const filteredLots = useMemo(() => {
     if (!ref) return []
     const t = fold(lotQuery)
-    return ref.lots.filter((l) => !t || fold(l.name).includes(t))
+    return orderLots(ref.lots.filter((l) => !t || fold(l.name).includes(t)))
   }, [ref, lotQuery])
 
   // ---- actions : proposition de nature, de règle, de correspondance NAAC
@@ -370,7 +384,7 @@ export default function PlanEditor({ order, onBack }: { order: OrderRow; onBack:
 
         {editable && open && (
           <div className="mt-2 rounded-md border border-border">
-            <div className="max-h-96 overflow-y-auto">
+            <div className="max-h-52 overflow-y-auto">
               {myPending.length > 0 && (
                 <div className="border-b border-border bg-amber-50/50">
                   <div className="px-3 py-2 text-xs font-semibold uppercase text-muted-foreground">Mes propositions (en attente de validation)</div>
@@ -385,12 +399,15 @@ export default function PlanEditor({ order, onBack }: { order: OrderRow; onBack:
                 </div>
               )}
               {searching && groups.size === 0 && <p className="p-3 text-sm text-muted-foreground">Aucune nature trouvée. Vous pouvez en proposer une nouvelle ci-dessous.</p>}
-              {lotOrder.map((lot) => {
+              {lotOrder.map(({ group, lot: lotItem, indent }, i) => {
+                const lot = lotItem.code
                 const list = groups.get(lot) ?? []
                 const isOpen = searching || expanded === lot
+                const newGroup = i === 0 || lotOrder[i - 1].group !== group
                 return (
                   <div key={lot} className="border-b border-border last:border-b-0">
-                    <button className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
+                    {newGroup && <div className="bg-muted/40 px-3 pt-2 pb-1 text-xs font-semibold uppercase text-muted-foreground">{group}</div>}
+                    <button className={`flex w-full items-center gap-2 py-2 pr-3 text-left text-sm hover:bg-muted ${indent ? 'pl-7' : 'pl-3'}`}
                       onClick={() => setExpanded(expanded === lot ? null : lot)}>
                       <span className="flex-1 font-medium">{lotName(lot)}</span>
                       {lot === suggested && <Badge tone="ok">suggéré</Badge>}
@@ -460,16 +477,20 @@ export default function PlanEditor({ order, onBack }: { order: OrderRow; onBack:
       <Card>
         <h2 className="mb-2 font-semibold">2. Lots concernés <span className="text-xs font-normal text-muted-foreground">suggérés, modifiables</span></h2>
         <input className={fieldClass + ' mb-2'} value={lotQuery} onChange={(e) => setLotQuery(e.target.value)} placeholder="Rechercher un lot" disabled={!editable} />
-        <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredLots.map((l) => {
+        <div className="max-h-72 overflow-y-auto rounded-md border border-border">
+          {filteredLots.map(({ group, lot: l, indent }, i) => {
             const st = draft.lots.get(l.code)
+            const newGroup = i === 0 || filteredLots[i - 1].group !== group
             return (
-              <label key={l.code} className="flex items-center gap-2 rounded px-2 py-1 text-sm hover:bg-muted">
-                <input type="checkbox" checked={!!st} onChange={() => toggleLot(l.code)} disabled={!editable} />
-                <span className="flex-1">{l.name}</span>
-                {l.code === suggested && <Badge tone="ok">suggéré</Badge>}
-                {st && <Badge>{sourceLabel(st.source)}</Badge>}
-              </label>
+              <div key={l.code}>
+                {newGroup && <div className="bg-muted/40 px-3 pt-2 pb-1 text-xs font-semibold uppercase text-muted-foreground">{group}</div>}
+                <label className={`flex items-center gap-2 py-1 pr-3 text-sm hover:bg-muted ${indent ? 'pl-8' : 'pl-3'}`}>
+                  <input type="checkbox" checked={!!st} onChange={() => toggleLot(l.code)} disabled={!editable} />
+                  <span className="flex-1">{l.name}</span>
+                  {l.code === suggested && <Badge tone="ok">suggéré</Badge>}
+                  {st && <Badge>{sourceLabel(st.source)}</Badge>}
+                </label>
+              </div>
             )
           })}
         </div>

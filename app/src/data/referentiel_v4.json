@@ -47,7 +47,7 @@
     },
     {
       "code": 12,
-      "name": "SERRURERIE"
+      "name": "FERMETURES / SERRURERIE"
     },
     {
       "code": 13,
@@ -3621,6 +3621,19 @@
       ],
       "extra_risks": [
         "R09"
+      ]
+    },
+    {
+      "label": "Remplacement de serrure, cylindre ou système anti-panique (porte d'entrée, sortie de secours)",
+      "ref_key": "Remplacement de serrure, cylindre ou système anti-panique (porte d'entrée, sortie de secours)",
+      "model_code": null,
+      "group_label": "29. Fermetures et serrurerie",
+      "lots": [
+        12,
+        11
+      ],
+      "extra_risks": [
+        "R02"
       ]
     }
   ],

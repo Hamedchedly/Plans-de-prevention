@@ -53,6 +53,11 @@ function OrderPage() {
   return <PlanEditor order={order} onBack={() => navigate({ to: '/commandes' })} />
 }
 
+function AdminSectionPage() {
+  const { section } = useParams({ from: '/administration/$section' })
+  return <ManagerOnly><Admin section={section} /></ManagerOnly>
+}
+
 function ManagerOnly({ children }: { children: ReactNode }) {
   const { profile } = useAuth()
   if (profile?.role !== 'RESPONSABLE' && profile?.role !== 'SUPER_ADMIN') return <Notice tone="error">Accès refusé.</Notice>
@@ -85,24 +90,31 @@ const orderRoute = createRoute({
   path: '/commandes/$numero',
   component: OrderPage,
 })
-// L'import Excel est désormais une section de l'administration ; l'ancienne adresse redirige.
+// L'import Excel est une page de l'administration ; l'ancienne adresse redirige.
 const importRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/import',
-  beforeLoad: () => { throw redirect({ to: '/administration' }) },
+  beforeLoad: () => { throw redirect({ to: '/administration/$section', params: { section: 'import' } }) },
 })
 const indicateursRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/indicateurs',
   component: () => <ManagerOnly><Indicateurs /></ManagerOnly>,
 })
-const adminRoute = createRoute({
+/** /administration : ouvre la première page (Import Excel). */
+const adminIndexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/administration',
-  component: () => <ManagerOnly><Admin /></ManagerOnly>,
+  beforeLoad: () => { throw redirect({ to: '/administration/$section', params: { section: 'import' } }) },
+})
+/** /administration/:section : une adresse par page, conservée à l'actualisation. */
+const adminSectionRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/administration/$section',
+  component: AdminSectionPage,
 })
 
-const routeTree = rootRoute.addChildren([indexRoute, commandesRoute, orderRoute, importRoute, indicateursRoute, adminRoute])
+const routeTree = rootRoute.addChildren([indexRoute, commandesRoute, orderRoute, importRoute, indicateursRoute, adminIndexRoute, adminSectionRoute])
 
 export const router = createRouter({ routeTree, defaultNotFoundComponent: NotFound })
 

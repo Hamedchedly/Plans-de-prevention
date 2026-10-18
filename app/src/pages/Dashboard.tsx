@@ -607,7 +607,7 @@ export default function Dashboard({ onOpen, view, setView }: {
       {sansContact.length > 0 && (
         <Notice tone="warn">
           {sansContact.length} fiche(s) créée(s) ou envoyée(s) dont la personne à alerter n’est pas complète ({sansContactCodes.join(', ')}).
-          Le PDF affiche alors « Responsable d’intervention ». Complétez l’identité (Administration › Chargés d’opérations ou Vérifier mes infos).
+          Le PDF affiche alors « Responsable d’intervention ». Complétez l’identité (Administration › Utilisateurs et chargés ou Vérifier mes infos).
         </Notice>
       )}
       {err && <Notice tone="error">{err}</Notice>}

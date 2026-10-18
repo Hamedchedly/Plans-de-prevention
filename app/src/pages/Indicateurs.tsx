@@ -35,6 +35,8 @@ export default function Indicateurs() {
   const [names, setNames] = useState<Map<string, Contact>>(new Map())
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState<string | null>(null)
+  /** Chargé sélectionné : sa ligne est surlignée et la barre n'affiche que ses commandes. */
+  const [focus, setFocus] = useState<string | null>(null)
 
   useEffect(() => {
     let alive = true
@@ -79,11 +81,16 @@ export default function Indicateurs() {
       {err && <Notice tone="error">{err}</Notice>}
 
       <Card className="space-y-4">
-        <div>
-          <h2 className="text-base font-semibold">Ensemble des chargés</h2>
-          <p className="text-xs text-muted-foreground">{loading ? 'Chargement…' : `${byOperator.length} chargé(s) avec des commandes`}</p>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <div>
+            <h2 className="text-base font-semibold">{focus ? `Chargé : ${names.get(focus)?.name || focus}` : 'Ensemble des chargés'}</h2>
+            <p className="text-xs text-muted-foreground">
+              {focus ? 'Barre filtrée sur ce chargé. Cliquez à nouveau sur son nom pour revenir à l’ensemble.' : loading ? 'Chargement…' : `${byOperator.length} chargé(s) avec des commandes`}
+            </p>
+          </div>
+          {focus && <button type="button" onClick={() => setFocus(null)} className="rounded-full bg-muted px-3.5 py-1.5 text-xs font-medium hover:bg-muted/70">Voir tous les chargés</button>}
         </div>
-        <PipelineBar counts={total} />
+        <PipelineBar counts={focus ? (byOperator.find((x) => x.code === focus)?.c ?? emptyCounts()) : total} />
       </Card>
 
       <Card className="overflow-x-auto p-0">
@@ -101,9 +108,12 @@ export default function Indicateurs() {
           </thead>
           <tbody className="divide-y divide-border">
             {byOperator.map(({ code, c, sum }) => (
-              <tr key={code} className="align-middle">
+              <tr key={code} className={`align-middle transition-colors ${focus === code ? 'bg-primary/5 ring-1 ring-inset ring-primary/20' : 'hover:bg-muted/40'}`}>
                 <td className="px-4 py-2.5">
-                  <div className="font-medium">{names.get(code)?.name || code}</div>
+                  <button type="button" onClick={() => setFocus(focus === code ? null : code)} aria-pressed={focus === code}
+                    className="text-left font-medium hover:underline">
+                    {names.get(code)?.name || code}
+                  </button>
                   {names.get(code)?.name && <div className="font-mono text-[11px] text-muted-foreground">{code}</div>}
                 </td>
                 <td className="px-4 py-2.5 text-right tabular-nums">{sum}</td>

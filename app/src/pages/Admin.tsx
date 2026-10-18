@@ -4,57 +4,35 @@ import { useAuth } from '../lib/auth'
 import { getReferentiel } from '../lib/refdata'
 import { importReferentielV4 } from '../lib/referentiel'
 import type { AlertRow, Profile, Role } from '../lib/types'
-import { Badge, Button, Card, Notice, errMsg, fieldClass } from '../components/ui'
+import { Badge, Button, Card, Notice, PageHeader, errMsg, fieldClass } from '../components/ui'
 import { CompaniesSection, CompanyProposalsSection } from './AdminCompanies'
 import { DataSection } from './AdminData'
 import { startImpersonation } from '../lib/impersonation'
 import ProfileDialog from '../components/ProfileDialog'
-import { CreatorsSection, KpiSection, TemplatesSection } from './AdminOps'
+import { CreatorsSection, TemplatesSection } from './AdminOps'
 import ImportPage from './Import'
+import { adminPageLabel, visibleAdminGroups } from '../lib/adminNav'
 
-type Section = 'validations' | 'tracabilite' | 'perimetre' | 'referentiels' | 'entreprises' | 'donnees' | 'alertes' | 'utilisateurs' | 'fichiers' | 'chargés' | 'indicateurs' | 'modeles' | 'import'
-
-const SECTIONS: { key: Section; label: string; superOnly: boolean }[] = [
-  { key: 'alertes', label: 'Alertes', superOnly: false },
-  { key: 'indicateurs', label: 'Indicateurs', superOnly: false },
-  { key: 'chargés', label: 'Chargés d’opérations', superOnly: false },
-  { key: 'import', label: 'Import Excel', superOnly: false },
-  { key: 'validations', label: 'Validations', superOnly: true },
-  { key: 'tracabilite', label: 'Traçabilité', superOnly: true },
-  { key: 'perimetre', label: 'Périmètre', superOnly: true },
-  { key: 'referentiels', label: 'Référentiels', superOnly: true },
-  { key: 'entreprises', label: 'Entreprises', superOnly: true },
-  { key: 'donnees', label: 'Base de données', superOnly: true },
-  { key: 'utilisateurs', label: 'Utilisateurs', superOnly: true },
-  { key: 'fichiers', label: 'Fichiers de fiches', superOnly: true },
-  { key: 'modeles', label: 'Modèles mail et PDF', superOnly: true },
-]
-
-export default function Admin() {
+/** Une page d'administration, choisie par l'adresse (/administration/:section). */
+export default function Admin({ section }: { section: string }) {
   const { can, profile } = useAuth()
   const isSuper = can('SUPER_ADMIN')
-  const visible = SECTIONS.filter((s) => !s.superOnly || isSuper)
-  const [section, setSection] = useState<Section>(visible[0].key)
+  const allowed = visibleAdminGroups(isSuper).some((g) => g.pages.some((p) => p.key === section))
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        {visible.map((s) => (
-          <Button key={s.key} variant={section === s.key ? 'primary' : 'ghost'} onClick={() => setSection(s.key)}>{s.label}</Button>
-        ))}
-      </div>
-      {section === 'alertes' && <AlertsSection />}
-      {section === 'validations' && isSuper && <><ValidationsSection /><CompanyProposalsSection /></>}
-      {section === 'tracabilite' && isSuper && <TraceSection />}
-      {section === 'perimetre' && isSuper && <ScopeSection />}
-      {section === 'referentiels' && isSuper && <ReferentielSection userId={profile?.user_id ?? ''} />}
-      {section === 'entreprises' && isSuper && <CompaniesSection />}
-      {section === 'donnees' && isSuper && <DataSection />}
-      {section === 'utilisateurs' && isSuper && <UsersSection />}
-      {section === 'fichiers' && isSuper && <FileNameSection />}
-      {section === 'modeles' && isSuper && <TemplatesSection />}
-      {section === 'indicateurs' && <KpiSection />}
-      {section === 'chargés' && <CreatorsSection />}
-      {section === 'import' && <ImportPage />}
+    <div className="space-y-5">
+      <PageHeader title={adminPageLabel(section)} subtitle="Administration" />
+      {!allowed && <Notice tone="error">Cette page n’est pas accessible avec votre rôle.</Notice>}
+      {allowed && section === 'alertes' && <AlertsSection />}
+      {allowed && section === 'validations' && <><ValidationsSection /><CompanyProposalsSection /></>}
+      {allowed && section === 'tracabilite' && <TraceSection />}
+      {allowed && section === 'perimetre' && <ScopeSection />}
+      {allowed && section === 'referentiels' && <ReferentielSection userId={profile?.user_id ?? ''} />}
+      {allowed && section === 'entreprises' && <CompaniesSection />}
+      {allowed && section === 'donnees' && <DataSection />}
+      {allowed && section === 'fichiers' && <FileNameSection />}
+      {allowed && section === 'modeles' && <TemplatesSection />}
+      {allowed && section === 'utilisateurs' && <><CreatorsSection />{isSuper && <UsersSection />}</>}
+      {allowed && section === 'import' && <ImportPage />}
     </div>
   )
 }

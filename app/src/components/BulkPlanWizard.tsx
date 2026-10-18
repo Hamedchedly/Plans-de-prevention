@@ -20,7 +20,7 @@ function IdentityNotice({ codes }: { codes: string[] }) {
   return (
     <Notice tone="warn">
       Identité incomplète ou compte non inscrit pour : <span className="font-mono">{codes.join(', ')}</span>.
-      La personne à alerter doit être complétée (Administration › Chargés d’opérations, ou saisie par la personne à son inscription) avant l’export des PDF.
+      La personne à alerter doit être complétée (Administration › Utilisateurs et chargés, ou saisie par la personne à son inscription) avant l’export des PDF.
     </Notice>
   )
 }

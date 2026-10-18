@@ -4,6 +4,7 @@ import { BarChart3, LayoutGrid, Settings2 } from 'lucide-react'
 import { useAuth } from './lib/auth'
 import { readImpersonation } from './lib/impersonation'
 import { Button, Card } from './components/ui'
+import { visibleAdminGroups } from './lib/adminNav'
 import Login from './pages/Login'
 import ProfileDialog from './components/ProfileDialog'
 import CompleteProfile from './components/CompleteProfile'
@@ -40,6 +41,9 @@ export function RootLayout() {
   }
 
   const isManager = profile.role === 'RESPONSABLE' || profile.role === 'SUPER_ADMIN'
+  const adminGroups = visibleAdminGroups(profile.role === 'SUPER_ADMIN')
+  const adminPages = adminGroups.flatMap((g) => g.pages)
+  const inAdmin = path.startsWith('/administration')
   const imp = readImpersonation()
   const initials = (profile.full_name || profile.email || '?').split(/\s+|@/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('')
   const roleLabel: Record<string, string> = { SUPER_ADMIN: 'Super Admin', RESPONSABLE: 'Responsable', CHARGE_OPERATIONS: 'Chargé d’opérations' }
@@ -47,7 +51,7 @@ export function RootLayout() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto flex max-w-[1400px] flex-col gap-4 p-3 md:flex-row md:gap-5 md:p-5">
-        <aside className="flex shrink-0 flex-row items-center gap-2 rounded-[2rem] bg-card p-3 shadow-sm md:sticky md:top-5 md:h-[calc(100vh-2.5rem)] md:w-60 md:flex-col md:items-stretch md:gap-1 md:p-4">
+        <aside className="flex shrink-0 flex-row items-center gap-2 rounded-[2rem] bg-card p-3 shadow-sm md:sticky md:top-5 md:h-[calc(100vh-2.5rem)] md:w-60 md:flex-col md:items-stretch md:gap-1 md:overflow-y-auto md:p-4">
           <div className="hidden items-center gap-3 px-2 pb-6 pt-1 md:flex">
             <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-sm font-bold text-primary-foreground">PP</span>
             <div className="leading-tight">
@@ -69,6 +73,24 @@ export function RootLayout() {
               )
             })}
           </nav>
+          {inAdmin && (
+            <div className="hidden md:block">
+              {adminGroups.map((g) => (
+                <div key={g.label} className="mt-3">
+                  <div className="px-3.5 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{g.label}</div>
+                  {g.pages.map((p) => {
+                    const on = path === `/administration/${p.key}`
+                    return (
+                      <Link key={p.key} to="/administration/$section" params={{ section: p.key }}
+                        className={`block rounded-xl px-3.5 py-1.5 text-[13px] transition-colors ${on ? 'bg-background font-medium text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+                        {p.label}
+                      </Link>
+                    )
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
           <div className="relative shrink-0 md:mt-auto">
             <button onClick={() => setUserMenu((v) => !v)} aria-haspopup="menu" aria-expanded={userMenu}
               className="flex w-full items-center gap-2.5 rounded-2xl px-2 py-2 hover:bg-background/60">
@@ -102,6 +124,16 @@ export function RootLayout() {
             </div>
           )}
           {profileOpen && session && <ProfileDialog userId={session.user.id} isSelf onClose={() => setProfileOpen(false)} />}
+          {inAdmin && (
+            <nav aria-label="Pages d’administration" className="flex gap-1 overflow-x-auto md:hidden">
+              {adminPages.map((p) => (
+                <Link key={p.key} to="/administration/$section" params={{ section: p.key }}
+                  className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs ${path === `/administration/${p.key}` ? 'bg-card font-semibold text-foreground shadow-sm' : 'text-muted-foreground'}`}>
+                  {p.label}
+                </Link>
+              ))}
+            </nav>
+          )}
           <main className="min-w-0">
             <Outlet />
           </main>

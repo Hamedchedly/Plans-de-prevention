@@ -10,6 +10,7 @@ import CompleteProfile from './components/CompleteProfile'
 const NAV = [
   { to: '/commandes', label: 'Commandes', managerOnly: false },
   { to: '/import', label: 'Import', managerOnly: true },
+  { to: '/indicateurs', label: 'Indicateurs chargés', managerOnly: true },
   { to: '/administration', label: 'Administration', managerOnly: true },
 ] as const
 

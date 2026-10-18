@@ -9,6 +9,7 @@ import Dashboard, { type DashboardView } from './pages/Dashboard'
 import PlanEditor from './pages/PlanEditor'
 import ImportPage from './pages/Import'
 import Admin from './pages/Admin'
+import Indicateurs from './pages/Indicateurs'
 
 /** Paramètres de la liste des commandes, conservés dans l'adresse (onglet, regroupement, tri). */
 function validateOrdersSearch(s: Record<string, unknown>): DashboardView {
@@ -90,13 +91,18 @@ const importRoute = createRoute({
   path: '/import',
   component: () => <ManagerOnly><ImportPage /></ManagerOnly>,
 })
+const indicateursRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/indicateurs',
+  component: () => <ManagerOnly><Indicateurs /></ManagerOnly>,
+})
 const adminRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/administration',
   component: () => <ManagerOnly><Admin /></ManagerOnly>,
 })
 
-const routeTree = rootRoute.addChildren([indexRoute, commandesRoute, orderRoute, importRoute, adminRoute])
+const routeTree = rootRoute.addChildren([indexRoute, commandesRoute, orderRoute, importRoute, indicateursRoute, adminRoute])
 
 export const router = createRouter({ routeTree, defaultNotFoundComponent: NotFound })
 

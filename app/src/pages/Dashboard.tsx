@@ -13,6 +13,7 @@ import { fetchCompanies, type CompanyRow } from './AdminCompanies'
 import { Archive, Ban, ArrowRightLeft, CheckCheck, Download, Eye, Inbox, Info, Mail, Pencil, RotateCcw, SlidersHorizontal, Trash2 } from 'lucide-react'
 import { buildSheetPdf, buildSheetsZip, contactFor, downloadBlob, fetchContacts, fetchSavedLines, openPdf, planFileName, readSettings, DEFAULT_MAIL_CORPS, DEFAULT_MAIL_OBJET, type Contact, type Line } from '../lib/sheet'
 import MailDialog from '../components/MailDialog'
+import { PipelineBar, type PipelineCounts } from '../components/PipelineBar'
 
 type Tab = 'NON_QUALIFIEE' | 'A_ENVOYER' | 'EN_ATTENTE_RETOUR' | 'SIGNEE' | 'ARCHIVEE' | 'ENVOYE_MANUELLEMENT' | 'DEMANDES' | 'EXCLUES' | 'HORS_REGLE' | 'CORBEILLE'
 /** Vues hors périmètre : réintégration possible par le responsable. */
@@ -198,6 +199,23 @@ export default function Dashboard({ onOpen, view, setView }: {
     () => [...new Set([...suggestions.values()].filter((s) => s.confident).map((s) => s.group).filter(Boolean))] as string[],
     [suggestions])
 
+  // Groupes repliés par défaut ; « Tout déplier » / « Tout plier » dans la barre de regroupement
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set())
+  useEffect(() => { setOpenGroups(new Set()) }, [grouping])
+
+  // Barre d'avancement : le chargé voit ses propres commandes ; le responsable voit la vue choisie (chargé + secteur)
+  const pipelineScope = profile?.role === 'CHARGE_OPERATIONS' ? (profile.operator_code ?? null) : (operator || null)
+  const pipeline: PipelineCounts = { attente: 0, fait: 0, envoye: 0, retour: 0 }
+  for (const o of rows) {
+    if (o.scope_status !== 'IN_SCOPE') continue
+    if (sector !== 'TOUS' && o.sector_code !== sector) continue
+    if (pipelineScope && o.operator_code !== pipelineScope) continue
+    if (o.plan_status === 'NON_QUALIFIEE') pipeline.attente++
+    else if (o.plan_status === 'A_ENVOYER') pipeline.fait++
+    else if (o.plan_status === 'EN_ATTENTE_RETOUR') pipeline.envoye++
+    else if (o.plan_status === 'SIGNEE') pipeline.retour++
+  }
+
   const cutoffOf = (p: number) => PRESETS[p].days == null ? null : todayDay() - (PRESETS[p].days as number)
 
   const inTab = (o: OrderRow, t: Tab) => {
@@ -291,6 +309,15 @@ export default function Dashboard({ onOpen, view, setView }: {
     if (last && last.group === g) last.rows.push(o)
     else sections.push({ group: g, rows: [o] })
   }
+  const groupKeys = grouping === 'NONE' ? [] : [...new Set(list.map(groupOf))]
+  const allGroupsOpen = groupKeys.length > 0 && groupKeys.every((g) => openGroups.has(g))
+  const toggleAllGroups = () => setOpenGroups(allGroupsOpen ? new Set() : new Set(groupKeys))
+  const toggleGroupOpen = (g: string) => setOpenGroups((s) => {
+    const next = new Set(s)
+    if (next.has(g)) next.delete(g); else next.add(g)
+    return next
+  })
+
   // Ligne d'en-tête de groupe : sélection de tous les cas du groupe
   const groupRow = (g: string) => {
     const members = list.filter((o) => canSelectOrder(o) && groupOf(o) === g).map((o) => o.order_number)
@@ -300,7 +327,7 @@ export default function Dashboard({ onOpen, view, setView }: {
     return (
       <tr key={`g-${g}`} className="bg-muted/40">
         <td colSpan={colCount} className="px-3 py-2">
-          <label className="flex flex-wrap items-center gap-3 text-sm font-medium">
+          <div className="flex flex-wrap items-center gap-3 text-sm font-medium">
             {members.length > 0 && (
               <input type="checkbox" aria-label={`Sélectionner le groupe ${g}`} checked={all}
                 onChange={() => setSelected((s) => {
@@ -309,11 +336,15 @@ export default function Dashboard({ onOpen, view, setView }: {
                   return next
                 })} />
             )}
-            <span>{g}</span>
+            <button type="button" onClick={() => toggleGroupOpen(g)} aria-expanded={openGroups.has(g)}
+              className="flex items-center gap-2 text-left hover:text-foreground">
+              <span className={`inline-block transition-transform ${openGroups.has(g) ? 'rotate-90' : ''}`} aria-hidden="true">▸</span>
+              <span>{g}</span>
+            </button>
             <span className="text-xs font-normal text-muted-foreground">
               {total} commande(s){members.length > 0 && ` · ${nSel} sélectionnée(s) sur ${members.length}`}
             </span>
-          </label>
+          </div>
         </td>
       </tr>
     )
@@ -460,6 +491,14 @@ export default function Dashboard({ onOpen, view, setView }: {
         actions={<Button variant="ghost" onClick={() => void load()} disabled={loading}>Actualiser</Button>}
       />
 
+      <Card className="space-y-4">
+        <div>
+          <h2 className="text-base font-semibold">{profile?.role === 'CHARGE_OPERATIONS' ? 'Mes plans' : 'Avancement des plans'}</h2>
+          <p className="text-xs text-muted-foreground">Commandes dans le périmètre. Cliquez sur une partie de la barre pour ouvrir la liste correspondante.</p>
+        </div>
+        <PipelineBar counts={pipeline} onSelect={(t) => changeTab(t as Tab)} />
+      </Card>
+
       <Card className="grid grid-cols-2 items-end gap-3 md:flex md:flex-wrap">
         <div>
           <label className="mb-1 block text-xs text-muted-foreground">Secteur</label>
@@ -592,6 +631,11 @@ export default function Dashboard({ onOpen, view, setView }: {
                 {g.label}
               </button>
             ))}
+            {groupKeys.length > 0 && (
+              <button type="button" onClick={toggleAllGroups} className="rounded-md border border-border px-2.5 py-1 text-xs hover:text-foreground">
+                {allGroupsOpen ? 'Tout plier' : 'Tout déplier'}
+              </button>
+            )}
             <span className="ml-auto text-xs text-muted-foreground">Cliquez sur un en-tête pour trier</span>
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 border-b border-border px-3 py-1.5 text-[11px] text-muted-foreground">
@@ -621,7 +665,7 @@ export default function Dashboard({ onOpen, view, setView }: {
               {sections.map((sec, si) => (
               <tbody key={si} className="divide-y divide-border">
                 {sec.group != null && groupRow(sec.group)}
-                {sec.rows.map((o) => {
+                {(sec.group == null || openGroups.has(sec.group)) && sec.rows.map((o) => {
                   const sg = suggestions.get(o.order_number)
                   const assigned = o.nature_id != null
                   const canSelect = canSelectOrder(o)

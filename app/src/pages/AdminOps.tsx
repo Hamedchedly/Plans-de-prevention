@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
 import { Button, Card, EmptyState, Notice, fieldClass } from '../components/ui'
 import { DEFAULT_ALERT, DEFAULT_FOOTER } from '../lib/planPdf'
 import { DEFAULT_MAIL_CORPS, DEFAULT_MAIL_OBJET } from '../lib/sheet'
-import { Download, UserCheck } from 'lucide-react'
+import { ChevronDown, Download, UserCheck } from 'lucide-react'
 
 /** Export CSV compatible Excel (séparateur ;, BOM UTF-8). */
 export function downloadCsv(filename: string, rows: (string | number | null | undefined)[][]) {
@@ -45,7 +45,8 @@ export function CreatorsSection() {
 
   const total = useMemo(() => (data ? GROUPS.reduce((a, g) => a + data[g.key].length, 0) : 0), [data])
   // Groupes vides masqués : une seule ligne de rappel au lieu de plusieurs « Aucun chargé »
-  const visible = data ? GROUPS.filter((g) => data[g.key].length > 0) : []
+  // Les non inscrits sont dans une section dédiée, repliée en bas de page
+  const visible = data ? GROUPS.filter((g) => g.key !== 'NON_INSCRIT' && data[g.key].length > 0) : []
 
   return (
     <div className="space-y-4">
@@ -66,7 +67,7 @@ export function CreatorsSection() {
       </Card>
       {err && <Notice tone="error">{err}</Notice>}
       {loading && !data && <p className="text-sm text-muted-foreground">Chargement…</p>}
-      {data && visible.length === 0 && <EmptyState icon={UserCheck} title="Aucun chargé créateur de commandes." />}
+      {data && visible.length === 0 && <EmptyState icon={UserCheck} title="Aucun chargé inscrit ayant créé des commandes." />}
       {data && visible.map((g) => (
         <Card key={g.key} className="p-0">
           <div className="border-b border-border px-4 py-3">
@@ -100,6 +101,56 @@ export function CreatorsSection() {
         </Card>
       ))}
     </div>
+  )
+}
+
+/** Section repliable (native, accessible au clavier). */
+export function Folded({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
+  return (
+    <details className="group rounded-lg border border-border bg-card">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
+        <span>
+          <span className="block text-sm font-semibold">{title}</span>
+          {hint && <span className="block text-xs text-muted-foreground">{hint}</span>}
+        </span>
+        <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+      </summary>
+      <div className="border-t border-border p-4">{children}</div>
+    </details>
+  )
+}
+
+/** Codes chargés ayant créé des commandes sans compte : repliés, en bas de la page utilisateurs. */
+export function NonRegisteredCreators() {
+  const [rows, setRows] = useState<Creator[] | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+  useEffect(() => {
+    void supabase.rpc('list_order_creators').then(({ data, error }) => {
+      if (error) { setErr(error.message); return }
+      setRows(((data as Creators | null)?.NON_INSCRIT ?? []).slice().sort((a, b) => b.orders - a.orders))
+    })
+  }, [])
+  if (err) return <Notice tone="error">{err}</Notice>
+  if (!rows) return null
+  return (
+    <Folded title={`Non inscrits (${rows.length})`} hint="Chargés ayant créé des commandes, sans compte : à inviter via « Inviter un utilisateur ».">
+      {rows.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Tous les chargés créateurs ont un compte.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
+              <tr><th className="px-3 py-2 font-medium">Code</th><th className="px-3 py-2 font-medium">Commandes</th></tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {rows.map((c) => (
+                <tr key={c.code}><td className="px-3 py-2 font-mono text-xs">{c.code}</td><td className="px-3 py-2">{c.orders}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Folded>
   )
 }
 

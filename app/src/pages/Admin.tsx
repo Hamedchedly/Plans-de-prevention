@@ -10,7 +10,7 @@ import { CompaniesSection, CompanyProposalsSection } from './AdminCompanies'
 import { DataSection } from './AdminData'
 import { startImpersonation } from '../lib/impersonation'
 import ProfileDialog from '../components/ProfileDialog'
-import { CreatorsSection, TemplatesSection } from './AdminOps'
+import { CreatorsSection, Folded, NonRegisteredCreators, TemplatesSection } from './AdminOps'
 import ImportPage from './Import'
 import { adminPageLabel, visibleAdminGroups } from '../lib/adminNav'
 import { ControlsSection } from './AdminControls'
@@ -34,7 +34,11 @@ export default function Admin({ section }: { section: string }) {
       {allowed && section === 'donnees' && <DataSection />}
       {allowed && section === 'fichiers' && <FileNameSection />}
       {allowed && section === 'modeles' && <TemplatesSection />}
-      {allowed && section === 'utilisateurs' && <><CreatorsSection />{isSuper && <UsersSection />}</>}
+      {allowed && section === 'utilisateurs' && <>
+        <CreatorsSection />
+        {isSuper && <Folded title="Utilisateurs inscrits" hint="Droits, code chargé et secteurs de chaque compte ; invitation de nouveaux comptes."><UsersSection /></Folded>}
+        <NonRegisteredCreators />
+      </>}
       {allowed && section === 'import' && <ImportPage />}
     </div>
   )

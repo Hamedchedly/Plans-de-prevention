@@ -26,7 +26,9 @@ Deno.serve(async (req) => {
     const { data: me, error: meErr } = await service.auth.getUser(token)
     if (meErr || !me.user) return json({ error: 'Non authentifié' }, 401)
 
-    const { data: admin } = await service.from('profiles').select('role,is_active').eq('user_id', me.user.id).maybeSingle()
+    // Lecture du profil : une erreur de lecture doit être signalée comme telle, pas confondue avec un refus de droits.
+    const { data: admin, error: adminErr } = await service.from('profiles').select('role,is_active').eq('user_id', me.user.id).maybeSingle()
+    if (adminErr) return json({ error: `Lecture du profil impossible : ${adminErr.message}` }, 500)
     if (!admin || !admin.is_active || admin.role !== 'SUPER_ADMIN') return json({ error: 'Réservé au Super Admin' }, 403)
 
     const body = (await req.json().catch(() => ({}))) as {

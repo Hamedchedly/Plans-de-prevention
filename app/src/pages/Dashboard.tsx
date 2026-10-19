@@ -85,8 +85,6 @@ const PRESETS: { label: string; days: number | null }[] = [
   { label: 'Tout', days: null },
 ]
 const DEFAULT_PRESET = 0
-/** En dessous de ce nombre dans l'onglet, la période est élargie automatiquement. */
-const MIN_VISIBLE = 3
 
 const dayOf = (iso: string) => Math.floor(Date.parse(iso) / 86400000)
 const todayDay = () => Math.floor(Date.now() / 86400000)
@@ -97,15 +95,23 @@ const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('fr-FR')
 const PAGE_ROWS = 500
 const CONCURRENCY = 3
 
-function ordersQuery(sectors: string[], operators: string[]) {
+/** Début de la période chargée (null = toutes les commandes). */
+const sinceIsoOf = (p: number) => {
+  const d = PRESETS[p].days
+  return d == null ? null : new Date((todayDay() - d) * 86400000).toISOString()
+}
+
+function ordersQuery(sectors: string[], operators: string[], since: string | null) {
   let qb = supabase.from('orders').select('*').is('trashed_at', null)
+  if (since) qb = qb.gte('order_date', since)
   if (sectors.length) qb = qb.in('sector_code', sectors)
   if (operators.length) qb = qb.in('operator_code', operators)
   return qb
 }
 
-async function countOrdersWhere(sectors: string[], operators: string[]): Promise<number> {
+async function countOrdersWhere(sectors: string[], operators: string[], since: string | null): Promise<number> {
   let qb = supabase.from('orders').select('order_number', { count: 'exact', head: true }).is('trashed_at', null)
+  if (since) qb = qb.gte('order_date', since)
   if (sectors.length) qb = qb.in('sector_code', sectors)
   if (operators.length) qb = qb.in('operator_code', operators)
   const { count, error } = await qb
@@ -113,8 +119,18 @@ async function countOrdersWhere(sectors: string[], operators: string[]): Promise
   return count ?? 0
 }
 
-async function fetchOrderPage(sectors: string[], operators: string[], from: number): Promise<OrderRow[]> {
-  const { data, error } = await ordersQuery(sectors, operators)
+/** Commandes plus anciennes que la période chargée (rappel « masquées »). */
+async function countOlderOrders(sectors: string[], operators: string[], since: string): Promise<number> {
+  let qb = supabase.from('orders').select('order_number', { count: 'exact', head: true }).is('trashed_at', null).lt('order_date', since)
+  if (sectors.length) qb = qb.in('sector_code', sectors)
+  if (operators.length) qb = qb.in('operator_code', operators)
+  const { count, error } = await qb
+  if (error) throw new Error(error.message)
+  return count ?? 0
+}
+
+async function fetchOrderPage(sectors: string[], operators: string[], since: string | null, from: number): Promise<OrderRow[]> {
+  const { data, error } = await ordersQuery(sectors, operators, since)
     .order('order_date', { ascending: false, nullsFirst: false }).order('order_number')
     .range(from, from + PAGE_ROWS - 1)
   if (error) throw new Error(error.message)
@@ -123,7 +139,7 @@ async function fetchOrderPage(sectors: string[], operators: string[], from: numb
 
 /** Charge les pages en parallèle et signale chaque avancée : la liste se remplit au fur et à mesure. */
 async function loadOrdersProgressively(
-  sectors: string[], operators: string[], total: number,
+  sectors: string[], operators: string[], since: string | null, total: number,
   onProgress: (rows: OrderRow[]) => void, isCurrent: () => boolean,
 ): Promise<OrderRow[]> {
   const starts: number[] = []
@@ -133,7 +149,7 @@ async function loadOrdersProgressively(
   const worker = async () => {
     while (next < starts.length) {
       const from = starts[next++]
-      const page = await fetchOrderPage(sectors, operators, from)
+      const page = await fetchOrderPage(sectors, operators, since, from)
       if (!isCurrent()) return
       out.push(...page)
       onProgress([...out])
@@ -143,8 +159,8 @@ async function loadOrdersProgressively(
   return out
 }
 
-const ordersCacheKey = (sectors: string[], operators: string[]) =>
-  `orders:${[...sectors].sort().join(',')}|${[...operators].sort().join(',')}`
+const ordersCacheKey = (sectors: string[], operators: string[], presetIdx: number) =>
+  `orders:${[...sectors].sort().join(',')}|${[...operators].sort().join(',')}|p${presetIdx}`
 
 /** Secteurs et chargés proposés dans les filtres, selon ce que l'utilisateur peut voir (sans charger les commandes). */
 async function fetchFilterOptions(): Promise<{ sectors: string[]; operators: string[] }> {
@@ -177,6 +193,7 @@ export default function Dashboard({ onOpen, view, setView }: {
   const [loading, setLoading] = useState(true)
   const [ordersLoading, setOrdersLoading] = useState(false)
   const [ordersProgress, setOrdersProgress] = useState<{ done: number; total: number } | null>(null)
+  const [olderCount, setOlderCount] = useState(0)
   const [filterOptions, setFilterOptions] = useState<{ sectors: string[]; operators: string[] }>({ sectors: [], operators: [] })
   const ordersReq = useRef(0)
   const [err, setErr] = useState<string | null>(null)
@@ -218,24 +235,29 @@ export default function Dashboard({ onOpen, view, setView }: {
     })
   }, [])
 
-  /** Recharge les commandes des secteurs et chargés choisis. Responsable sans filtre : rien n'est chargé. */
-  const refreshOrders = async (sectors: string[], operators: string[]) => {
+  /** Recharge les commandes des secteurs, chargés et de la période choisis. Responsable sans filtre : rien n'est chargé. */
+  const refreshOrders = async (sectors: string[], operators: string[], presetIdx: number) => {
     const req = ++ordersReq.current
     const isCurrent = () => req === ordersReq.current
     if (isManager && sectors.length === 0 && operators.length === 0) {
-      setRows([]); setContacts(new Map()); setDates(new Map()); setOrdersLoading(false); setOrdersProgress(null)
+      setRows([]); setContacts(new Map()); setDates(new Map()); setOrdersLoading(false); setOrdersProgress(null); setOlderCount(0)
       return
     }
-    const key = ordersCacheKey(sectors, operators)
+    const since = sinceIsoOf(presetIdx)
+    const key = ordersCacheKey(sectors, operators, presetIdx)
     // Affichage immédiat avec la dernière version gardée dans le navigateur, puis mise à jour depuis le serveur
     const cached = readCache<OrderRow[]>(key)
     setRows(cached?.value ?? [])
     setOrdersLoading(true); setOrdersProgress(null)
     try {
-      const total = await countOrdersWhere(sectors, operators)
+      const [total, older] = await Promise.all([
+        countOrdersWhere(sectors, operators, since),
+        since ? countOlderOrders(sectors, operators, since) : Promise.resolve(0),
+      ])
       if (!isCurrent()) return
+      setOlderCount(older)
       setOrdersProgress({ done: 0, total })
-      const orders = await loadOrdersProgressively(sectors, operators, total, (partial) => {
+      const orders = await loadOrdersProgressively(sectors, operators, since, total, (partial) => {
         if (!isCurrent()) return
         setRows(partial)
         setOrdersProgress({ done: partial.length, total })
@@ -264,6 +286,9 @@ export default function Dashboard({ onOpen, view, setView }: {
     }
   }
 
+  /** Changement de période : nouvelle fenêtre chargée depuis le serveur. */
+  const changePreset = (p: number) => { setPreset(p); void refreshOrders(sectorSel, operatorSel, p) }
+
   // Archivage automatique : au plus une fois toutes les 10 minutes et par session (il ne fait rien de nouveau entre-temps).
   const ARCHIVE_EVERY_MS = 10 * 60 * 1000
   const archiveDue = () => {
@@ -277,7 +302,7 @@ export default function Dashboard({ onOpen, view, setView }: {
     }
   }
 
-  const load = async (sectors = sectorSel, operators = operatorSel) => {
+  const load = async (sectors = sectorSel, operators = operatorSel, presetIdx = preset) => {
     setLoading(true); setErr(null)
     try {
       const archiving = archiveDue()
@@ -294,7 +319,7 @@ export default function Dashboard({ onOpen, view, setView }: {
       setSettings(settingsRes)
       setFilterOptions(options)
       setLoading(false)
-      await refreshOrders(sectors, operators)
+      await refreshOrders(sectors, operators, presetIdx)
     } catch (e) { setErr(errMsg(e)); setLoading(false) }
   }
   // Au montage, aucun filtre n'est coché : load() ne charge alors aucune commande pour le responsable.
@@ -370,16 +395,10 @@ export default function Dashboard({ onOpen, view, setView }: {
   const passesFilters = (o: OrderRow, cut: number | null) =>
     (!sectorSel.length || sectorSel.includes(o.sector_code ?? '')) && (!operatorSel.length || operatorSel.includes(o.operator_code ?? '')) && matches(o) && matchesFilters(o, cut)
 
-  // Période : on élargit automatiquement jusqu'à MIN_VISIBLE commandes dans l'onglet courant (filtres inclus).
-  const pool = rows.filter((o) => passesFilters(o, null) && inTab(o, tab))
-  const countSince = (p: number) => {
-    const c = cutoffOf(p)
-    return c == null ? pool.length : pool.filter((o) => o.order_date && dayOf(o.order_date) >= c).length
-  }
-  let activePreset = preset
-  while (activePreset < PRESETS.length - 1 && countSince(activePreset) < MIN_VISIBLE) activePreset++
+  // Période : le serveur ne charge que la période choisie (défaut : 2 semaines)
+  const activePreset = preset
   const cutoff = cutoffOf(activePreset)
-  const hiddenOld = pool.length - countSince(activePreset)
+  const hiddenOld = olderCount
 
   const base = rows.filter((o) => passesFilters(o, cutoff))
   const visible = base.filter((o) => inTab(o, tab))
@@ -687,15 +706,15 @@ export default function Dashboard({ onOpen, view, setView }: {
               {!isTrashView && cutoff != null && hiddenOld > 0 && (
                 <Bubble tone="warn" label={`${hiddenOld} masquée${hiddenOld > 1 ? 's' : ''}`}>
                   <p>{hiddenOld} commande{hiddenOld > 1 ? 's' : ''} plus ancienne{hiddenOld > 1 ? 's' : ''} que le filtre « {PRESETS[activePreset].label} » {hiddenOld > 1 ? 'sont masquées' : 'est masquée'}.</p>
-                  <Button variant="ghost" size="sm" className="mt-3" onClick={() => setPreset(PRESETS.length - 1)}>Tout afficher</Button>
+                  <Button variant="ghost" size="sm" className="mt-3" onClick={() => changePreset(PRESETS.length - 1)}>Tout afficher</Button>
                 </Bubble>
               )}
             </div>
             <input type="range" aria-label="Période des commandes" className="w-full accent-primary" min={0} max={PRESETS.length - 1} step={1}
-              value={activePreset} onChange={(e) => setPreset(Number(e.target.value))} />
+              value={activePreset} onChange={(e) => changePreset(Number(e.target.value))} />
             <div className="flex justify-between text-xs text-muted-foreground">
               {PRESETS.map((p, i) => (
-                <button key={p.label} type="button" onClick={() => setPreset(i)}
+                <button key={p.label} type="button" onClick={() => changePreset(i)}
                   className={i === activePreset ? 'font-semibold text-foreground' : 'hover:text-foreground'}>{p.label}</button>
               ))}
             </div>
@@ -703,10 +722,10 @@ export default function Dashboard({ onOpen, view, setView }: {
         </div>
         <div className="grid grid-cols-2 items-end gap-3 md:grid-cols-4">
         <MultiSelect label="Secteur" options={sectors} value={sectorSel} placeholder={isManager ? 'Choisir…' : 'Tous mes secteurs'}
-          onChange={(v) => { setSectorSel(v); void refreshOrders(v, operatorSel) }} />
+          onChange={(v) => { setSectorSel(v); void refreshOrders(v, operatorSel, preset) }} />
         {isManager && (
           <MultiSelect label="Chargé" options={operators} value={operatorSel} placeholder="Choisir…"
-            onChange={(v) => { setOperatorSel(v); void refreshOrders(sectorSel, v) }} />
+            onChange={(v) => { setOperatorSel(v); void refreshOrders(sectorSel, v, preset) }} />
         )}
         <div>
           <label className="mb-1 block text-xs text-muted-foreground">Lot (suggéré)</label>

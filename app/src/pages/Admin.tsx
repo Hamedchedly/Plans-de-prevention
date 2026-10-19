@@ -36,7 +36,7 @@ export default function Admin({ section }: { section: string }) {
       {allowed && section === 'modeles' && <TemplatesSection />}
       {allowed && section === 'utilisateurs' && <>
         <CreatorsSection />
-        {isSuper && <Folded title="Utilisateurs inscrits" hint="Droits, code chargé et secteurs de chaque compte ; invitation de nouveaux comptes."><UsersSection /></Folded>}
+        {isSuper && <UsersSection />}
         <NonRegisteredCreators />
       </>}
       {allowed && section === 'import' && <ImportPage />}
@@ -670,6 +670,7 @@ function UsersSection() {
           </div>
         )}
       </div>
+      <Folded title={`Utilisateurs inscrits (${users.length})`} hint="Droits, code chargé et secteurs de chaque compte, modifiables.">
       <p className="text-sm text-muted-foreground">Les comptes existants apparaissent ci-dessous ; leur profil peut être modifié à tout moment.</p>
       {err && <Notice tone="error">{err}</Notice>}
       {msg && <Notice tone="ok">{msg}</Notice>}
@@ -703,6 +704,7 @@ function UsersSection() {
           </tbody>
         </table>
       </div>
+      </Folded>
     </div>
   )
 }

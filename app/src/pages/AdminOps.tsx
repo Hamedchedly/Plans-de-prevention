@@ -43,7 +43,7 @@ export function CreatorsSection() {
   }
   useEffect(() => { void load() }, [])
 
-  const total = useMemo(() => (data ? GROUPS.reduce((a, g) => a + data[g.key].length, 0) : 0), [data])
+  const total = useMemo(() => (data ? GROUPS.filter((g) => g.key !== 'NON_INSCRIT').reduce((a, g) => a + data[g.key].length, 0) : 0), [data])
   // Groupes vides masqués : une seule ligne de rappel au lieu de plusieurs « Aucun chargé »
   // Les non inscrits sont dans une section dédiée, repliée en bas de page
   const visible = data ? GROUPS.filter((g) => g.key !== 'NON_INSCRIT' && data[g.key].length > 0) : []
@@ -54,7 +54,7 @@ export function CreatorsSection() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className="font-semibold">Chargés d’opérations créateurs de commandes</h2>
-            <p className="text-sm text-muted-foreground">{total} chargé(s) ayant au moins une commande. Les contacts alimentent « Personne à alerter » des fiches.</p>
+            <p className="text-sm text-muted-foreground">{total} chargé(s) inscrit(s) ayant créé des commandes. Les contacts alimentent « Personne à alerter » des fiches.</p>
           </div>
           <div className="flex gap-2">
             <Button variant="ghost" onClick={() => void load()} disabled={loading}>Actualiser</Button>
@@ -67,7 +67,6 @@ export function CreatorsSection() {
       </Card>
       {err && <Notice tone="error">{err}</Notice>}
       {loading && !data && <p className="text-sm text-muted-foreground">Chargement…</p>}
-      {data && visible.length === 0 && <EmptyState icon={UserCheck} title="Aucun chargé inscrit ayant créé des commandes." />}
       {data && visible.map((g) => (
         <Card key={g.key} className="p-0">
           <div className="border-b border-border px-4 py-3">

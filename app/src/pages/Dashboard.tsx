@@ -331,10 +331,10 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
         actions={<Button variant="ghost" onClick={() => void load()} disabled={loading}>Actualiser</Button>}
       />
 
-      <Card className="grid grid-cols-2 items-end gap-3 md:flex md:flex-wrap">
+      <Card className="grid grid-cols-2 items-end gap-3 md:flex md:flex-wrap md:gap-4">
         <div>
           <label className="mb-1 block text-xs text-muted-foreground">Secteur</label>
-          <select className={`${fieldClass} md:w-32`} value={sector} onChange={(e) => setSector(e.target.value)}>
+          <select className={`${fieldClass} md:w-24`} value={sector} onChange={(e) => setSector(e.target.value)}>
             <option value="TOUS">Tous</option>
             {sectors.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
@@ -342,7 +342,7 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
         {isManager && (
           <div>
             <label className="mb-1 block text-xs text-muted-foreground">Chargé</label>
-            <select className={`${fieldClass} md:w-40`} value={operator} onChange={(e) => setOperator(e.target.value)}>
+            <select className={`${fieldClass} md:w-32`} value={operator} onChange={(e) => setOperator(e.target.value)}>
               <option value="">Tous</option>
               {operators.map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
@@ -350,11 +350,11 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
         )}
         <div>
           <label className="mb-1 block text-xs text-muted-foreground">Recherche</label>
-          <input className={`${fieldClass} md:w-56`} value={q} onChange={(e) => setQ(e.target.value)} placeholder="N° commande, adresse, nature…" />
+          <input className={`${fieldClass} md:w-48`} value={q} onChange={(e) => setQ(e.target.value)} placeholder="N° commande, adresse, nature…" />
         </div>
         <div>
           <label className="mb-1 block text-xs text-muted-foreground">Lot (suggéré)</label>
-          <select className={`${fieldClass} md:w-44`} value={lotFilter} onChange={(e) => setLotFilter(e.target.value)}>
+          <select className={`${fieldClass} md:w-32`} value={lotFilter} onChange={(e) => setLotFilter(e.target.value)}>
             <option value="">Tous</option>
             <option value="NONE">Sans lot identifié</option>
             {lotOptions.map((l) => <option key={l.code} value={String(l.code)}>{l.name}</option>)}
@@ -362,7 +362,7 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
         </div>
         <div className="col-span-2 md:col-span-1">
           <label className="mb-1 block text-xs text-muted-foreground">Nature (approx.)</label>
-          <select className={`${fieldClass} md:w-44`} value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)}>
+          <select className={`${fieldClass} md:w-32`} value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)}>
             <option value="">Toutes</option>
             {groupOptions.map((g) => <option key={g} value={g}>{g}</option>)}
           </select>
@@ -370,7 +370,36 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
       </Card>
 
       <Card className="space-y-3">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold">Avancement des plans</h3>
+          <p className="text-xs text-muted-foreground">Commandes dans le périmètre. Cliquez sur une partie de la barre pour ouvrir la liste correspondante.</p>
+          {(() => {
+            const inScope = base.filter((o) => o.scope_status === 'IN_SCOPE')
+            const waiting = inScope.filter((o) => o.plan_status === 'NON_QUALIFIEE').length
+            const drafted = inScope.filter((o) => o.plan_status === 'A_ENVOYER').length
+            const sent = inScope.filter((o) => o.plan_status === 'EN_ATTENTE_RETOUR').length
+            const returned = inScope.filter((o) => o.plan_status === 'ARCHIVEE').length
+            const total = waiting + drafted + sent + returned
+            const pct = (n: number) => total ? Math.round((n / total) * 100) : 0
+            return total > 0 ? (
+              <div className="space-y-2">
+                <div className="flex h-6 gap-0 overflow-hidden rounded-md border border-border">
+                  {waiting > 0 && <button onClick={() => changeTab('NON_QUALIFIEE')} className="flex-1 bg-slate-600 hover:opacity-80" title={`En attente de plan: ${waiting}`} />}
+                  {drafted > 0 && <button onClick={() => changeTab('A_ENVOYER')} className="flex-1 bg-slate-400 hover:opacity-80" title={`Plan fait: ${drafted}`} />}
+                  {sent > 0 && <button onClick={() => changeTab('EN_ATTENTE_RETOUR')} className="flex-1 bg-orange-500 hover:opacity-80" title={`Envoyé, en attente de retour: ${sent}`} />}
+                  {returned > 0 && <button onClick={() => changeTab('ARCHIVEE')} className="flex-1 bg-green-600 hover:opacity-80" title={`Avec retour (signé): ${returned}`} />}
+                </div>
+                <div className="flex justify-between gap-2 text-xs text-muted-foreground">
+                  <span>● En attente de plan {waiting}</span>
+                  <span>● Plan fait {drafted}</span>
+                  <span>● Envoyé, en attente de retour {sent}</span>
+                  <span>● Avec retour (signé) {returned}</span>
+                </div>
+              </div>
+            ) : null
+          })()}
+        </div>
+        <div className="flex flex-wrap items-baseline justify-between gap-2 pt-2 border-t border-border">
           <p className="text-sm">
             Commandes passées depuis <span className="font-semibold">{PRESETS[activePreset].label}</span>
             {cutoff != null && <span className="text-muted-foreground"> · depuis le {fmtDay(cutoff)}</span>}
@@ -383,6 +412,11 @@ export default function Dashboard({ onOpen }: { onOpen: (o: OrderRow) => void })
             <button key={p.label} type="button" onClick={() => setPreset(i)}
               className={i === activePreset ? 'font-semibold text-foreground' : 'hover:text-foreground'}>{p.label}</button>
           ))}
+        </div>
+        <div className="flex flex-wrap gap-4 text-xs pt-2">
+          <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-orange-500"></span>Sans action depuis 2 semaines</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-red-600"></span>Sans action depuis 1 mois</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full bg-gray-400"></span>Autres</span>
         </div>
         {!isTrashView && cutoff != null && hiddenOld > 0 && (
           <Notice tone="warn">

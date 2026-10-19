@@ -10,6 +10,7 @@ import ImportStamp from './components/ImportStamp'
 import Login from './pages/Login'
 import ProfileDialog from './components/ProfileDialog'
 import CompleteProfile from './components/CompleteProfile'
+import SignupVerify from './components/SignupVerify'
 
 /** Pastille du nombre d'actions à traiter (affichée seulement s'il y en a). */
 function PendingBadge({ n }: { n: number }) {
@@ -45,6 +46,8 @@ export function RootLayout() {
   }, [userId, canAdmin, path])
 
   if (loading) return <div className="p-8 text-sm text-muted-foreground">Chargement…</div>
+  // Lien d'invitation / renouvellement : validé sur notre propre adresse, sans session préalable.
+  if (path.toLowerCase().startsWith('/signup')) return <SignupVerify />
   if (!session) return <Login />
   if (session.user.user_metadata?.needs_setup === true) return <CompleteProfile />
 

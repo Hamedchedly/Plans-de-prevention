@@ -554,9 +554,6 @@ function FileNameSection() {
   )
 }
 
-/** Adresse de production : le lien d'invitation y renvoie, même si l'invitation est créée depuis une prévisualisation Vercel (protégée par connexion Vercel). */
-const PROD_APP_URL = 'https://pnma-planprevention.vercel.app'
-
 function UsersSection() {
   const [users, setUsers] = useState<Profile[]>([])
   const [err, setErr] = useState<string | null>(null)
@@ -605,15 +602,14 @@ function UsersSection() {
         body: {
           email: draft.email, role: draft.role, operator_code: draft.operator || null,
           sector_codes: draft.sectors.split(',').map((s) => s.trim()).filter(Boolean),
-          redirect_to: PROD_APP_URL,
         },
       })
       if (error) {
         const body = await (error as { context?: Response }).context?.json?.().catch(() => null) as { error?: string } | null
         throw new Error(body?.error ?? error.message)
       }
-      const res = data as { email: string; action_link: string }
-      setInvite({ email: res.email, link: res.action_link })
+      const res = data as { email: string; link: string }
+      setInvite({ email: res.email, link: res.link })
       setDraft(blank)
       await load()
     } catch (e) { setErr(errMsg(e)) } finally { setInviting(false) }
@@ -625,15 +621,15 @@ function UsersSection() {
     setErr(null); setMsg(null); setInvite(null); setCopied(false)
     try {
       const { data, error } = await supabase.functions.invoke('manage-user', {
-        body: { action, user_id: u.user_id, redirect_to: PROD_APP_URL },
+        body: { action, user_id: u.user_id },
       })
       if (error) {
         const body = await (error as { context?: Response }).context?.json?.().catch(() => null) as { error?: string } | null
         throw new Error(body?.error ?? error.message)
       }
       if (action === 'new_link') {
-        const res = data as { email: string; action_link: string }
-        setInvite({ email: res.email, link: res.action_link })
+        const res = data as { email: string; link: string }
+        setInvite({ email: res.email, link: res.link })
       } else {
         setMsg(`Compte ${u.email ?? ''} supprimé.`)
         await load()

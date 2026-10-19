@@ -8,6 +8,10 @@ const cors = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
+/** Lien d'invitation : notre page /signup valide le jeton (pas de redirection Supabase, donc pas de liste d'URL à configurer). */
+const SIGNUP_URL = 'https://pnma-planprevention.vercel.app/signup'
+const signupLink = (hashed: string) => `${SIGNUP_URL}?token_hash=${encodeURIComponent(hashed)}&type=magiclink`
+
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } })
 
@@ -32,7 +36,7 @@ Deno.serve(async (req) => {
     if (!admin || !admin.is_active || admin.role !== 'SUPER_ADMIN') return json({ error: 'Réservé au Super Admin' }, 403)
 
     const body = (await req.json().catch(() => ({}))) as {
-      email?: string; role?: string; operator_code?: string | null; sector_codes?: string[]; redirect_to?: string | null
+      email?: string; role?: string; operator_code?: string | null; sector_codes?: string[]
     }
     const email = (body.email ?? '').trim().toLowerCase()
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: 'Adresse e-mail invalide' }, 400)
@@ -55,11 +59,8 @@ Deno.serve(async (req) => {
     }).eq('user_id', userId)
     if (profErr) return json({ error: profErr.message }, 500)
 
-    const { data: link, error: linkErr } = await service.auth.admin.generateLink({
-      type: 'magiclink', email,
-      options: body.redirect_to ? { redirectTo: body.redirect_to } : undefined,
-    })
-    if (linkErr || !link.properties?.action_link) return json({ error: linkErr?.message ?? 'Lien impossible à générer' }, 500)
+    const { data: link, error: linkErr } = await service.auth.admin.generateLink({ type: 'magiclink', email })
+    if (linkErr || !link.properties?.hashed_token) return json({ error: linkErr?.message ?? 'Lien impossible à générer' }, 500)
 
     await service.from('audit_logs').insert({
       actor_user_id: me.user.id,
@@ -70,7 +71,7 @@ Deno.serve(async (req) => {
       payload: { email, role, sector_codes: sectors, operator_code: body.operator_code ?? null },
     })
 
-    return json({ user_id: userId, email, action_link: link.properties.action_link })
+    return json({ user_id: userId, email, link: signupLink(link.properties.hashed_token) })
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : 'Erreur serveur' }, 500)
   }

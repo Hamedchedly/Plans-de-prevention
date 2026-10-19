@@ -8,6 +8,10 @@ const cors = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
+/** Lien de configuration : c'est notre page /signup qui valide le jeton (aucune redirection Supabase, donc pas de liste d'URL à configurer). */
+const SIGNUP_URL = 'https://pnma-planprevention.vercel.app/signup'
+const signupLink = (hashed: string) => `${SIGNUP_URL}?token_hash=${encodeURIComponent(hashed)}&type=magiclink`
+
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } })
 
@@ -28,7 +32,7 @@ Deno.serve(async (req) => {
     if (adminErr) return json({ error: `Lecture du profil impossible : ${adminErr.message}` }, 500)
     if (!admin || !admin.is_active || admin.role !== 'SUPER_ADMIN') return json({ error: 'Réservé au Super Admin' }, 403)
 
-    const body = (await req.json().catch(() => ({}))) as { action?: string; user_id?: string; redirect_to?: string | null }
+    const body = (await req.json().catch(() => ({}))) as { action?: string; user_id?: string }
     const userId = (body.user_id ?? '').trim()
     if (!userId) return json({ error: 'Compte manquant' }, 400)
 
@@ -41,15 +45,12 @@ Deno.serve(async (req) => {
     const email = target.user.email ?? ''
 
     if (body.action === 'new_link') {
-      const { data: link, error: linkErr } = await service.auth.admin.generateLink({
-        type: 'magiclink', email,
-        options: body.redirect_to ? { redirectTo: body.redirect_to } : undefined,
-      })
-      if (linkErr || !link.properties?.action_link) return json({ error: linkErr?.message ?? 'Lien impossible à générer' }, 500)
+      const { data: link, error: linkErr } = await service.auth.admin.generateLink({ type: 'magiclink', email })
+      if (linkErr || !link.properties?.hashed_token) return json({ error: linkErr?.message ?? 'Lien impossible à générer' }, 500)
       await service.from('audit_logs').insert({
         actor_user_id: me.user.id, subject_user_id: userId, action: 'USER_LINK_RENEWED', entity: 'profiles', entity_id: userId, payload: { email },
       })
-      return json({ user_id: userId, email, action_link: link.properties.action_link })
+      return json({ user_id: userId, email, link: signupLink(link.properties.hashed_token) })
     }
 
     if (body.action === 'delete') {

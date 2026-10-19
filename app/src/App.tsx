@@ -6,6 +6,7 @@ import { readImpersonation } from './lib/impersonation'
 import { Button, Card } from './components/ui'
 import { visibleAdminGroups } from './lib/adminNav'
 import { fetchAdminPending, type AdminPending } from './lib/adminPending'
+import ImportStamp from './components/ImportStamp'
 import Login from './pages/Login'
 import ProfileDialog from './components/ProfileDialog'
 import CompleteProfile from './components/CompleteProfile'
@@ -97,6 +98,7 @@ export function RootLayout() {
               )
             })}
           </nav>
+          <ImportStamp userId={userId} path={path} />
           <div className="relative shrink-0">
             <button onClick={() => setUserMenu((v) => !v)} aria-haspopup="menu" aria-expanded={userMenu}
               className="flex items-center gap-2.5 rounded-full py-1 pl-1 pr-2 hover:bg-muted">

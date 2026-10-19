@@ -111,8 +111,6 @@ export default function Dashboard({ onOpen, view, setView }: {
   const [trashedCount, setTrashedCount] = useState(0)
   const [ref, setRef] = useState<Referentiel | null>(null)
   const [companies, setCompanies] = useState<Map<string, CompanyRow>>(new Map())
-  /** Dernier import de commandes réussi : date et nom du fichier affichés en haut de page. */
-  const [lastFile, setLastFile] = useState<{ file_name: string; created_at: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -156,9 +154,6 @@ export default function Dashboard({ onOpen, view, setView }: {
     try {
       // Archivage automatique à 6 mois (non bloquant si la fonction est indisponible)
       await supabase.rpc('auto_archive_plans')
-      void supabase.from('imports').select('file_name,created_at').eq('kind', 'COMMANDES').eq('status', 'TERMINE')
-        .order('created_at', { ascending: false }).limit(1)
-        .then(({ data }) => setLastFile((data?.[0] as { file_name: string; created_at: string } | undefined) ?? null))
       const [orders, referentiel, comps, trashedRes] = await Promise.all([
         fetchAllOrders(), getReferentiel(), fetchCompanies().catch(() => []),
         supabase.from('orders').select('order_number', { count: 'exact', head: true }).not('trashed_at', 'is', null),
@@ -494,9 +489,6 @@ export default function Dashboard({ onOpen, view, setView }: {
         title="Commandes"
         subtitle={<>
           <span>Connecté comme {profile?.email}</span>
-          <span className="block font-medium text-foreground">
-            Dernière mise à jour des commandes : {lastFile ? `${new Date(lastFile.created_at).toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short' })} · ${lastFile.file_name}` : 'aucun import pour l’instant'}
-          </span>
         </>}
         actions={<Button variant="ghost" onClick={() => void load()} disabled={loading}>Actualiser</Button>}
       />

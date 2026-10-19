@@ -549,7 +549,7 @@ export default function Dashboard({ onOpen, view, setView }: {
         <div className="grid grid-cols-2 items-end gap-3 md:grid-cols-4">
         <div>
           <label className="mb-1 block text-xs text-muted-foreground">Secteur</label>
-          <select className={`${fieldClass} md:w-24`} value={sector} onChange={(e) => setSector(e.target.value)}>
+          <select className={`${fieldClass} w-full`} value={sector} onChange={(e) => setSector(e.target.value)}>
             <option value="TOUS">Tous</option>
             {sectors.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
@@ -557,7 +557,7 @@ export default function Dashboard({ onOpen, view, setView }: {
         {isManager && (
           <div>
             <label className="mb-1 block text-xs text-muted-foreground">Chargé</label>
-            <select className={`${fieldClass} md:w-32`} value={operator} onChange={(e) => setOperator(e.target.value)}>
+            <select className={`${fieldClass} w-full`} value={operator} onChange={(e) => setOperator(e.target.value)}>
               <option value="">Tous</option>
               {operators.map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
@@ -565,7 +565,7 @@ export default function Dashboard({ onOpen, view, setView }: {
         )}
         <div>
           <label className="mb-1 block text-xs text-muted-foreground">Lot (suggéré)</label>
-          <select className={`${fieldClass} md:w-32`} value={lotFilter} onChange={(e) => setLotFilter(e.target.value)}>
+          <select className={`${fieldClass} w-full`} value={lotFilter} onChange={(e) => setLotFilter(e.target.value)}>
             <option value="">Tous</option>
             <option value="NONE">Sans lot identifié</option>
             {lotOptions.map((l) => <option key={l.code} value={String(l.code)}>{l.name}</option>)}
@@ -573,7 +573,7 @@ export default function Dashboard({ onOpen, view, setView }: {
         </div>
         <div>
           <label className="mb-1 block text-xs text-muted-foreground">Nature (approx.)</label>
-          <select className={`${fieldClass} md:w-32`} value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)}>
+          <select className={`${fieldClass} w-full`} value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)}>
             <option value="">Toutes</option>
             {groupOptions.map((g) => <option key={g} value={g}>{g}</option>)}
           </select>

@@ -91,18 +91,29 @@ const todayDay = () => Math.floor(Date.now() / 86400000)
 const fmtDay = (n: number) => new Date(n * 86400000).toLocaleDateString('fr-FR')
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('fr-FR')
 
-async function fetchAllOrders(): Promise<OrderRow[]> {
-  const page = 1000
-  const out: OrderRow[] = []
-  for (let from = 0; ; from += page) {
-    const { data, error } = await supabase.from('orders').select('*').is('trashed_at', null)
-      .order('order_date', { ascending: false, nullsFirst: false }).order('order_number')
-      .range(from, from + page - 1)
-    if (error) throw new Error(error.message)
-    out.push(...((data ?? []) as OrderRow[]))
-    if (!data || data.length < page) break
-  }
-  return out
+/** Taille d'une tranche de commandes : la première s'affiche dès son arrivée, les suivantes sont chargées en parallèle. */
+const ORDER_CHUNK = 1000
+
+async function fetchOrdersChunk(from: number): Promise<OrderRow[]> {
+  const { data, error } = await supabase.from('orders').select('*').is('trashed_at', null)
+    .order('order_date', { ascending: false, nullsFirst: false }).order('order_number')
+    .range(from, from + ORDER_CHUNK - 1)
+  if (error) throw new Error(error.message)
+  return (data ?? []) as OrderRow[]
+}
+
+async function countActiveOrders(): Promise<number> {
+  const { count, error } = await supabase.from('orders').select('order_number', { count: 'exact', head: true }).is('trashed_at', null)
+  if (error) throw new Error(error.message)
+  return count ?? 0
+}
+
+/** Charge les tranches restantes en parallèle, dans l'ordre d'affichage. */
+async function fetchOrdersRest(total: number, firstLength: number): Promise<OrderRow[]> {
+  const starts: number[] = []
+  for (let from = firstLength; from < total; from += ORDER_CHUNK) starts.push(from)
+  const chunks = await Promise.all(starts.map((from) => fetchOrdersChunk(from)))
+  return chunks.flat()
 }
 
 async function fetchTrashedOrders(): Promise<OrderRow[]> {
@@ -126,6 +137,8 @@ export default function Dashboard({ onOpen, view, setView }: {
   const [ref, setRef] = useState<Referentiel | null>(null)
   const [companies, setCompanies] = useState<Map<string, CompanyRow>>(new Map())
   const [loading, setLoading] = useState(true)
+  /** Avancement du chargement des tranches restantes (null une fois tout chargé). */
+  const [progress, setProgress] = useState<{ loaded: number; total: number } | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -165,22 +178,32 @@ export default function Dashboard({ onOpen, view, setView }: {
   }, [])
 
   const load = async () => {
-    setLoading(true); setErr(null)
+    setLoading(true); setErr(null); setProgress(null)
     try {
       // Archivage automatique (idempotent) en parallèle du chargement ; relecture seulement si des commandes ont changé de statut.
       const archiving = supabase.rpc('auto_archive_plans').then(({ data }) => (typeof data === 'number' ? data : 0), () => 0)
-      const [archived, first, referentiel, comps, trashedRes, settingsRes] = await Promise.all([
-        archiving, fetchAllOrders(), getReferentiel(), fetchCompanies().catch(() => []),
+      const firstP = fetchOrdersChunk(0)
+      const [archived, total, first, referentiel, comps, trashedRes, settingsRes] = await Promise.all([
+        archiving, countActiveOrders(), firstP, getReferentiel(), fetchCompanies().catch(() => []),
         supabase.from('orders').select('order_number', { count: 'exact', head: true }).not('trashed_at', 'is', null),
         readSettings(),
       ])
-      const orders = archived > 0 ? await fetchAllOrders() : first
-      setRows(orders); setRef(referentiel)
+      // Première tranche affichée tout de suite (relue seulement si l'archivage a changé des statuts)
+      const firstRows = archived > 0 ? await fetchOrdersChunk(0) : first
+      setRef(referentiel)
       setCompanies(new Map(comps.map((c) => [c.isis_code, c])))
       setTrashedCount(trashedRes.count ?? 0)
       setSettings(settingsRes)
+      setRows(firstRows)
       setVersion((v) => v + 1)
       setLoading(false)
+      if (firstRows.length < total) setProgress({ loaded: firstRows.length, total })
+
+      // Tranches suivantes en parallèle : la liste se complète sans bloquer l'affichage
+      const rest = await fetchOrdersRest(total, firstRows.length)
+      const orders = [...firstRows, ...rest]
+      setRows(orders)
+      setProgress(null)
       // Personne à alerter et dates de fiche : complètent la liste sans la retarder
       const planned = orders.filter((o) => o.plan_status !== 'NON_QUALIFIEE').map((o) => o.order_number)
       const [contactsMap, datesRes] = await Promise.all([
@@ -193,7 +216,7 @@ export default function Dashboard({ onOpen, view, setView }: {
         dts.set(r.order_number, { drafted: r.drafted_at, sent: r.sent_at })
       }
       setDates(dts)
-    } catch (e) { setErr(errMsg(e)); setLoading(false) }
+    } catch (e) { setErr(errMsg(e)); setLoading(false); setProgress(null) }
   }
   useEffect(() => { void load() }, [])
 
@@ -543,6 +566,12 @@ export default function Dashboard({ onOpen, view, setView }: {
         </>}
         actions={<Button variant="ghost" onClick={() => void load()} disabled={loading}>Actualiser</Button>}
       />
+
+      {progress && (
+        <p className="text-xs text-muted-foreground" role="status">
+          Chargement des commandes en cours : {progress.loaded} sur {progress.total}. Les compteurs se complètent ensuite.
+        </p>
+      )}
 
       <Card className="space-y-4">
         <div>

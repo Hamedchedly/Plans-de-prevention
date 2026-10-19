@@ -5,7 +5,7 @@ import { Bubble } from './Bubble'
 type Stamp = { kind: string; file_name: string; created_at: string }
 
 /** Libellés affichés dans la bulle : fichier commandes (ANM_COMD) et fichier de suivi (ANM_SUIVTRXSECT). */
-const LABEL: Record<string, string> = { COMMANDES: 'Suivi budgétaire (ANM_COMD)', SUIVI_BUDGET: 'Historique travaux (ANM_SUIVTRXSECT)' }
+const LABEL: Record<string, string> = { COMMANDES: 'Suivi budgétaire', SUIVI_BUDGET: 'Historique travaux' }
 
 const fmtLong = (iso: string) => new Date(iso).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 const fmtShort = (iso: string) => new Date(iso).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
@@ -40,8 +40,7 @@ export default function ImportStamp({ userId, path }: { userId: string | undefin
           {kinds.map((k) => (
             <li key={k}>
               <div className="font-medium">{LABEL[k]}</div>
-              <div className="text-xs text-muted-foreground">{latest[k].file_name}</div>
-              <div className="text-xs">mis à jour le {fmtLong(latest[k].created_at)}</div>
+              <div className="text-xs text-muted-foreground">mis à jour le {fmtLong(latest[k].created_at)}</div>
             </li>
           ))}
         </ul>

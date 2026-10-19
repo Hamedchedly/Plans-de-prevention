@@ -153,29 +153,33 @@ export default function Dashboard({ onOpen, view, setView }: {
   const load = async () => {
     setLoading(true); setErr(null)
     try {
-      // Archivage automatique à 6 mois (non bloquant si la fonction est indisponible)
-      await supabase.rpc('auto_archive_plans')
-      const [orders, referentiel, comps, trashedRes] = await Promise.all([
-        fetchAllOrders(), getReferentiel(), fetchCompanies().catch(() => []),
+      // Archivage automatique (idempotent) en parallèle du chargement ; relecture seulement si des commandes ont changé de statut.
+      const archiving = supabase.rpc('auto_archive_plans').then(({ data }) => (typeof data === 'number' ? data : 0), () => 0)
+      const [archived, first, referentiel, comps, trashedRes, settingsRes] = await Promise.all([
+        archiving, fetchAllOrders(), getReferentiel(), fetchCompanies().catch(() => []),
         supabase.from('orders').select('order_number', { count: 'exact', head: true }).not('trashed_at', 'is', null),
+        readSettings(),
       ])
+      const orders = archived > 0 ? await fetchAllOrders() : first
       setRows(orders); setRef(referentiel)
       setCompanies(new Map(comps.map((c) => [c.isis_code, c])))
       setTrashedCount(trashedRes.count ?? 0)
+      setSettings(settingsRes)
       setVersion((v) => v + 1)
-      // Personne à alerter (chargé créateur), dates de fiche et modèles
-      setContacts(await fetchContacts(orders.map((o) => o.operator_code ?? '')).catch(() => new Map<string, Contact>()))
+      setLoading(false)
+      // Personne à alerter et dates de fiche : complètent la liste sans la retarder
       const planned = orders.filter((o) => o.plan_status !== 'NON_QUALIFIEE').map((o) => o.order_number)
+      const [contactsMap, datesRes] = await Promise.all([
+        fetchContacts(orders.map((o) => o.operator_code ?? '')).catch(() => new Map<string, Contact>()),
+        planned.length ? supabase.rpc('plan_dates', { p_orders: planned }) : Promise.resolve({ data: [] as unknown[], error: null }),
+      ])
+      setContacts(contactsMap)
       const dts = new Map<string, { drafted: string | null; sent: string | null }>()
-      if (planned.length) {
-        const { data } = await supabase.rpc('plan_dates', { p_orders: planned })
-        for (const r of (data ?? []) as { order_number: string; drafted_at: string | null; sent_at: string | null }[]) {
-          dts.set(r.order_number, { drafted: r.drafted_at, sent: r.sent_at })
-        }
+      for (const r of (datesRes.data ?? []) as { order_number: string; drafted_at: string | null; sent_at: string | null }[]) {
+        dts.set(r.order_number, { drafted: r.drafted_at, sent: r.sent_at })
       }
       setDates(dts)
-      setSettings(await readSettings())
-    } catch (e) { setErr(errMsg(e)) } finally { setLoading(false) }
+    } catch (e) { setErr(errMsg(e)); setLoading(false) }
   }
   useEffect(() => { void load() }, [])
 
@@ -393,6 +397,17 @@ export default function Dashboard({ onOpen, view, setView }: {
     void runAction('advance_plan_status', { p_order: o.order_number, p_to: 'ARCHIVEE' }, `Commande ${o.order_number} archivée.`)
   }
   /** Couleur de ligne : rouge = plus d'un mois sans action, gris = obsolète, orange = envoyée sans retour, vert = signée archivée. */
+  // Légende : seulement les couleurs possibles dans la vue en cours (À qualifier : rouge ; Archivées : gris, orange, vert)
+  const legendItems = tab === 'NON_QUALIFIEE'
+    ? [{ swatch: 'bg-red-300', label: 'Plus d’un mois sans action' }]
+    : tab === 'ARCHIVEE'
+      ? [
+        { swatch: 'bg-zinc-300', label: 'Obsolète (6 mois sans action)' },
+        { swatch: 'bg-orange-300', label: 'Envoyée sans retour (archivée 6 mois)' },
+        { swatch: 'bg-green-300', label: 'Signée (archivée 6 mois)' },
+      ]
+      : []
+
   const rowTone = (o: OrderRow) => {
     if (o.scope_status !== 'IN_SCOPE') return ''
     if (o.plan_status === 'ARCHIVEE') {
@@ -491,15 +506,7 @@ export default function Dashboard({ onOpen, view, setView }: {
         subtitle={<>
           <span>Connecté comme {profile?.email}</span>
         </>}
-        actions={<>
-          {!isTrashView && cutoff != null && hiddenOld > 0 && (
-            <Bubble tone="warn" label={`${hiddenOld} masquée${hiddenOld > 1 ? 's' : ''}`}>
-              <p>{hiddenOld} commande{hiddenOld > 1 ? 's' : ''} plus ancienne{hiddenOld > 1 ? 's' : ''} que le filtre « {PRESETS[activePreset].label} » {hiddenOld > 1 ? 'sont masquées' : 'est masquée'}.</p>
-              <Button variant="ghost" size="sm" className="mt-3" onClick={() => setPreset(PRESETS.length - 1)}>Tout afficher</Button>
-            </Bubble>
-          )}
-          <Button variant="ghost" onClick={() => void load()} disabled={loading}>Actualiser</Button>
-        </>}
+        actions={<Button variant="ghost" onClick={() => void load()} disabled={loading}>Actualiser</Button>}
       />
 
       <Card className="space-y-4">
@@ -517,10 +524,18 @@ export default function Dashboard({ onOpen, view, setView }: {
             <input className={`${fieldClass} w-full`} value={q} onChange={(e) => setQ(e.target.value)} placeholder="N° commande, adresse, nature…" />
           </div>
           <div>
-            <p className="mb-1 text-xs text-muted-foreground">
-              Commandes passées depuis <span className="font-semibold text-foreground">{PRESETS[activePreset].label}</span>
-              {cutoff != null && <> · depuis le {fmtDay(cutoff)}</>}
-            </p>
+            <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs text-muted-foreground">
+                Commandes passées depuis <span className="font-semibold text-foreground">{PRESETS[activePreset].label}</span>
+                {cutoff != null && <> · depuis le {fmtDay(cutoff)}</>}
+              </p>
+              {!isTrashView && cutoff != null && hiddenOld > 0 && (
+                <Bubble tone="warn" label={`${hiddenOld} masquée${hiddenOld > 1 ? 's' : ''}`}>
+                  <p>{hiddenOld} commande{hiddenOld > 1 ? 's' : ''} plus ancienne{hiddenOld > 1 ? 's' : ''} que le filtre « {PRESETS[activePreset].label} » {hiddenOld > 1 ? 'sont masquées' : 'est masquée'}.</p>
+                  <Button variant="ghost" size="sm" className="mt-3" onClick={() => setPreset(PRESETS.length - 1)}>Tout afficher</Button>
+                </Bubble>
+              )}
+            </div>
             <input type="range" aria-label="Période des commandes" className="w-full accent-primary" min={0} max={PRESETS.length - 1} step={1}
               value={activePreset} onChange={(e) => setPreset(Number(e.target.value))} />
             <div className="flex justify-between text-xs text-muted-foreground">
@@ -531,7 +546,7 @@ export default function Dashboard({ onOpen, view, setView }: {
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-2 items-end gap-3 md:flex md:flex-wrap">
+        <div className="grid grid-cols-2 items-end gap-3 md:grid-cols-4">
         <div>
           <label className="mb-1 block text-xs text-muted-foreground">Secteur</label>
           <select className={`${fieldClass} md:w-32`} value={sector} onChange={(e) => setSector(e.target.value)}>
@@ -556,21 +571,13 @@ export default function Dashboard({ onOpen, view, setView }: {
             {lotOptions.map((l) => <option key={l.code} value={String(l.code)}>{l.name}</option>)}
           </select>
         </div>
-        <div className="col-span-2 md:col-span-1">
+        <div>
           <label className="mb-1 block text-xs text-muted-foreground">Nature (approx.)</label>
           <select className={`${fieldClass} md:w-44`} value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)}>
             <option value="">Toutes</option>
             {groupOptions.map((g) => <option key={g} value={g}>{g}</option>)}
           </select>
         </div>
-          {sansContact.length > 0 && (
-            <div className="col-span-2 md:ml-auto md:self-end">
-              <Bubble tone="warn" label={`${sansContact.length} fiche${sansContact.length > 1 ? 's' : ''} à compléter`}>
-                <p>{sansContact.length} fiche(s) créée(s) ou envoyée(s) dont la personne à alerter n’est pas complète ({sansContactCodes.join(', ')}).</p>
-                <p className="mt-2 text-muted-foreground">Le PDF affiche alors « Responsable d’intervention ». Complétez l’identité (Administration › Utilisateurs et chargés ou Vérifier mes infos).</p>
-              </Bubble>
-            </div>
-          )}
         </div>
       </Card>
 
@@ -641,13 +648,22 @@ export default function Dashboard({ onOpen, view, setView }: {
                 {allGroupsOpen ? 'Tout plier' : 'Tout déplier'}
               </button>
             )}
-            <span className="ml-auto text-xs text-muted-foreground">Cliquez sur un en-tête pour trier</span>
-          </div>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 border-b border-border px-3 py-1.5 text-[11px] text-muted-foreground">
-            <span><span className="mr-1 inline-block h-2 w-2 rounded-sm bg-red-300" />Plus d’un mois sans action</span>
-            <span><span className="mr-1 inline-block h-2 w-2 rounded-sm bg-zinc-300" />Obsolète (6 mois sans action)</span>
-            <span><span className="mr-1 inline-block h-2 w-2 rounded-sm bg-orange-300" />Envoyée sans retour (archivée 6 mois)</span>
-            <span><span className="mr-1 inline-block h-2 w-2 rounded-sm bg-green-300" />Signée (archivée 6 mois)</span>
+            {legendItems.length > 0 && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                {legendItems.map((l) => (
+                  <span key={l.label}><span className={`mr-1 inline-block h-2 w-2 rounded-sm ${l.swatch}`} />{l.label}</span>
+                ))}
+              </div>
+            )}
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              {sansContact.length > 0 && (
+                <Bubble tone="warn" label={`${sansContact.length} fiche${sansContact.length > 1 ? 's' : ''} à compléter`}>
+                  <p>{sansContact.length} fiche(s) créée(s) ou envoyée(s) dont la personne à alerter n’est pas complète ({sansContactCodes.join(', ')}).</p>
+                  <p className="mt-2 text-muted-foreground">Le PDF affiche alors « Responsable d’intervention ». Complétez l’identité (Administration › Utilisateurs et chargés ou Vérifier mes infos).</p>
+                </Bubble>
+              )}
+              <span className="text-xs text-muted-foreground">Cliquez sur un en-tête pour trier</span>
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

@@ -281,13 +281,13 @@ export function CompaniesSection() {
                     <span className="inline-flex items-center gap-1.5">
                       {e.isis}
                       {noOs && (
-                        <span className="inline-block h-2 w-2 rounded-full bg-red-500" title="Email OS manquant : à supprimer si absent du prochain import" />
+                        <span className="inline-block h-2 w-2 rounded-full bg-red-500" title="Email OS manquant" />
                       )}
                       {!noOs && incomplete && (
                         <span className="inline-block h-2 w-2 rounded-full bg-yellow-400" title="Informations complémentaires manquantes (non bloquant)" />
                       )}
                     </span>
-                    {noOs && <span className="block text-[10px] font-semibold text-red-700">Email OS manquant · à supprimer si absent du prochain import</span>}
+                    {noOs && <span className="block text-[10px] font-semibold text-red-700">Email OS manquant</span>}
                   </td>
                   <td className="px-3 py-2 text-right font-semibold">{e.count}</td>
                   {COMPANY_FIELDS.map((f) => (
@@ -302,7 +302,11 @@ export function CompaniesSection() {
                     </td>
                   ))}
                   <td className="px-3 py-2 text-right">
-                    {!editing && e.company && <Button variant="ghost" onClick={() => void remove(e.isis)}>Supprimer</Button>}
+                    {!editing && e.company && (
+                      <Button variant="ghost" disabled={e.count > 0}
+                        title={e.count > 0 ? 'Entreprise liée à des commandes : suppression impossible' : undefined}
+                        onClick={() => void remove(e.isis)}>Supprimer</Button>
+                    )}
                   </td>
                 </tr>
               )

@@ -5,7 +5,7 @@ import { useAuth } from './lib/auth'
 import { readImpersonation } from './lib/impersonation'
 import { Button, Card } from './components/ui'
 import { visibleAdminGroups } from './lib/adminNav'
-import { fetchAdminPending, type AdminPending } from './lib/adminPending'
+import { fetchAdminPending, totalPending, type AdminPending } from './lib/adminPending'
 import ImportStamp from './components/ImportStamp'
 import Login from './pages/Login'
 import ProfileDialog from './components/ProfileDialog'
@@ -36,13 +36,13 @@ export function RootLayout() {
   const canAdmin = profile?.role === 'RESPONSABLE' || profile?.role === 'SUPER_ADMIN'
   const inAdminPath = path.startsWith('/administration')
 
-  // Pastilles : nombre d'actions à traiter, relues à chaque entrée ou changement de page d'administration.
+  // Pastilles : actions à traiter (lien Administration, groupes et pages), relues à chaque changement de page.
   useEffect(() => {
-    if (!userId || !canAdmin || !inAdminPath) return
+    if (!userId || !canAdmin) return
     let alive = true
     fetchAdminPending().then((p) => { if (alive) setPending(p) }).catch(() => {})
     return () => { alive = false }
-  }, [userId, canAdmin, inAdminPath, path])
+  }, [userId, canAdmin, path])
 
   if (loading) return <div className="p-8 text-sm text-muted-foreground">Chargement…</div>
   if (!session) return <Login />
@@ -94,6 +94,7 @@ export function RootLayout() {
                 <Link key={n.to} to={n.to} aria-current={active ? 'page' : undefined} className={`flex items-center gap-2 ${pill(active)}`}>
                   <Icon className="h-4 w-4" aria-hidden="true" />
                   {n.label}
+                  {n.to === '/administration' && <PendingBadge n={totalPending(pending)} />}
                 </Link>
               )
             })}

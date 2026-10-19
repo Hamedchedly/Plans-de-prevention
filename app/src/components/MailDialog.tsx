@@ -8,8 +8,9 @@ import { Button, Notice, fieldClass } from './ui'
 
 /** Envoi du plan de prévention par messagerie (mailto) : le PDF se joint à la main, puis la commande passe « En attente retour ». */
 export default function MailDialog({
-  order, company, osEmail, contact, objet, corps, onDownloadPdf, onDone, onClose,
+  order, company, osEmail, contact, objet, corps, onDownloadPdf, onDone, onClose, mode = 'envoi',
 }: {
+  mode?: 'envoi' | 'relance'
   order: OrderRow
   company: string
   osEmail: string
@@ -40,6 +41,14 @@ export default function MailDialog({
 
   const markSent = async () => {
     setBusy(true); setErr(null)
+    if (mode === 'relance') {
+      // La relance est journalisée (date conservée dans l'historique de la fiche) ; le statut ne change pas.
+      const { error } = await supabase.rpc('plan_relance', { p_order: order.order_number })
+      setBusy(false)
+      if (error) { setErr(error.message); return }
+      onDone(`Relance de ${company || 'l’entreprise'} enregistrée pour la commande ${order.order_number}.`)
+      return
+    }
     const { error } = await supabase.rpc('advance_plan_status', { p_order: order.order_number, p_to: 'EN_ATTENTE_RETOUR' })
     setBusy(false)
     if (error) { setErr(error.message); return }
@@ -50,7 +59,7 @@ export default function MailDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-label="Envoi du plan de prévention">
       <div className="w-full max-w-xl space-y-4 rounded-xl border border-border bg-card p-5 shadow-xl">
         <div>
-          <h2 className="font-semibold">Envoyer le plan de prévention</h2>
+          <h2 className="font-semibold">{mode === 'relance' ? 'Relancer l’entreprise' : 'Envoyer le plan de prévention'}</h2>
           <p className="text-xs text-muted-foreground">Commande {order.order_number}</p>
         </div>
 
@@ -70,7 +79,9 @@ export default function MailDialog({
         </label>
 
         <Notice>
-          Étapes : 1) téléchargez le PDF, 2) ouvrez le message et joignez le PDF, 3) une fois le mail envoyé, marquez la commande comme envoyée.
+          {mode === 'relance'
+            ? 'Étapes : 1) téléchargez le PDF si besoin, 2) ouvrez le message et joignez le PDF, 3) une fois le mail envoyé, notez la relance.'
+            : 'Étapes : 1) téléchargez le PDF, 2) ouvrez le message et joignez le PDF, 3) une fois le mail envoyé, marquez la commande comme envoyée.'}
         </Notice>
 
         {err && <Notice tone="error">{err}</Notice>}
@@ -78,7 +89,7 @@ export default function MailDialog({
         <div className="flex flex-wrap items-center justify-end gap-2">
           <Button variant="ghost" onClick={() => void onDownloadPdf()} disabled={busy}><Download className="h-4 w-4" aria-hidden="true" />Télécharger le PDF</Button>
           <Button variant="ghost" onClick={openMail} disabled={busy || !to.trim()}><Mail className="h-4 w-4" aria-hidden="true" />Ouvrir le mail</Button>
-          <Button onClick={() => void markSent()} disabled={busy}>Marquer comme envoyée</Button>
+          <Button onClick={() => void markSent()} disabled={busy}>{mode === 'relance' ? 'Noter la relance' : 'Marquer comme envoyée'}</Button>
           <Button variant="ghost" onClick={onClose} disabled={busy}>Fermer</Button>
         </div>
       </div>

@@ -1,7 +1,16 @@
 // Fiche « Plan de prévention » en PDF : mise en page du modèle xlsx, logo et couleurs du bailleur.
 import { PDFDocument, StandardFonts, rgb, type Color, type PDFFont, type PDFPage } from 'pdf-lib'
 
+/** Historique des dates de la fiche : rangé dans le PDF comme pièce jointe, invisible à l'impression. */
+export interface PlanHistory {
+  created: string | null     // création du plan
+  sent: string | null        // envoi (passage en attente de retour)
+  relances: string[]         // chaque relance
+  returned: string | null    // retour reçu / archivage
+}
+
 export interface PlanPdfData {
+  history?: PlanHistory
   orderNumber: string
   orderDate: string                                   // dd/mm/yyyy, '' si inconnue
   lotNames: string[]
@@ -271,6 +280,16 @@ async function renderPlan(d: PlanPdfData, logo: Uint8Array | null, k: number): P
     p.drawText(clean(label), { x: MX, y: MB, size: 6.5, font, color: MUTED })
   })
 
+  if (d.history) {
+    // Pièce jointe du PDF : visible seulement dans le panneau des pièces jointes du lecteur, pas sur la page.
+    const payload = { commande: d.orderNumber, ...d.history, genere_le: new Date().toISOString() }
+    await doc.attach(new TextEncoder().encode(JSON.stringify(payload, null, 2)), `historique-${d.orderNumber}.json`, {
+      mimeType: 'application/json',
+      description: 'Historique de la fiche : création, envoi, relances, retour',
+      creationDate: new Date(),
+      modificationDate: new Date(),
+    })
+  }
   return { bytes: await doc.save(), pages: pages.length }
 }
 

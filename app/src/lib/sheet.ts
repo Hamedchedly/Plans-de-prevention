@@ -2,7 +2,7 @@ import JSZip from 'jszip'
 import { supabase } from './supabase'
 import type { Referentiel } from './refdata'
 import { computeMeasures, proposeRisks } from './rules'
-import { buildPlanPdf, brandLogo, planFileName, DOTTED_PERIOD, type PlanPdfData } from './planPdf'
+import { buildPlanPdf, brandLogo, planFileName, DOTTED_PERIOD, type PlanHistory, type PlanPdfData } from './planPdf'
 import { defaultPeriod, fmtFr } from './period'
 import type { OrderRow } from './types'
 
@@ -194,12 +194,22 @@ export const DEFAULT_MAIL_CORPS = 'Bonjour,\n\nVeuillez trouver ci-joint le plan
 export const fillTemplate = (s: string, v: Record<string, string>) => s.replace(/\{(\w+)\}/g, (_, k: string) => v[k] ?? '')
 
 export async function buildSheetPdf(l: Line, o: OrderRow, ref: Referentiel, companyName: string, redactor: Redactor | null): Promise<Uint8Array> {
-  const [logo, st] = await Promise.all([brandLogo(), readSettings()])
+  const [logo, st, hist] = await Promise.all([brandLogo(), readSettings(), fetchPlanHistory(o.order_number)])
   return buildPlanPdf({
     ...sheetPdfInput(l, o, ref, companyName, redactor),
+    history: hist ?? undefined,
     alertLine: st.pdf_procedure_alerte,
     footer: st.pdf_pied_de_page,
   }, logo)
+}
+
+/** Dates de la fiche (création, envoi, relances, retour) ; null si indisponibles (le PDF reste produit sans l'historique). */
+export async function fetchPlanHistory(orderNumber: string): Promise<PlanHistory | null> {
+  const { data, error } = await supabase.rpc('plan_history', { p_orders: [orderNumber] })
+  if (error) return null
+  const r = ((data ?? []) as { created_at: string | null; sent_at: string | null; relances: string[] | null; returned_at: string | null }[])[0]
+  if (!r) return null
+  return { created: r.created_at, sent: r.sent_at, relances: r.relances ?? [], returned: r.returned_at }
 }
 
 /** Tous les PDF d'une sélection, regroupés dans un ZIP nommé selon le modèle défini par le Super Admin. */

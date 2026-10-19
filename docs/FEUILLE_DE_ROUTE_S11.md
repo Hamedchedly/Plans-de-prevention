@@ -93,6 +93,16 @@ Les mentions « non testé en navigateur » signifient que le code a été véri
 | Tests de parcours connectés (navigateur) | À faire |
 | Tests automatisés des parcours et des fonctions SQL | À faire |
 
+## Dernières évolutions — 2026-10-19
+
+- **Actions par statut** : à qualifier → « Créer la fiche » et « Demander l’exclusion » ; à envoyer → Prévisualiser et Envoyer, le reste sous ⋯ ; en attente de retour → Prévisualiser, Relancer et Marquer comme reçu, le reste sous ⋯.
+- **Couleurs de ligne par statut** : à qualifier bleu, à envoyer jaune, en attente de retour gris, signées vert.
+- **Chargé** : la colonne « Chargé » est masquée pour les chargés (ils ne voient que leurs commandes).
+- **Suggestions figées** : nature et lots calculés une fois, conservés avec la fiche ; recalcul uniquement si la fiche est rouverte (cache par commande et texte, invalidé au rechargement du référentiel).
+- **Relances tracées** : la relance passe par `plan_relance` (journal `PLAN_RELANCED`) ; `plan_history` relit création, envoi, relances et retour.
+- **Historique dans le PDF** : les dates de la fiche sont rangées dans le PDF comme pièce jointe `historique-<commande>.json`, invisible sur la page, lisible via le panneau des pièces jointes du lecteur. Le contenu est visible par quiconque ouvre ces pièces jointes.
+- **Chargement** : requêtes indépendantes en parallèle, contacts et dates de plan chargés après l’affichage de la liste.
+
 ## Étapes et phases restantes
 
 1. **Immédiat (avant diffusion large)** : confirmer le déploiement Vercel (rafraîchissement, titre) ; activer la protection des mots de passe compromis ; ajouter le contrôle de rôle à `apply_order_audit` et `apply_scope_rules`.

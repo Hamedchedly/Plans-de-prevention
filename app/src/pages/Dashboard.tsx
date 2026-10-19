@@ -11,10 +11,22 @@ import CompanyDialog from '../components/CompanyDialog'
 import BulkPlanWizard from '../components/BulkPlanWizard'
 import OrderActionDialog from '../components/OrderActionDialog'
 import { fetchCompanies, type CompanyRow } from './AdminCompanies'
-import { Archive, Ban, ArrowRightLeft, CheckCheck, Download, Eye, Inbox, Info, Mail, Pencil, RotateCcw, SlidersHorizontal, Trash2 } from 'lucide-react'
+import { Archive, Ban, ArrowRightLeft, CheckCheck, Download, Eye, Inbox, Info, Mail, Pencil, RotateCcw, Send, SlidersHorizontal, Trash2 } from 'lucide-react'
+import { RowMenu } from '../components/RowMenu'
 import { buildSheetPdf, buildSheetsZip, contactFor, downloadBlob, fetchContacts, fetchSavedLines, openPdf, planFileName, readSettings, DEFAULT_MAIL_CORPS, DEFAULT_MAIL_OBJET, type Contact, type Line } from '../lib/sheet'
 import MailDialog from '../components/MailDialog'
 import { PipelineBar, type PipelineCounts } from '../components/PipelineBar'
+
+/** Suggestions mises en cache : recalculées seulement si la nature ou le texte de la commande change, ou si le référentiel est rechargé. */
+const suggestionCache = new Map<string, { ref: Referentiel; value: OrderSuggestion }>()
+function cachedSuggestion(o: OrderRow, ref: Referentiel): OrderSuggestion {
+  const key = `${o.order_number}|${o.nature_id ?? ''}|${o.nature_text ?? ''}|${o.description ?? ''}`
+  const hit = suggestionCache.get(key)
+  if (hit && hit.ref === ref) return hit.value
+  const value = buildSuggestion(o, ref)
+  suggestionCache.set(key, { ref, value })
+  return value
+}
 
 type Tab = 'NON_QUALIFIEE' | 'A_ENVOYER' | 'EN_ATTENTE_RETOUR' | 'SIGNEE' | 'ARCHIVEE' | 'ENVOYE_MANUELLEMENT' | 'DEMANDES' | 'EXCLUES' | 'HORS_REGLE' | 'CORBEILLE'
 /** Vues hors périmètre : réintégration possible par le responsable. */
@@ -121,6 +133,7 @@ export default function Dashboard({ onOpen, view, setView }: {
   const [dates, setDates] = useState<Map<string, { drafted: string | null; sent: string | null }>>(new Map())
   const [settings, setSettings] = useState<Record<string, string>>({})
   const [mailOrder, setMailOrder] = useState<OrderRow | null>(null)
+  const [mailMode, setMailMode] = useState<'envoi' | 'relance'>('envoi')
 
   const tab: Tab = TAB_KEYS.includes(view.onglet as Tab) ? (view.onglet as Tab) : 'NON_QUALIFIEE'
   const [moreOpen, setMoreOpen] = useState(false)
@@ -193,7 +206,7 @@ export default function Dashboard({ onOpen, view, setView }: {
   const suggestions = useMemo(() => {
     const out = new Map<string, OrderSuggestion>()
     if (!ref) return out
-    for (const o of rows) out.set(o.order_number, buildSuggestion(o, ref))
+    for (const o of rows) out.set(o.order_number, cachedSuggestion(o, ref))
     return out
   }, [rows, ref])
 
@@ -269,7 +282,7 @@ export default function Dashboard({ onOpen, view, setView }: {
   const isTrashView = tab === 'CORBEILLE'
   const list = isTrashView ? trashed.filter(matches) : visible
   const canSelectOrder = (o: OrderRow) => (ACTIONABLE.includes(tab) && o.scope_status === 'IN_SCOPE') || (isScopeTab && isManager)
-  const colCount = (ACTIONABLE.includes(tab) || isScopeTab ? 1 : 0) + 9
+  const colCount = (ACTIONABLE.includes(tab) || isScopeTab ? 1 : 0) + (isManager ? 9 : 8)
   // Lot affiché (même règle que la colonne « Lot »)
   const lotLabelOf = (o: OrderRow): string | null => {
     const sg = suggestions.get(o.order_number)
@@ -397,28 +410,33 @@ export default function Dashboard({ onOpen, view, setView }: {
     void runAction('advance_plan_status', { p_order: o.order_number, p_to: 'ARCHIVEE' }, `Commande ${o.order_number} archivée.`)
   }
   /** Couleur de ligne : rouge = plus d'un mois sans action, gris = obsolète, orange = envoyée sans retour, vert = signée archivée. */
-  // Légende : seulement les couleurs possibles dans la vue en cours (À qualifier : rouge ; Archivées : gris, orange, vert)
-  const legendItems = tab === 'NON_QUALIFIEE'
-    ? [{ swatch: 'bg-red-300', label: 'Plus d’un mois sans action' }]
-    : tab === 'ARCHIVEE'
-      ? [
-        { swatch: 'bg-zinc-300', label: 'Obsolète (6 mois sans action)' },
-        { swatch: 'bg-orange-300', label: 'Envoyée sans retour (archivée 6 mois)' },
-        { swatch: 'bg-green-300', label: 'Signée (archivée 6 mois)' },
-      ]
-      : []
-
+  // Couleur de ligne = statut d'avancement. Légende : seulement celle de la vue en cours.
+  const isOverdue = (o: OrderRow) => o.plan_status === 'NON_QUALIFIEE' && !!o.order_date && dayOf(o.order_date) < todayDay() - 31
   const rowTone = (o: OrderRow) => {
     if (o.scope_status !== 'IN_SCOPE') return ''
     if (o.plan_status === 'ARCHIVEE') {
-      if (o.archive_reason === 'OBSOLETE') return 'bg-zinc-100 text-zinc-500'
+      if (o.archive_reason === 'OBSOLETE') return 'bg-stone-200 text-stone-600'
       if (o.archive_reason === 'ENVOI_SANS_RETOUR') return 'bg-orange-50'
       if (o.archive_reason === 'SIGNEE_6_MOIS') return 'bg-green-50'
       return ''
     }
-    if (o.plan_status === 'NON_QUALIFIEE' && o.order_date && dayOf(o.order_date) < todayDay() - 31) return 'bg-red-50'
+    if (o.plan_status === 'NON_QUALIFIEE') return 'bg-blue-50'
+    if (o.plan_status === 'A_ENVOYER') return 'bg-yellow-50'
+    if (o.plan_status === 'EN_ATTENTE_RETOUR') return 'bg-zinc-100'
+    if (o.plan_status === 'SIGNEE') return 'bg-green-50'
     return ''
   }
+  const legendItems: { swatch: string; label: string }[] = tab === 'NON_QUALIFIEE'
+    ? [{ swatch: 'bg-blue-300', label: 'À qualifier' }, { swatch: 'bg-red-500', label: 'Date en rouge : plus d’un mois sans action' }]
+    : tab === 'A_ENVOYER' ? [{ swatch: 'bg-yellow-300', label: 'À envoyer' }]
+    : tab === 'EN_ATTENTE_RETOUR' ? [{ swatch: 'bg-zinc-300', label: 'En attente de retour' }]
+    : tab === 'SIGNEE' ? [{ swatch: 'bg-green-300', label: 'Signée' }]
+    : tab === 'ARCHIVEE' ? [
+      { swatch: 'bg-stone-300', label: 'Obsolète (6 mois sans action)' },
+      { swatch: 'bg-orange-300', label: 'Envoyée sans retour (archivée 6 mois)' },
+      { swatch: 'bg-green-300', label: 'Signée (archivée 6 mois)' },
+    ]
+    : []
 
   const sendManually = (ids: string[]) => {
     if (!ids.length) return
@@ -677,7 +695,7 @@ export default function Dashboard({ onOpen, view, setView }: {
                   {sortTh('address', 'Adresse')}
                   {sortTh('nature', 'Nature / description')}
                   {sortTh('lot', 'Lot')}
-                  {sortTh('operator', 'Chargé')}
+                  {isManager && sortTh('operator', 'Chargé')}
                   {sortTh('status', 'Statut')}
                   <th className="px-3 py-2 text-right font-medium">Actions</th>
                 </tr>
@@ -701,7 +719,7 @@ export default function Dashboard({ onOpen, view, setView }: {
                       <td className="px-3 py-2.5">
                         <div className="font-mono text-xs font-medium">{o.order_number}</div>
                       </td>
-                      <td className="whitespace-nowrap px-3 py-2.5 text-xs text-muted-foreground">{o.order_date ?? '—'}</td>
+                      <td className={`whitespace-nowrap px-3 py-2.5 text-xs ${isOverdue(o) ? 'font-semibold text-red-600' : 'text-muted-foreground'}`} title={isOverdue(o) ? 'Plus d’un mois sans action' : undefined}>{o.order_date ?? '—'}</td>
                       <td className="px-3 py-2.5">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="text-sm">{companyName ?? o.isis_code ?? '—'}</span>
@@ -724,7 +742,7 @@ export default function Dashboard({ onOpen, view, setView }: {
                       <td className="px-3 py-2.5 text-xs">
                         {(assigned || sg?.confident) && sg?.lotName ? sg.lotName : <span className="text-muted-foreground">—</span>}
                       </td>
-                      <td className="px-3 py-2.5">{o.operator_code ?? '—'}</td>
+                      {isManager && <td className="px-3 py-2.5">{o.operator_code ?? '—'}</td>}
                       <td className="px-3 py-2.5">
                         <div className="flex flex-wrap gap-1">
                           {isTrashView && <Badge tone="warn">Corbeille</Badge>}
@@ -748,43 +766,57 @@ export default function Dashboard({ onOpen, view, setView }: {
                           ) : (
                             <>
                               {o.scope_status === 'IN_SCOPE' && o.plan_status === 'NON_QUALIFIEE' && (
-                                <Button onClick={() => setWizard({ orders: [o], mode: 'create' })} disabled={!ref}>Créer la fiche</Button>
+                                <>
+                                  <Button onClick={() => setWizard({ orders: [o], mode: 'create' })} disabled={!ref}>Créer la fiche</Button>
+                                  <IconButton icon={Ban} label="Demander l’exclusion" onClick={() => setActionOrder(o)} />
+                                </>
                               )}
                               {o.scope_status === 'IN_SCOPE' && o.plan_status === 'A_ENVOYER' && (
                                 <>
                                   <IconButton icon={Eye} label="Prévisualiser la fiche" onClick={() => void previewSheet(o)} />
-                                  <IconButton icon={Pencil} label="Modifier la fiche" onClick={() => void editSheet(o)} disabled={busy || !ref} />
-                                  <IconButton icon={Download} label="Télécharger le PDF" onClick={() => void downloadSheet(o)} />
-                                  <IconButton icon={Mail} label="Envoyer par mail" onClick={() => setMailOrder(o)} disabled={busy} />
-                                  <IconButton icon={SlidersHorizontal} label="Éditeur avancé (natures, lots, mesures)" onClick={() => onOpen(o)} />
-                                </>
-                              )}
-                              {o.scope_status === 'IN_SCOPE' && o.plan_status === 'SIGNEE' && (
-                                <>
-                                  <IconButton icon={Eye} label="Prévisualiser la fiche" onClick={() => void previewSheet(o)} />
-                                  <IconButton icon={Download} label="Télécharger le PDF" onClick={() => void downloadSheet(o)} />
-                                  <IconButton icon={Archive} label="Archiver" onClick={() => archiveOrder(o)} disabled={busy} />
+                                  <IconButton icon={Mail} label="Envoyer par mail" onClick={() => { setMailMode('envoi'); setMailOrder(o) }} disabled={busy} />
+                                  <RowMenu items={[
+                                    { label: 'Modifier la fiche', icon: Pencil, onClick: () => void editSheet(o), disabled: busy || !ref },
+                                    { label: 'Télécharger le PDF', icon: Download, onClick: () => void downloadSheet(o) },
+                                    { label: 'Éditeur avancé', icon: SlidersHorizontal, onClick: () => onOpen(o) },
+                                    { label: 'Demander l’exclusion', icon: Ban, onClick: () => setActionOrder(o) },
+                                    ...(isManager ? [{ label: 'Mettre à la corbeille', icon: Trash2, onClick: () => setTrashedState([o.order_number], true), disabled: busy, danger: true }] : []),
+                                  ]} />
                                 </>
                               )}
                               {o.scope_status === 'IN_SCOPE' && o.plan_status === 'EN_ATTENTE_RETOUR' && (
                                 <>
                                   <IconButton icon={Eye} label="Prévisualiser la fiche" onClick={() => void previewSheet(o)} />
-                                  <IconButton icon={Download} label="Télécharger le PDF" onClick={() => void downloadSheet(o)} />
-                                  <IconButton icon={Mail} label="Renvoyer par mail" onClick={() => setMailOrder(o)} disabled={busy} />
-                                  <IconButton icon={CheckCheck} label="Retour de l’entreprise reçu" onClick={() => returnReceived(o)} disabled={busy} />
+                                  <IconButton icon={Send} label="Relancer l’entreprise" onClick={() => { setMailMode('relance'); setMailOrder(o) }} disabled={busy} />
+                                  <IconButton icon={CheckCheck} label="Marquer comme reçu" onClick={() => returnReceived(o)} disabled={busy} />
+                                  <RowMenu items={[
+                                    { label: 'Télécharger le PDF', icon: Download, onClick: () => void downloadSheet(o) },
+                                    { label: 'Demander l’exclusion', icon: Ban, onClick: () => setActionOrder(o) },
+                                    ...(isManager ? [{ label: 'Mettre à la corbeille', icon: Trash2, onClick: () => setTrashedState([o.order_number], true), disabled: busy, danger: true }] : []),
+                                  ]} />
                                 </>
                               )}
-                              {o.scope_status === 'IN_SCOPE' && (
-                                <IconButton icon={Ban} label="Demander l’exclusion" onClick={() => setActionOrder(o)} />
+                              {o.scope_status === 'IN_SCOPE' && o.plan_status === 'SIGNEE' && (
+                                <>
+                                  <IconButton icon={Eye} label="Prévisualiser la fiche" onClick={() => void previewSheet(o)} />
+                                  <IconButton icon={Archive} label="Archiver" onClick={() => archiveOrder(o)} disabled={busy} />
+                                  <RowMenu items={[
+                                    { label: 'Télécharger le PDF', icon: Download, onClick: () => void downloadSheet(o) },
+                                    { label: 'Demander l’exclusion', icon: Ban, onClick: () => setActionOrder(o) },
+                                  ]} />
+                                </>
+                              )}
+                              {o.scope_status === 'IN_SCOPE' && o.plan_status !== 'NON_QUALIFIEE' && o.plan_status !== 'A_ENVOYER' && o.plan_status !== 'EN_ATTENTE_RETOUR' && o.plan_status !== 'SIGNEE' && (
+                                <RowMenu items={[
+                                  { label: 'Télécharger le PDF', icon: Download, onClick: () => void downloadSheet(o) },
+                                  { label: 'Demander l’exclusion', icon: Ban, onClick: () => setActionOrder(o) },
+                                ]} />
                               )}
                               {isManager && o.scope_status === 'OUT_OF_SCOPE' && (
                                 <IconButton icon={ArrowRightLeft} label="Réaffecter" onClick={() => setActionOrder(o)} />
                               )}
                               {isManager && o.scope_status === 'OUT_OF_SCOPE' && (
                                 <IconButton icon={RotateCcw} label="Réintégrer au périmètre" onClick={() => reintegrate(o)} disabled={busy} />
-                              )}
-                              {isManager && (
-                                <IconButton icon={Trash2} label="Mettre à la corbeille" onClick={() => setTrashedState([o.order_number], true)} disabled={busy} />
                               )}
                             </>
                           )}
@@ -810,6 +842,7 @@ export default function Dashboard({ onOpen, view, setView }: {
 
       {mailOrder && (
         <MailDialog
+          mode={mailMode}
           order={mailOrder}
           company={companyNameOf(mailOrder.isis_code) || mailOrder.isis_code || ''}
           osEmail={companies.get(mailOrder.isis_code ?? '')?.os_email ?? ''}

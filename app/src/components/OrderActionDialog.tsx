@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import type { OrderRow } from '../lib/types'
 import { Button, Notice, fieldClass } from './ui'
 
-type Choice = 'EXCLUSION' | 'REAFFECTER' | 'MANUEL'
+type Choice = 'EXCLUSION' | 'NON_CONCERNEE' | 'REAFFECTER' | 'MANUEL'
 
 /** Panneau de validation unique pour une commande : demande d'exclusion, réaffectation ou envoi manuel. */
 export default function OrderActionDialog({
@@ -17,8 +17,10 @@ export default function OrderActionDialog({
 }) {
   const inScope = order.scope_status === 'IN_SCOPE'
   const exclusionPending = order.scope_request_status === 'EN_ATTENTE'
+  const toProcess = order.plan_status === 'NON_QUALIFIEE' || order.plan_status === 'A_ENVOYER'
   const options: { key: Choice; title: string; hint: string; available: boolean }[] = [
     { key: 'EXCLUSION', title: 'Demander l’exclusion du périmètre', hint: 'Le Super Admin décide après votre motif.', available: inScope && !exclusionPending },
+    { key: 'NON_CONCERNEE', title: 'Non concernée par un plan de prévention', hint: 'Aucun plan à établir : la commande sort des listes à traiter. Motif obligatoire, tracé.', available: inScope && toProcess },
     { key: 'REAFFECTER', title: 'Réaffecter à un autre chargé', hint: 'La commande change de chargé d’opérations.', available: canReassign },
     { key: 'MANUEL', title: 'Envoyée manuellement', hint: 'Hors application : la commande sort des listes à traiter.', available: inScope },
   ]
@@ -30,7 +32,7 @@ export default function OrderActionDialog({
   const [err, setErr] = useState<string | null>(null)
 
   const valid =
-    choice === 'EXCLUSION' ? reason.trim().length >= 5
+    choice === 'EXCLUSION' || choice === 'NON_CONCERNEE' ? reason.trim().length >= 5
       : choice === 'REAFFECTER' ? operator.trim().length > 0 && operator.trim() !== (order.operator_code ?? '')
       : true
 
@@ -41,6 +43,9 @@ export default function OrderActionDialog({
     if (choice === 'EXCLUSION') {
       ({ error } = await supabase.rpc('request_scope_exclusion', { p_order: order.order_number, p_reason: reason.trim() }))
       message = `Demande d’exclusion envoyée pour la commande ${order.order_number}.`
+    } else if (choice === 'NON_CONCERNEE') {
+      ({ error } = await supabase.rpc('mark_not_concerned', { p_order: order.order_number, p_reason: reason.trim() }))
+      message = `Commande ${order.order_number} marquée non concernée par un plan de prévention.`
     } else if (choice === 'REAFFECTER') {
       ({ error } = await supabase.rpc('reassign_order', { p_order: order.order_number, p_operator: operator.trim() }))
       message = `Commande ${order.order_number} réaffectée à ${operator.trim()}.`
@@ -75,7 +80,7 @@ export default function OrderActionDialog({
           ))}
         </div>
 
-        {choice === 'EXCLUSION' && (
+        {(choice === 'EXCLUSION' || choice === 'NON_CONCERNEE') && (
           <div className="space-y-1">
             <label className="block text-xs text-muted-foreground">Motif (5 caractères minimum)</label>
             <textarea className={fieldClass + ' min-h-[80px]'} value={reason} onChange={(e) => setReason(e.target.value)} />

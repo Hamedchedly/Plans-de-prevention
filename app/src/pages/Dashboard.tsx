@@ -30,7 +30,7 @@ function cachedSuggestion(o: OrderRow, ref: Referentiel): OrderSuggestion {
   return value
 }
 
-type Tab = 'NON_QUALIFIEE' | 'A_ENVOYER' | 'EN_ATTENTE_RETOUR' | 'SIGNEE' | 'ARCHIVEE' | 'ENVOYE_MANUELLEMENT' | 'DEMANDES' | 'HORS_PERIMETRE' | 'CORBEILLE'
+type Tab = 'NON_QUALIFIEE' | 'A_ENVOYER' | 'EN_ATTENTE_RETOUR' | 'SIGNEE' | 'ARCHIVEE' | 'ENVOYE_MANUELLEMENT' | 'NON_CONCERNEE' | 'DEMANDES' | 'HORS_PERIMETRE' | 'CORBEILLE'
 /** Vues hors périmètre : réintégration possible par le responsable. */
 const SCOPE_TABS: Tab[] = ['HORS_PERIMETRE']
 
@@ -43,20 +43,21 @@ const MAIN_TABS: { key: Tab; label: string }[] = [
 const MORE_TABS: { key: Tab; label: string; managerOnly?: boolean }[] = [
   { key: 'ARCHIVEE', label: 'Archivées' },
   { key: 'ENVOYE_MANUELLEMENT', label: 'Envoyées manuellement' },
+  { key: 'NON_CONCERNEE', label: 'Non concernées' },
   { key: 'DEMANDES', label: 'Exclusions en attente' },
   { key: 'HORS_PERIMETRE', label: 'Hors périmètre', managerOnly: true },
   { key: 'CORBEILLE', label: 'Corbeille', managerOnly: true },
 ]
 const PLAN_LABEL: Record<string, string> = {
   NON_QUALIFIEE: 'Non qualifiée', A_ENVOYER: 'À envoyer', EN_ATTENTE_RETOUR: 'En attente retour', SIGNEE: 'Signée', ARCHIVEE: 'Archivée',
-  ENVOYE_MANUELLEMENT: 'Envoyée manuellement',
+  ENVOYE_MANUELLEMENT: 'Envoyée manuellement', NON_CONCERNEE: 'Non concernée',
 }
 // Statut affiché : une fiche enregistrée (A_ENVOYER) est une « Fiche créée », en attente d'envoi.
 const STATUS_LABEL: Record<string, string> = { ...PLAN_LABEL, A_ENVOYER: 'Fiche créée' }
 /** Onglets dont les commandes peuvent recevoir une fiche (sélection groupée). */
 const ACTIONABLE: Tab[] = ['NON_QUALIFIEE', 'A_ENVOYER']
 /** Onglets où l'on coche des commandes (actions groupées). */
-const SELECTABLE: Tab[] = ['NON_QUALIFIEE', 'A_ENVOYER', 'EN_ATTENTE_RETOUR']
+const SELECTABLE: Tab[] = ['NON_QUALIFIEE', 'A_ENVOYER', 'EN_ATTENTE_RETOUR', 'NON_CONCERNEE']
 const PAGE = 15
 
 /** Regroupement des commandes dans la liste (pour sélectionner en lot des cas similaires). */
@@ -587,6 +588,19 @@ export default function Dashboard({ onOpen, view, setView }: {
     if (!ids.length) return
     void runAction('unmark_sent_manually', { p_orders: ids }, `${ids.length} commande(s) remise(s) à traiter.`)
   }
+  /** Remise à qualifier : une commande non concernée revient dans « À qualifier » (un appel par commande). */
+  const restoreNotConcerned = async (ids: string[]) => {
+    if (!ids.length) return
+    setBusy(true); setErr(null)
+    for (const n of ids) {
+      const { error } = await supabase.rpc('unmark_not_concerned', { p_order: n })
+      if (error) { setBusy(false); setErr(`${n} : ${error.message}`); await load(); return }
+    }
+    setBusy(false)
+    setSelected(new Set())
+    setNotice(`${ids.length} commande(s) remise(s) à qualifier.`)
+    await load()
+  }
   const reintegrate = (o: OrderRow) =>
     void runAction('set_order_scope', { p_order: o.order_number, p_scope: 'IN_SCOPE', p_override: true, p_comment: null }, `Commande ${o.order_number} réintégrée au périmètre.`)
   const reintegrateMany = async (numbers: string[]) => {
@@ -781,6 +795,7 @@ export default function Dashboard({ onOpen, view, setView }: {
           {tab === 'EN_ATTENTE_RETOUR' && <Button onClick={() => markReceivedMany([...selected])} disabled={busy}>Marquer comme reçu</Button>}
           {ACTIONABLE.includes(tab) && <Button variant="ghost" onClick={() => sendManually([...selected])} disabled={busy}>Déjà envoyée manuellement</Button>}
           {manualTab && <Button variant="ghost" onClick={() => restoreManual([...selected])} disabled={busy}>Remettre à traiter</Button>}
+          {tab === 'NON_CONCERNEE' && <Button variant="ghost" onClick={() => void restoreNotConcerned([...selected])} disabled={busy}>Remettre à qualifier</Button>}
           {isScopeTab && isManager && <Button onClick={() => void reintegrateMany([...selected])} disabled={busy}>Réintégrer au périmètre</Button>}
           <Button variant="ghost" onClick={() => setSelected(new Set())}>Tout désélectionner</Button>
         </div>

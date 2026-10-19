@@ -619,6 +619,28 @@ function UsersSection() {
     } catch (e) { setErr(errMsg(e)) } finally { setInviting(false) }
   }
 
+  /** Compte jamais configuré uniquement (le serveur refuse les autres) : nouveau lien ou suppression. */
+  const manageUser = async (u: Profile, action: 'new_link' | 'delete') => {
+    if (action === 'delete' && !window.confirm(`Supprimer définitivement le compte ${u.email ?? ''} ? Il n’a pas encore été configuré.`)) return
+    setErr(null); setMsg(null); setInvite(null); setCopied(false)
+    try {
+      const { data, error } = await supabase.functions.invoke('manage-user', {
+        body: { action, user_id: u.user_id, redirect_to: PROD_APP_URL },
+      })
+      if (error) {
+        const body = await (error as { context?: Response }).context?.json?.().catch(() => null) as { error?: string } | null
+        throw new Error(body?.error ?? error.message)
+      }
+      if (action === 'new_link') {
+        const res = data as { email: string; action_link: string }
+        setInvite({ email: res.email, link: res.action_link })
+      } else {
+        setMsg(`Compte ${u.email ?? ''} supprimé.`)
+        await load()
+      }
+    } catch (e) { setErr(errMsg(e)) }
+  }
+
   const copyLink = async () => {
     if (!invite) return
     try { await navigator.clipboard.writeText(invite.link); setCopied(true) } catch { setCopied(false) }
@@ -701,6 +723,10 @@ function UsersSection() {
                     disabled={!canImpersonate(u)} title={canImpersonate(u) ? '' : 'Indisponible pour ce compte'}>Se connecter en tant que</Button>
                   <Button variant="ghost" onClick={() => setIdentityFor(u.user_id)} className="ml-2">Identité</Button>
                   <Button onClick={() => void save(u)} className="ml-2">Enregistrer</Button>
+                  <Button variant="ghost" onClick={() => void manageUser(u, 'new_link')} className="ml-2"
+                    title="Pour un compte jamais configuré : génère un nouveau lien de configuration">Nouveau lien</Button>
+                  <Button variant="ghost" onClick={() => void manageUser(u, 'delete')} className="ml-2"
+                    title="Pour un compte jamais configuré uniquement">Supprimer</Button>
                 </td>
               </tr>
             ))}

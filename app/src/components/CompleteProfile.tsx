@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
 import { Button, Card, Notice, errMsg, fieldClass } from './ui'
@@ -11,6 +11,16 @@ export default function CompleteProfile() {
   const [v, setV] = useState({ password: '', confirm: '', first: '', last: '', phone: '', contact: '' })
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  // Secteurs et code chargé attribués par l'administrateur : affichés pour confirmation, non modifiables ici.
+  const [assigned, setAssigned] = useState<{ sectors: string[]; operator: string | null } | null>(null)
+
+  useEffect(() => {
+    if (!userId) return
+    void supabase.from('profiles').select('sector_codes,operator_code').eq('user_id', userId).maybeSingle()
+      .then(({ data }) => {
+        if (data) setAssigned({ sectors: (data.sector_codes ?? []) as string[], operator: (data.operator_code as string | null) ?? null })
+      })
+  }, [userId])
 
   const passwordOk = v.password.length >= 8 && v.password === v.confirm
   const identityOk = !!(v.first.trim() && v.last.trim() && v.phone.trim())
@@ -38,6 +48,13 @@ export default function CompleteProfile() {
           <h1 className="text-lg font-semibold">Bienvenue</h1>
           <p className="text-sm text-muted-foreground">Avant de commencer, choisissez votre mot de passe et renseignez votre identité. Elle apparaît sur les fiches que vous rédigez.</p>
           <p className="mt-1 text-xs text-muted-foreground">Identifiant : {loginEmail}</p>
+          {assigned && (
+            <div className="mt-3 rounded-md border border-border bg-muted/40 p-3 text-sm">
+              <p><span className="text-muted-foreground">Secteur(s) :</span> {assigned.sectors.length ? assigned.sectors.join(', ') : 'aucun attribué'}</p>
+              <p><span className="text-muted-foreground">Code chargé :</span> {assigned.operator || '—'}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Ces informations sont attribuées par l’administrateur. Si elles sont fausses, signalez-le-lui.</p>
+            </div>
+          )}
         </div>
         {err && <Notice tone="error">{err}</Notice>}
         <div className="space-y-3">

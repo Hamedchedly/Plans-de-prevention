@@ -28,9 +28,9 @@ function cachedSuggestion(o: OrderRow, ref: Referentiel): OrderSuggestion {
   return value
 }
 
-type Tab = 'NON_QUALIFIEE' | 'A_ENVOYER' | 'EN_ATTENTE_RETOUR' | 'SIGNEE' | 'ARCHIVEE' | 'ENVOYE_MANUELLEMENT' | 'DEMANDES' | 'EXCLUES' | 'HORS_REGLE' | 'CORBEILLE'
+type Tab = 'NON_QUALIFIEE' | 'A_ENVOYER' | 'EN_ATTENTE_RETOUR' | 'SIGNEE' | 'ARCHIVEE' | 'ENVOYE_MANUELLEMENT' | 'DEMANDES' | 'HORS_PERIMETRE' | 'CORBEILLE'
 /** Vues hors périmètre : réintégration possible par le responsable. */
-const SCOPE_TABS: Tab[] = ['EXCLUES', 'HORS_REGLE']
+const SCOPE_TABS: Tab[] = ['HORS_PERIMETRE']
 
 const MAIN_TABS: { key: Tab; label: string }[] = [
   { key: 'NON_QUALIFIEE', label: 'À qualifier' },
@@ -42,8 +42,7 @@ const MORE_TABS: { key: Tab; label: string; managerOnly?: boolean }[] = [
   { key: 'ARCHIVEE', label: 'Archivées' },
   { key: 'ENVOYE_MANUELLEMENT', label: 'Envoyées manuellement' },
   { key: 'DEMANDES', label: 'Exclusions en attente' },
-  { key: 'EXCLUES', label: 'Exclues manuellement', managerOnly: true },
-  { key: 'HORS_REGLE', label: 'Hors périmètre (règle)', managerOnly: true },
+  { key: 'HORS_PERIMETRE', label: 'Hors périmètre', managerOnly: true },
   { key: 'CORBEILLE', label: 'Corbeille', managerOnly: true },
 ]
 const PLAN_LABEL: Record<string, string> = {
@@ -239,8 +238,7 @@ export default function Dashboard({ onOpen, view, setView }: {
   const cutoffOf = (p: number) => PRESETS[p].days == null ? null : todayDay() - (PRESETS[p].days as number)
 
   const inTab = (o: OrderRow, t: Tab) => {
-    if (t === 'EXCLUES') return o.scope_status === 'OUT_OF_SCOPE' && o.scope_override
-    if (t === 'HORS_REGLE') return o.scope_status === 'OUT_OF_SCOPE' && !o.scope_override
+    if (t === 'HORS_PERIMETRE') return o.scope_status === 'OUT_OF_SCOPE'
     return o.scope_status === 'IN_SCOPE' && o.plan_status === t
   }
   const isScopeTab = SCOPE_TABS.includes(tab)
@@ -433,20 +431,20 @@ export default function Dashboard({ onOpen, view, setView }: {
   const isOverdue = (o: OrderRow) => o.plan_status === 'NON_QUALIFIEE' && !!o.order_date && dayOf(o.order_date) < todayDay() - 31
   const rowTone = (o: OrderRow) => {
     if (o.scope_status !== 'IN_SCOPE') return ''
+    if (isOverdue(o)) return 'bg-red-100'
     if (o.plan_status === 'ARCHIVEE') {
       if (o.archive_reason === 'OBSOLETE') return 'bg-stone-200 text-stone-600'
       if (o.archive_reason === 'ENVOI_SANS_RETOUR') return 'bg-orange-50'
       if (o.archive_reason === 'SIGNEE_6_MOIS') return 'bg-green-50'
       return ''
     }
-    if (o.plan_status === 'NON_QUALIFIEE') return 'bg-blue-50'
     if (o.plan_status === 'A_ENVOYER') return 'bg-yellow-50'
     if (o.plan_status === 'EN_ATTENTE_RETOUR') return 'bg-zinc-100'
     if (o.plan_status === 'SIGNEE') return 'bg-green-50'
     return ''
   }
   const legendItems: { swatch: string; label: string }[] = tab === 'NON_QUALIFIEE'
-    ? [{ swatch: 'bg-blue-300', label: 'À qualifier' }, { swatch: 'bg-red-500', label: 'Date en rouge : plus d’un mois sans action' }]
+    ? [{ swatch: 'bg-red-100', label: 'Fond rouge : plus d’un mois sans action' }]
     : tab === 'A_ENVOYER' ? [{ swatch: 'bg-yellow-300', label: 'À envoyer' }]
     : tab === 'EN_ATTENTE_RETOUR' ? [{ swatch: 'bg-zinc-300', label: 'En attente de retour' }]
     : tab === 'SIGNEE' ? [{ swatch: 'bg-green-300', label: 'Signée' }]
@@ -766,7 +764,7 @@ export default function Dashboard({ onOpen, view, setView }: {
                         <div className="flex flex-wrap gap-1">
                           {isTrashView && <Badge tone="warn">Corbeille</Badge>}
                           {o.scope_status === 'IN_SCOPE' && <Badge tone={o.plan_status === 'A_ENVOYER' ? 'ok' : 'default'}>{STATUS_LABEL[o.plan_status]}</Badge>}
-                          {o.scope_status === 'OUT_OF_SCOPE' && <Badge tone="warn">Hors périmètre</Badge>}
+                          {o.scope_status === 'OUT_OF_SCOPE' && <Badge tone="warn">{o.scope_override ? 'Exclue manuellement' : 'Règle de périmètre'}</Badge>}
                           {o.scope_override && <Badge tone="warn">Forcé</Badge>}
                           {o.scope_request_status === 'EN_ATTENTE' && <Badge tone="warn">Exclusion en attente</Badge>}
                           {o.naac_code && <Badge>{o.naac_code}</Badge>}

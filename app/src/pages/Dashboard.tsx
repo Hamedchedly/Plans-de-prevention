@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { fold, tokens } from '../lib/rules'
@@ -91,37 +91,31 @@ const todayDay = () => Math.floor(Date.now() / 86400000)
 const fmtDay = (n: number) => new Date(n * 86400000).toLocaleDateString('fr-FR')
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('fr-FR')
 
-/** Secteur affiché par défaut : ses commandes sont chargées et affichées en premier. */
-const DEFAULT_SECTOR = 'S11'
 /** Taille d'une tranche de commandes, chargées en parallèle. */
 const ORDER_CHUNK = 1000
-/** Partie des commandes : le secteur par défaut, ou tous les autres. */
-type Part = 'default' | 'others'
-const partFilter = (part: Part) => (part === 'default'
-  ? `sector_code.eq.${DEFAULT_SECTOR}`
-  : `sector_code.is.null,sector_code.neq.${DEFAULT_SECTOR}`)
 
-async function fetchOrdersChunk(part: Part, from: number): Promise<OrderRow[]> {
-  const { data, error } = await supabase.from('orders').select('*').is('trashed_at', null).or(partFilter(part))
-    .order('order_date', { ascending: false, nullsFirst: false }).order('order_number')
-    .range(from, from + ORDER_CHUNK - 1)
-  if (error) throw new Error(error.message)
-  return (data ?? []) as OrderRow[]
+/** Commandes correspondant aux secteurs et chargés choisis (liste vide = pas de filtre sur cette dimension). */
+async function fetchOrdersWhere(sectors: string[], operators: string[]): Promise<OrderRow[]> {
+  const out: OrderRow[] = []
+  for (let from = 0; ; from += ORDER_CHUNK) {
+    let qb = supabase.from('orders').select('*').is('trashed_at', null)
+    if (sectors.length) qb = qb.in('sector_code', sectors)
+    if (operators.length) qb = qb.in('operator_code', operators)
+    const { data, error } = await qb.order('order_date', { ascending: false, nullsFirst: false }).order('order_number')
+      .range(from, from + ORDER_CHUNK - 1)
+    if (error) throw new Error(error.message)
+    out.push(...((data ?? []) as OrderRow[]))
+    if (!data || data.length < ORDER_CHUNK) break
+  }
+  return out
 }
 
-async function countOrders(part: Part): Promise<number> {
-  const { count, error } = await supabase.from('orders').select('order_number', { count: 'exact', head: true })
-    .is('trashed_at', null).or(partFilter(part))
+/** Secteurs et chargés proposés dans les filtres, selon ce que l'utilisateur peut voir (sans charger les commandes). */
+async function fetchFilterOptions(): Promise<{ sectors: string[]; operators: string[] }> {
+  const { data, error } = await supabase.rpc('order_filter_options')
   if (error) throw new Error(error.message)
-  return count ?? 0
-}
-
-/** Toutes les tranches d'une partie, chargées en parallèle. */
-async function fetchOrdersPart(part: Part, total: number): Promise<OrderRow[]> {
-  const starts: number[] = []
-  for (let from = 0; from < total; from += ORDER_CHUNK) starts.push(from)
-  const chunks = await Promise.all(starts.map((from) => fetchOrdersChunk(part, from)))
-  return chunks.flat()
+  const d = (data ?? {}) as { sectors?: string[]; operators?: string[] }
+  return { sectors: d.sectors ?? [], operators: d.operators ?? [] }
 }
 
 async function fetchTrashedOrders(): Promise<OrderRow[]> {
@@ -129,6 +123,16 @@ async function fetchTrashedOrders(): Promise<OrderRow[]> {
     .order('order_date', { ascending: false, nullsFirst: false }).order('order_number')
   if (error) throw new Error(error.message)
   return (data ?? []) as OrderRow[]
+}
+
+/** Bouton de filtre multisélection (activé / désactivé). */
+function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button type="button" onClick={onClick} aria-pressed={active}
+      className={`rounded-full border px-2.5 py-1 text-xs ${active ? 'border-primary bg-primary text-primary-foreground' : 'border-input bg-background hover:bg-muted'}`}>
+      {children}
+    </button>
+  )
 }
 
 export default function Dashboard({ onOpen, view, setView }: {
@@ -145,8 +149,9 @@ export default function Dashboard({ onOpen, view, setView }: {
   const [ref, setRef] = useState<Referentiel | null>(null)
   const [companies, setCompanies] = useState<Map<string, CompanyRow>>(new Map())
   const [loading, setLoading] = useState(true)
-  /** Avancement du chargement des tranches restantes (null une fois tout chargé). */
-  const [progress, setProgress] = useState<{ loaded: number; total: number } | null>(null)
+  const [ordersLoading, setOrdersLoading] = useState(false)
+  const [filterOptions, setFilterOptions] = useState<{ sectors: string[]; operators: string[] }>({ sectors: [], operators: [] })
+  const ordersReq = useRef(0)
   const [err, setErr] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -160,8 +165,9 @@ export default function Dashboard({ onOpen, view, setView }: {
   const tab: Tab = TAB_KEYS.includes(view.onglet as Tab) ? (view.onglet as Tab) : 'NON_QUALIFIEE'
   const [moreOpen, setMoreOpen] = useState(false)
   const [q, setQ] = useState('')
-  const [sector, setSector] = useState('S11')
-  const [operator, setOperator] = useState('')
+  /** Filtres multiples. Responsable : aucune commande chargée tant qu'aucun secteur ni chargé n'est coché. */
+  const [sectorSel, setSectorSel] = useState<string[]>([])
+  const [operatorSel, setOperatorSel] = useState<string[]>([])
   const [lotFilter, setLotFilter] = useState('')
   const [groupFilter, setGroupFilter] = useState('')
   const [preset, setPreset] = useState(DEFAULT_PRESET)
@@ -185,47 +191,60 @@ export default function Dashboard({ onOpen, view, setView }: {
     })
   }, [])
 
-  const load = async () => {
-    setLoading(true); setErr(null); setProgress(null)
+  /** Recharge les commandes des secteurs et chargés choisis. Responsable sans filtre : rien n'est chargé. */
+  const refreshOrders = async (sectors: string[], operators: string[]) => {
+    const req = ++ordersReq.current
+    if (isManager && sectors.length === 0 && operators.length === 0) {
+      setRows([]); setContacts(new Map()); setDates(new Map()); setOrdersLoading(false)
+      return
+    }
+    setOrdersLoading(true)
     try {
-      // Archivage automatique (idempotent) en parallèle du chargement ; relecture seulement si des commandes ont changé de statut.
-      const archiving = supabase.rpc('auto_archive_plans').then(({ data }) => (typeof data === 'number' ? data : 0), () => 0)
-      const [archived, defaultTotal, othersTotal, defaultFirst, referentiel, comps, trashedRes, settingsRes] = await Promise.all([
-        archiving, countOrders('default'), countOrders('others'), fetchOrdersChunk('default', 0), getReferentiel(), fetchCompanies().catch(() => []),
-        supabase.from('orders').select('order_number', { count: 'exact', head: true }).not('trashed_at', 'is', null),
-        readSettings(),
-      ])
-      // Secteur affiché par défaut d'abord (relu seulement si l'archivage a changé des statuts)
-      const defaultRows = archived > 0 || defaultTotal > defaultFirst.length
-        ? await fetchOrdersPart('default', defaultTotal) : defaultFirst
-      setRef(referentiel)
-      setCompanies(new Map(comps.map((c) => [c.isis_code, c])))
-      setTrashedCount(trashedRes.count ?? 0)
-      setSettings(settingsRes)
-      setRows(defaultRows)
-      setVersion((v) => v + 1)
-      setLoading(false)
-      if (othersTotal > 0) setProgress({ loaded: defaultRows.length, total: defaultRows.length + othersTotal })
-
-      // Les autres secteurs arrivent ensuite : la liste se complète sans bloquer l'affichage
-      const others = await fetchOrdersPart('others', othersTotal)
-      const orders = [...defaultRows, ...others]
+      const orders = await fetchOrdersWhere(sectors, operators)
+      if (req !== ordersReq.current) return
       setRows(orders)
-      setProgress(null)
+      setVersion((v) => v + 1)
       // Personne à alerter et dates de fiche : complètent la liste sans la retarder
       const planned = orders.filter((o) => o.plan_status !== 'NON_QUALIFIEE').map((o) => o.order_number)
       const [contactsMap, datesRes] = await Promise.all([
         fetchContacts(orders.map((o) => o.operator_code ?? '')).catch(() => new Map<string, Contact>()),
         planned.length ? supabase.rpc('plan_dates', { p_orders: planned }) : Promise.resolve({ data: [] as unknown[], error: null }),
       ])
+      if (req !== ordersReq.current) return
       setContacts(contactsMap)
       const dts = new Map<string, { drafted: string | null; sent: string | null }>()
       for (const r of (datesRes.data ?? []) as { order_number: string; drafted_at: string | null; sent_at: string | null }[]) {
         dts.set(r.order_number, { drafted: r.drafted_at, sent: r.sent_at })
       }
       setDates(dts)
-    } catch (e) { setErr(errMsg(e)); setLoading(false); setProgress(null) }
+    } catch (e) {
+      if (req === ordersReq.current) setErr(errMsg(e))
+    } finally {
+      if (req === ordersReq.current) setOrdersLoading(false)
+    }
   }
+
+  const load = async (sectors = sectorSel, operators = operatorSel) => {
+    setLoading(true); setErr(null)
+    try {
+      // Archivage automatique (idempotent), terminé avant la lecture des commandes pour qu'elles soient à jour
+      const archiving = supabase.rpc('auto_archive_plans').then(({ data }) => (typeof data === 'number' ? data : 0), () => 0)
+      const [, referentiel, comps, trashedRes, settingsRes, options] = await Promise.all([
+        archiving, getReferentiel(), fetchCompanies().catch(() => []),
+        supabase.from('orders').select('order_number', { count: 'exact', head: true }).not('trashed_at', 'is', null),
+        readSettings(), fetchFilterOptions(),
+      ])
+      setRef(referentiel)
+      setCompanies(new Map(comps.map((c) => [c.isis_code, c])))
+      setTrashedCount(trashedRes.count ?? 0)
+      setSettings(settingsRes)
+      setFilterOptions(options)
+      setLoading(false)
+      await refreshOrders(sectors, operators)
+    } catch (e) { setErr(errMsg(e)); setLoading(false) }
+  }
+  // Au montage, aucun filtre n'est coché : load() ne charge alors aucune commande pour le responsable.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void load() }, [])
 
   // La corbeille n'est chargée que lorsqu'on l'ouvre.
@@ -242,8 +261,16 @@ export default function Dashboard({ onOpen, view, setView }: {
     return out
   }, [rows, ref])
 
-  const sectors = useMemo(() => [...new Set(rows.map((r) => r.sector_code).filter(Boolean))] as string[], [rows])
-  const operators = useMemo(() => [...new Set(rows.map((r) => r.operator_code).filter(Boolean))] as string[], [rows])
+  const sectors = filterOptions.sectors
+  const operators = filterOptions.operators
+  const toggleSector = (x: string) => {
+    const next = sectorSel.includes(x) ? sectorSel.filter((v) => v !== x) : [...sectorSel, x]
+    setSectorSel(next); void refreshOrders(next, operatorSel)
+  }
+  const toggleOperator = (x: string) => {
+    const next = operatorSel.includes(x) ? operatorSel.filter((v) => v !== x) : [...operatorSel, x]
+    setOperatorSel(next); void refreshOrders(sectorSel, next)
+  }
   const lotOptions = useMemo(() => ref?.lots ?? [], [ref])
   const groupOptions = useMemo(
     () => [...new Set([...suggestions.values()].filter((s) => s.confident).map((s) => s.group).filter(Boolean))] as string[],
@@ -254,12 +281,12 @@ export default function Dashboard({ onOpen, view, setView }: {
   useEffect(() => { setOpenGroups(new Set()) }, [grouping])
 
   // Barre d'avancement : le chargé voit ses propres commandes ; le responsable voit la vue choisie (chargé + secteur)
-  const pipelineScope = profile?.role === 'CHARGE_OPERATIONS' ? (profile.operator_code ?? null) : (operator || null)
+  const pipelineOps = profile?.role === 'CHARGE_OPERATIONS' ? (profile.operator_code ? [profile.operator_code] : []) : operatorSel
   const pipeline: PipelineCounts = { attente: 0, fait: 0, envoye: 0, retour: 0 }
   for (const o of rows) {
     if (o.scope_status !== 'IN_SCOPE') continue
-    if (sector !== 'TOUS' && o.sector_code !== sector) continue
-    if (pipelineScope && o.operator_code !== pipelineScope) continue
+    if (sectorSel.length && !sectorSel.includes(o.sector_code ?? '')) continue
+    if (pipelineOps.length && !pipelineOps.includes(o.operator_code ?? '')) continue
     if (o.plan_status === 'NON_QUALIFIEE') pipeline.attente++
     else if (o.plan_status === 'A_ENVOYER') pipeline.fait++
     else if (o.plan_status === 'EN_ATTENTE_RETOUR') pipeline.envoye++
@@ -295,7 +322,7 @@ export default function Dashboard({ onOpen, view, setView }: {
   }
 
   const passesFilters = (o: OrderRow, cut: number | null) =>
-    (sector === 'TOUS' || o.sector_code === sector) && (!operator || o.operator_code === operator) && matches(o) && matchesFilters(o, cut)
+    (!sectorSel.length || sectorSel.includes(o.sector_code ?? '')) && (!operatorSel.length || operatorSel.includes(o.operator_code ?? '')) && matches(o) && matchesFilters(o, cut)
 
   // Période : on élargit automatiquement jusqu'à MIN_VISIBLE commandes dans l'onglet courant (filtres inclus).
   const pool = rows.filter((o) => passesFilters(o, null) && inTab(o, tab))
@@ -415,7 +442,7 @@ export default function Dashboard({ onOpen, view, setView }: {
   const activeMore = MORE_TABS.find((t) => t.key === tab)
 
   // Retour à 15 lignes dès qu'on change d'onglet ou de filtre.
-  useEffect(() => { setLimit(PAGE) }, [tab, q, sector, operator, lotFilter, groupFilter, preset, grouping, sort.key, sort.dir])
+  useEffect(() => { setLimit(PAGE) }, [tab, q, sectorSel, operatorSel, lotFilter, groupFilter, preset, grouping, sort.key, sort.dir])
 
   const changeTab = (t: Tab) => { setView({ onglet: t }); setSelected(new Set()); setMoreOpen(false) }
   const toggle = (n: string) => setSelected((s) => { const next = new Set(s); next.has(n) ? next.delete(n) : next.add(n); return next })
@@ -575,12 +602,6 @@ export default function Dashboard({ onOpen, view, setView }: {
         actions={<Button variant="ghost" onClick={() => void load()} disabled={loading}>Actualiser</Button>}
       />
 
-      {progress && (
-        <p className="text-xs text-muted-foreground" role="status">
-          Chargement des commandes en cours : {progress.loaded} sur {progress.total}. Les compteurs se complètent ensuite.
-        </p>
-      )}
-
       <Card className="space-y-4">
         <div>
           <h2 className="text-base font-semibold">{profile?.role === 'CHARGE_OPERATIONS' ? 'Mes plans' : 'Avancement des plans'}</h2>
@@ -619,20 +640,20 @@ export default function Dashboard({ onOpen, view, setView }: {
           </div>
         </div>
         <div className="grid grid-cols-2 items-end gap-3 md:grid-cols-4">
-        <div>
-          <label className="mb-1 block text-xs text-muted-foreground">Secteur</label>
-          <select className={`${fieldClass} w-full`} value={sector} onChange={(e) => setSector(e.target.value)}>
-            <option value="TOUS">Tous</option>
-            {sectors.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
+        <div className="col-span-2 md:col-span-4">
+          <label className="mb-1 block text-xs text-muted-foreground">
+            Secteur (plusieurs possibles){isManager && sectorSel.length === 0 && operatorSel.length === 0 ? ' — choisissez un secteur ou un chargé pour charger les commandes' : ''}
+          </label>
+          <div className="flex flex-wrap gap-1.5">
+            {sectors.map((s) => <Chip key={s} active={sectorSel.includes(s)} onClick={() => toggleSector(s)}>{s}</Chip>)}
+          </div>
         </div>
         {isManager && (
-          <div>
-            <label className="mb-1 block text-xs text-muted-foreground">Chargé</label>
-            <select className={`${fieldClass} w-full`} value={operator} onChange={(e) => setOperator(e.target.value)}>
-              <option value="">Tous</option>
-              {operators.map((o) => <option key={o} value={o}>{o}</option>)}
-            </select>
+          <div className="col-span-2 md:col-span-4">
+            <label className="mb-1 block text-xs text-muted-foreground">Chargé (plusieurs possibles)</label>
+            <div className="flex flex-wrap gap-1.5">
+              {operators.map((o) => <Chip key={o} active={operatorSel.includes(o)} onClick={() => toggleOperator(o)}>{o}</Chip>)}
+            </div>
           </div>
         )}
         <div>
@@ -697,7 +718,9 @@ export default function Dashboard({ onOpen, view, setView }: {
       {err && <Notice tone="error">{err}</Notice>}
       {notice && <Notice tone="ok">{notice}</Notice>}
 
-      {loading ? <p className="text-sm text-muted-foreground">Chargement des commandes…</p> : list.length === 0 ? (
+      {loading || ordersLoading ? <p className="text-sm text-muted-foreground">Chargement des commandes…</p> : isManager && sectorSel.length === 0 && operatorSel.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Choisissez un ou plusieurs secteurs (ou un chargé) pour afficher les commandes.</p>
+      ) : list.length === 0 ? (
         <Card className="p-0">
           <EmptyState
             icon={isTrashView ? Trash2 : Inbox}

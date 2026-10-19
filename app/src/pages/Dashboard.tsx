@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { fold, tokens } from '../lib/rules'
 import { getReferentiel, type Referentiel } from '../lib/refdata'
+import { readCache, writeCache } from '../lib/cache'
+import { MultiSelect } from '../components/MultiSelect'
 import { buildSuggestion, type OrderSuggestion } from '../lib/natureSuggest'
 import type { OrderRow } from '../lib/types'
 import { Badge, Button, Card, EmptyState, IconButton, Notice, PageHeader, fieldClass, errMsg } from '../components/ui'
@@ -91,24 +93,58 @@ const todayDay = () => Math.floor(Date.now() / 86400000)
 const fmtDay = (n: number) => new Date(n * 86400000).toLocaleDateString('fr-FR')
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('fr-FR')
 
-/** Taille d'une tranche de commandes, chargées en parallèle. */
-const ORDER_CHUNK = 1000
+/** Taille d'une page de commandes et nombre de pages chargées en parallèle. */
+const PAGE_ROWS = 500
+const CONCURRENCY = 3
 
-/** Commandes correspondant aux secteurs et chargés choisis (liste vide = pas de filtre sur cette dimension). */
-async function fetchOrdersWhere(sectors: string[], operators: string[]): Promise<OrderRow[]> {
+function ordersQuery(sectors: string[], operators: string[]) {
+  let qb = supabase.from('orders').select('*').is('trashed_at', null)
+  if (sectors.length) qb = qb.in('sector_code', sectors)
+  if (operators.length) qb = qb.in('operator_code', operators)
+  return qb
+}
+
+async function countOrdersWhere(sectors: string[], operators: string[]): Promise<number> {
+  let qb = supabase.from('orders').select('order_number', { count: 'exact', head: true }).is('trashed_at', null)
+  if (sectors.length) qb = qb.in('sector_code', sectors)
+  if (operators.length) qb = qb.in('operator_code', operators)
+  const { count, error } = await qb
+  if (error) throw new Error(error.message)
+  return count ?? 0
+}
+
+async function fetchOrderPage(sectors: string[], operators: string[], from: number): Promise<OrderRow[]> {
+  const { data, error } = await ordersQuery(sectors, operators)
+    .order('order_date', { ascending: false, nullsFirst: false }).order('order_number')
+    .range(from, from + PAGE_ROWS - 1)
+  if (error) throw new Error(error.message)
+  return (data ?? []) as OrderRow[]
+}
+
+/** Charge les pages en parallèle et signale chaque avancée : la liste se remplit au fur et à mesure. */
+async function loadOrdersProgressively(
+  sectors: string[], operators: string[], total: number,
+  onProgress: (rows: OrderRow[]) => void, isCurrent: () => boolean,
+): Promise<OrderRow[]> {
+  const starts: number[] = []
+  for (let from = 0; from < total; from += PAGE_ROWS) starts.push(from)
   const out: OrderRow[] = []
-  for (let from = 0; ; from += ORDER_CHUNK) {
-    let qb = supabase.from('orders').select('*').is('trashed_at', null)
-    if (sectors.length) qb = qb.in('sector_code', sectors)
-    if (operators.length) qb = qb.in('operator_code', operators)
-    const { data, error } = await qb.order('order_date', { ascending: false, nullsFirst: false }).order('order_number')
-      .range(from, from + ORDER_CHUNK - 1)
-    if (error) throw new Error(error.message)
-    out.push(...((data ?? []) as OrderRow[]))
-    if (!data || data.length < ORDER_CHUNK) break
+  let next = 0
+  const worker = async () => {
+    while (next < starts.length) {
+      const from = starts[next++]
+      const page = await fetchOrderPage(sectors, operators, from)
+      if (!isCurrent()) return
+      out.push(...page)
+      onProgress([...out])
+    }
   }
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, starts.length) }, () => worker()))
   return out
 }
+
+const ordersCacheKey = (sectors: string[], operators: string[]) =>
+  `orders:${[...sectors].sort().join(',')}|${[...operators].sort().join(',')}`
 
 /** Secteurs et chargés proposés dans les filtres, selon ce que l'utilisateur peut voir (sans charger les commandes). */
 async function fetchFilterOptions(): Promise<{ sectors: string[]; operators: string[] }> {
@@ -123,16 +159,6 @@ async function fetchTrashedOrders(): Promise<OrderRow[]> {
     .order('order_date', { ascending: false, nullsFirst: false }).order('order_number')
   if (error) throw new Error(error.message)
   return (data ?? []) as OrderRow[]
-}
-
-/** Bouton de filtre multisélection (activé / désactivé). */
-function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
-  return (
-    <button type="button" onClick={onClick} aria-pressed={active}
-      className={`rounded-full border px-2.5 py-1 text-xs ${active ? 'border-primary bg-primary text-primary-foreground' : 'border-input bg-background hover:bg-muted'}`}>
-      {children}
-    </button>
-  )
 }
 
 export default function Dashboard({ onOpen, view, setView }: {
@@ -150,6 +176,7 @@ export default function Dashboard({ onOpen, view, setView }: {
   const [companies, setCompanies] = useState<Map<string, CompanyRow>>(new Map())
   const [loading, setLoading] = useState(true)
   const [ordersLoading, setOrdersLoading] = useState(false)
+  const [ordersProgress, setOrdersProgress] = useState<{ done: number; total: number } | null>(null)
   const [filterOptions, setFilterOptions] = useState<{ sectors: string[]; operators: string[] }>({ sectors: [], operators: [] })
   const ordersReq = useRef(0)
   const [err, setErr] = useState<string | null>(null)
@@ -194,15 +221,28 @@ export default function Dashboard({ onOpen, view, setView }: {
   /** Recharge les commandes des secteurs et chargés choisis. Responsable sans filtre : rien n'est chargé. */
   const refreshOrders = async (sectors: string[], operators: string[]) => {
     const req = ++ordersReq.current
+    const isCurrent = () => req === ordersReq.current
     if (isManager && sectors.length === 0 && operators.length === 0) {
-      setRows([]); setContacts(new Map()); setDates(new Map()); setOrdersLoading(false)
+      setRows([]); setContacts(new Map()); setDates(new Map()); setOrdersLoading(false); setOrdersProgress(null)
       return
     }
-    setOrdersLoading(true)
+    const key = ordersCacheKey(sectors, operators)
+    // Affichage immédiat avec la dernière version gardée dans le navigateur, puis mise à jour depuis le serveur
+    const cached = readCache<OrderRow[]>(key)
+    setRows(cached?.value ?? [])
+    setOrdersLoading(true); setOrdersProgress(null)
     try {
-      const orders = await fetchOrdersWhere(sectors, operators)
-      if (req !== ordersReq.current) return
+      const total = await countOrdersWhere(sectors, operators)
+      if (!isCurrent()) return
+      setOrdersProgress({ done: 0, total })
+      const orders = await loadOrdersProgressively(sectors, operators, total, (partial) => {
+        if (!isCurrent()) return
+        setRows(partial)
+        setOrdersProgress({ done: partial.length, total })
+      }, isCurrent)
+      if (!isCurrent()) return
       setRows(orders)
+      writeCache(key, orders)
       setVersion((v) => v + 1)
       // Personne à alerter et dates de fiche : complètent la liste sans la retarder
       const planned = orders.filter((o) => o.plan_status !== 'NON_QUALIFIEE').map((o) => o.order_number)
@@ -210,7 +250,7 @@ export default function Dashboard({ onOpen, view, setView }: {
         fetchContacts(orders.map((o) => o.operator_code ?? '')).catch(() => new Map<string, Contact>()),
         planned.length ? supabase.rpc('plan_dates', { p_orders: planned }) : Promise.resolve({ data: [] as unknown[], error: null }),
       ])
-      if (req !== ordersReq.current) return
+      if (!isCurrent()) return
       setContacts(contactsMap)
       const dts = new Map<string, { drafted: string | null; sent: string | null }>()
       for (const r of (datesRes.data ?? []) as { order_number: string; drafted_at: string | null; sent_at: string | null }[]) {
@@ -218,17 +258,31 @@ export default function Dashboard({ onOpen, view, setView }: {
       }
       setDates(dts)
     } catch (e) {
-      if (req === ordersReq.current) setErr(errMsg(e))
+      if (isCurrent()) setErr(errMsg(e))
     } finally {
-      if (req === ordersReq.current) setOrdersLoading(false)
+      if (isCurrent()) { setOrdersLoading(false); setOrdersProgress(null) }
+    }
+  }
+
+  // Archivage automatique : au plus une fois toutes les 10 minutes et par session (il ne fait rien de nouveau entre-temps).
+  const ARCHIVE_EVERY_MS = 10 * 60 * 1000
+  const archiveDue = () => {
+    try {
+      const last = Number(sessionStorage.getItem('pp-archive-at') ?? 0)
+      if (Date.now() - last < ARCHIVE_EVERY_MS) return false
+      sessionStorage.setItem('pp-archive-at', String(Date.now()))
+      return true
+    } catch {
+      return true
     }
   }
 
   const load = async (sectors = sectorSel, operators = operatorSel) => {
     setLoading(true); setErr(null)
     try {
-      // Archivage automatique (idempotent), terminé avant la lecture des commandes pour qu'elles soient à jour
-      const archiving = supabase.rpc('auto_archive_plans').then(({ data }) => (typeof data === 'number' ? data : 0), () => 0)
+      const archiving = archiveDue()
+        ? supabase.rpc('auto_archive_plans').then(({ data }) => (typeof data === 'number' ? data : 0), () => 0)
+        : Promise.resolve(0)
       const [, referentiel, comps, trashedRes, settingsRes, options] = await Promise.all([
         archiving, getReferentiel(), fetchCompanies().catch(() => []),
         supabase.from('orders').select('order_number', { count: 'exact', head: true }).not('trashed_at', 'is', null),
@@ -263,14 +317,6 @@ export default function Dashboard({ onOpen, view, setView }: {
 
   const sectors = filterOptions.sectors
   const operators = filterOptions.operators
-  const toggleSector = (x: string) => {
-    const next = sectorSel.includes(x) ? sectorSel.filter((v) => v !== x) : [...sectorSel, x]
-    setSectorSel(next); void refreshOrders(next, operatorSel)
-  }
-  const toggleOperator = (x: string) => {
-    const next = operatorSel.includes(x) ? operatorSel.filter((v) => v !== x) : [...operatorSel, x]
-    setOperatorSel(next); void refreshOrders(sectorSel, next)
-  }
   const lotOptions = useMemo(() => ref?.lots ?? [], [ref])
   const groupOptions = useMemo(
     () => [...new Set([...suggestions.values()].filter((s) => s.confident).map((s) => s.group).filter(Boolean))] as string[],
@@ -602,6 +648,22 @@ export default function Dashboard({ onOpen, view, setView }: {
         actions={<Button variant="ghost" onClick={() => void load()} disabled={loading}>Actualiser</Button>}
       />
 
+      {ordersLoading && ordersProgress && (() => {
+        const pct = ordersProgress.total ? Math.min(100, Math.round((ordersProgress.done / ordersProgress.total) * 100)) : 100
+        return (
+          <div role="status" aria-live="polite" className="fixed bottom-4 left-1/2 z-50 w-[min(92vw,22rem)] -translate-x-1/2 rounded-lg border border-border bg-card p-3 shadow-lg">
+            <div className="flex items-center justify-between text-xs">
+              <span>Chargement des commandes</span>
+              <span className="font-semibold">{pct} %</span>
+            </div>
+            <div className="mt-2 h-2 overflow-hidden rounded bg-muted">
+              <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">{ordersProgress.done} sur {ordersProgress.total} commandes</p>
+          </div>
+        )
+      })()}
+
       <Card className="space-y-4">
         <div>
           <h2 className="text-base font-semibold">{profile?.role === 'CHARGE_OPERATIONS' ? 'Mes plans' : 'Avancement des plans'}</h2>
@@ -640,21 +702,11 @@ export default function Dashboard({ onOpen, view, setView }: {
           </div>
         </div>
         <div className="grid grid-cols-2 items-end gap-3 md:grid-cols-4">
-        <div className="col-span-2 md:col-span-4">
-          <label className="mb-1 block text-xs text-muted-foreground">
-            Secteur (plusieurs possibles){isManager && sectorSel.length === 0 && operatorSel.length === 0 ? ' — choisissez un secteur ou un chargé pour charger les commandes' : ''}
-          </label>
-          <div className="flex flex-wrap gap-1.5">
-            {sectors.map((s) => <Chip key={s} active={sectorSel.includes(s)} onClick={() => toggleSector(s)}>{s}</Chip>)}
-          </div>
-        </div>
+        <MultiSelect label="Secteur" options={sectors} value={sectorSel} placeholder={isManager ? 'Choisir…' : 'Tous mes secteurs'}
+          onChange={(v) => { setSectorSel(v); void refreshOrders(v, operatorSel) }} />
         {isManager && (
-          <div className="col-span-2 md:col-span-4">
-            <label className="mb-1 block text-xs text-muted-foreground">Chargé (plusieurs possibles)</label>
-            <div className="flex flex-wrap gap-1.5">
-              {operators.map((o) => <Chip key={o} active={operatorSel.includes(o)} onClick={() => toggleOperator(o)}>{o}</Chip>)}
-            </div>
-          </div>
+          <MultiSelect label="Chargé" options={operators} value={operatorSel} placeholder="Choisir…"
+            onChange={(v) => { setOperatorSel(v); void refreshOrders(sectorSel, v) }} />
         )}
         <div>
           <label className="mb-1 block text-xs text-muted-foreground">Lot (suggéré)</label>
@@ -718,7 +770,7 @@ export default function Dashboard({ onOpen, view, setView }: {
       {err && <Notice tone="error">{err}</Notice>}
       {notice && <Notice tone="ok">{notice}</Notice>}
 
-      {loading || ordersLoading ? <p className="text-sm text-muted-foreground">Chargement des commandes…</p> : isManager && sectorSel.length === 0 && operatorSel.length === 0 ? (
+      {loading || (ordersLoading && rows.length === 0) ? <p className="text-sm text-muted-foreground">Chargement des commandes…</p> : isManager && sectorSel.length === 0 && operatorSel.length === 0 ? (
         <p className="text-sm text-muted-foreground">Choisissez un ou plusieurs secteurs (ou un chargé) pour afficher les commandes.</p>
       ) : list.length === 0 ? (
         <Card className="p-0">

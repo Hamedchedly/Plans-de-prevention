@@ -1,3 +1,4 @@
+import { cachedFetch } from './cache'
 import { supabase } from './supabase'
 import { fold, type MeasureRule, type NatureRef, type VocabEntry } from './rules'
 
@@ -34,7 +35,8 @@ interface ProposalRow {
  * Les propositions des autres utilisateurs n'apparaissent qu'après approbation du Super Admin.
  */
 export async function loadReferentiel(): Promise<Referentiel> {
-  const [lots, risks, measures, mrr, lotRisks, natures, nl, nr, nm, vocab, naac] = await Promise.all([
+  // Référentiel : quasi immuable, gardé dans le navigateur 12 h (voir cachedFetch).
+  const [lots, risks, measures, mrr, lotRisks, natures, nl, nr, nm, vocab, naac] = await cachedFetch('referentiel-v1', 12 * 3600 * 1000, () => Promise.all([
     run<{ code: number; name: string }[]>(supabase.from('lots').select('code,name').order('code')),
     run<{ code: string; label: string; family: string }[]>(supabase.from('risks').select('code,label,family').order('code')),
     run<{ code: string; label: string; family: string; rule_type: MeasureRule['ruleType'] }[]>(
@@ -49,7 +51,7 @@ export async function loadReferentiel(): Promise<Referentiel> {
     run<{ term: string; equivalents: string[] }[]>(supabase.from('vocabulary').select('term,equivalents')),
     run<{ naac: string; corps_label: string; lot_code: number | null; validated: boolean }[]>(
       supabase.from('naac_corps_etat').select('naac,corps_label,lot_code,validated')),
-  ])
+  ]))
 
   const group = <T,>(rows: T[], key: (r: T) => number | string, val: (r: T) => string | number) => {
     const m = new Map<number | string, (string | number)[]>()

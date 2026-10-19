@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { Badge, Button, Card, EmptyState, Notice, fieldClass } from '../components/ui'
+import { Button, Card, EmptyState, Notice, fieldClass } from '../components/ui'
 import { DEFAULT_ALERT, DEFAULT_FOOTER } from '../lib/planPdf'
 import { DEFAULT_MAIL_CORPS, DEFAULT_MAIL_OBJET } from '../lib/sheet'
 import { Download, UserCheck } from 'lucide-react'
@@ -44,6 +44,8 @@ export function CreatorsSection() {
   useEffect(() => { void load() }, [])
 
   const total = useMemo(() => (data ? GROUPS.reduce((a, g) => a + data[g.key].length, 0) : 0), [data])
+  // Groupes vides masqués : une seule ligne de rappel au lieu de plusieurs « Aucun chargé »
+  const visible = data ? GROUPS.filter((g) => data[g.key].length > 0) : []
 
   return (
     <div className="space-y-4">
@@ -64,43 +66,37 @@ export function CreatorsSection() {
       </Card>
       {err && <Notice tone="error">{err}</Notice>}
       {loading && !data && <p className="text-sm text-muted-foreground">Chargement…</p>}
-      {data && GROUPS.map((g) => (
+      {data && visible.length === 0 && <EmptyState icon={UserCheck} title="Aucun chargé créateur de commandes." />}
+      {data && visible.map((g) => (
         <Card key={g.key} className="p-0">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-            <div>
-              <h3 className="text-sm font-semibold">{g.title} <span className="font-normal text-muted-foreground">({data[g.key].length})</span></h3>
-              <p className="text-xs text-muted-foreground">{g.hint}</p>
-            </div>
-            <Badge tone={g.tone}>{g.title.split(',')[0]}</Badge>
+          <div className="border-b border-border px-4 py-3">
+            <h3 className="text-sm font-semibold">{g.title} <span className="font-normal text-muted-foreground">({data[g.key].length})</span></h3>
+            <p className="text-xs text-muted-foreground">{g.hint}</p>
           </div>
-          {data[g.key].length === 0 ? (
-            <EmptyState icon={UserCheck} title="Aucun chargé dans ce groupe." />
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-2 font-medium">Code</th>
-                    <th className="px-3 py-2 font-medium">Commandes</th>
-                    <th className="px-3 py-2 font-medium">Nom</th>
-                    <th className="px-3 py-2 font-medium">Téléphone</th>
-                    <th className="px-3 py-2 font-medium">Mail</th>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Code</th>
+                  <th className="px-3 py-2 font-medium">Commandes</th>
+                  <th className="px-3 py-2 font-medium">Nom</th>
+                  <th className="px-3 py-2 font-medium">Téléphone</th>
+                  <th className="px-3 py-2 font-medium">Mail</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {[...data[g.key]].sort((x, y) => y.orders - x.orders).map((c) => (
+                  <tr key={c.code}>
+                    <td className="px-3 py-2 font-mono text-xs">{c.code}</td>
+                    <td className="px-3 py-2">{c.orders}</td>
+                    <td className="px-3 py-2">{c.full_name ?? <span className="text-amber-700">à renseigner</span>}</td>
+                    <td className="px-3 py-2">{c.phone ?? <span className="text-amber-700">—</span>}</td>
+                    <td className="px-3 py-2">{c.email ?? <span className="text-amber-700">—</span>}</td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {data[g.key].map((c) => (
-                    <tr key={c.code}>
-                      <td className="px-3 py-2 font-mono text-xs">{c.code}</td>
-                      <td className="px-3 py-2">{c.orders}</td>
-                      <td className="px-3 py-2">{c.full_name ?? <span className="text-amber-700">à renseigner</span>}</td>
-                      <td className="px-3 py-2">{c.phone ?? <span className="text-amber-700">—</span>}</td>
-                      <td className="px-3 py-2">{c.email ?? <span className="text-amber-700">—</span>}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                ))}
+              </tbody>
+            </table>
+          </div>
         </Card>
       ))}
     </div>

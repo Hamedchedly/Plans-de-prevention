@@ -554,6 +554,9 @@ function FileNameSection() {
   )
 }
 
+/** Adresse de production : le lien d'invitation y renvoie, même si l'invitation est créée depuis une prévisualisation Vercel (protégée par connexion Vercel). */
+const PROD_APP_URL = 'https://pnma-planprevention.vercel.app'
+
 function UsersSection() {
   const [users, setUsers] = useState<Profile[]>([])
   const [err, setErr] = useState<string | null>(null)
@@ -602,7 +605,7 @@ function UsersSection() {
         body: {
           email: draft.email, role: draft.role, operator_code: draft.operator || null,
           sector_codes: draft.sectors.split(',').map((s) => s.trim()).filter(Boolean),
-          redirect_to: window.location.origin,
+          redirect_to: PROD_APP_URL,
         },
       })
       if (error) {

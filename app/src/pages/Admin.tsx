@@ -13,6 +13,7 @@ import ProfileDialog from '../components/ProfileDialog'
 import { CreatorsSection, TemplatesSection } from './AdminOps'
 import ImportPage from './Import'
 import { adminPageLabel, visibleAdminGroups } from '../lib/adminNav'
+import { ControlsSection } from './AdminControls'
 
 /** Une page d'administration, choisie par l'adresse (/administration/:section). */
 export default function Admin({ section }: { section: string }) {
@@ -24,6 +25,7 @@ export default function Admin({ section }: { section: string }) {
       <PageHeader title={adminPageLabel(section)} subtitle="Administration" />
       {!allowed && <Notice tone="error">Cette page n’est pas accessible avec votre rôle.</Notice>}
       {allowed && section === 'alertes' && <AlertsSection />}
+      {allowed && section === 'controles' && <ControlsSection />}
       {allowed && section === 'validations' && <><ValidationsSection /><CompanyProposalsSection /></>}
       {allowed && section === 'tracabilite' && <TraceSection />}
       {allowed && section === 'perimetre' && <ScopeSection />}
@@ -42,8 +44,10 @@ function AlertsSection() {
   const { can } = useAuth()
   const [rows, setRows] = useState<AlertRow[]>([])
   const [drafts, setDrafts] = useState<Record<string, string>>({})
+  const [proposals, setProposals] = useState<Record<string, string>>({})
+  const [editing, setEditing] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
-  const [filter, setFilter] = useState<'OUVERTES' | 'TOUTES'>('OUVERTES')
+  const [filter, setFilter] = useState<'OUVERTES' | 'VALIDEES' | 'TOUTES'>('OUVERTES')
 
   const load = async () => {
     const { data, error } = await supabase.from('alerts').select('*').order('code')
@@ -51,26 +55,36 @@ function AlertsSection() {
   }
   useEffect(() => { void load() }, [])
 
-  const decide = async (code: string, status: 'VALIDE' | 'MODIFIE' | 'IGNORE') => {
+  const decide = async (code: string, status: 'VALIDE' | 'IGNORE') => {
     const { error } = await supabase.rpc('decide_alert', { p_code: code, p_status: status, p_comment: drafts[code] ?? null })
     if (error) setErr(error.message); else { setErr(null); void load() }
   }
+  /** « Modifier » : enregistre la proposition corrigée et le commentaire. */
+  const saveEdit = async (a: AlertRow) => {
+    const { error } = await supabase.rpc('decide_alert_edit', {
+      p_code: a.code, p_status: 'MODIFIE', p_comment: drafts[a.code] ?? null, p_proposal: proposals[a.code] ?? a.proposal,
+    })
+    if (error) { setErr(error.message); return }
+    setErr(null); setEditing(null); void load()
+  }
 
   const open = (a: AlertRow) => a.status === 'A_VALIDER' || a.status === 'APPLIQUE_A_VALIDER'
-  const shown = filter === 'OUVERTES' ? rows.filter(open) : rows
+  const shown = filter === 'OUVERTES' ? rows.filter(open) : filter === 'VALIDEES' ? rows.filter((a) => a.status === 'VALIDE') : rows
   const tone = (s: AlertRow['status']) => (s === 'VALIDE' ? 'ok' : s === 'IGNORE' ? 'off' : s === 'MODIFIE' ? 'warn' : 'default') as 'ok' | 'off' | 'warn' | 'default'
+  const canDecide = can('RESPONSABLE', 'SUPER_ADMIN')
 
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3">
         <h2 className="mr-auto font-semibold">Alertes d’incohérence ({shown.length})</h2>
-        <select className={fieldClass + ' w-auto'} value={filter} onChange={(e) => setFilter(e.target.value as 'OUVERTES' | 'TOUTES')}>
+        <select className={fieldClass + ' w-auto'} value={filter} onChange={(e) => setFilter(e.target.value as 'OUVERTES' | 'VALIDEES' | 'TOUTES')}>
           <option value="OUVERTES">À traiter</option>
+          <option value="VALIDEES">Validées</option>
           <option value="TOUTES">Toutes</option>
         </select>
       </div>
       {err && <Notice tone="error">{err}</Notice>}
-      {!can('RESPONSABLE', 'SUPER_ADMIN') && <Notice>Réservé aux responsables.</Notice>}
+      {!canDecide && <Notice>Réservé aux responsables.</Notice>}
       {shown.map((a) => (
         <Card key={a.code}>
           <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -78,18 +92,34 @@ function AlertsSection() {
           </div>
           <div className="text-sm font-medium">{a.object}</div>
           <p className="mt-1 text-sm">{a.finding}</p>
-          <p className="mt-1 text-sm text-muted-foreground">Proposition : {a.proposal}</p>
-          {a.decision_comment && <p className="mt-1 text-xs text-muted-foreground">Commentaire : {a.decision_comment}</p>}
-          <div className="mt-3 flex flex-wrap gap-2">
-            <input className={fieldClass + ' flex-1 min-w-[200px]'} placeholder="Commentaire (optionnel)" value={drafts[a.code] ?? ''}
-              onChange={(e) => setDrafts({ ...drafts, [a.code]: e.target.value })} />
-            <Button onClick={() => void decide(a.code, 'VALIDE')} disabled={!can('RESPONSABLE', 'SUPER_ADMIN')}>Valider</Button>
-            <Button variant="ghost" onClick={() => void decide(a.code, 'MODIFIE')} disabled={!can('RESPONSABLE', 'SUPER_ADMIN')}>Modifier</Button>
-            <Button variant="ghost" onClick={() => void decide(a.code, 'IGNORE')} disabled={!can('RESPONSABLE', 'SUPER_ADMIN')}>Ignorer</Button>
-          </div>
+          {editing === a.code ? (
+            <div className="mt-2 space-y-2">
+              <label className="block text-xs text-muted-foreground">Proposition</label>
+              <textarea className={fieldClass + ' min-h-[80px] w-full'} value={proposals[a.code] ?? a.proposal}
+                onChange={(e) => setProposals({ ...proposals, [a.code]: e.target.value })} />
+              <input className={fieldClass + ' w-full'} placeholder="Commentaire (optionnel)" value={drafts[a.code] ?? ''}
+                onChange={(e) => setDrafts({ ...drafts, [a.code]: e.target.value })} />
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={() => void saveEdit(a)} disabled={!canDecide}>Enregistrer la modification</Button>
+                <Button variant="ghost" onClick={() => setEditing(null)}>Annuler</Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <p className="mt-1 text-sm text-muted-foreground">Proposition : {a.proposal}</p>
+              {a.decision_comment && <p className="mt-1 text-xs text-muted-foreground">Commentaire : {a.decision_comment}</p>}
+              <div className="mt-3 flex flex-wrap gap-2">
+                <input className={fieldClass + ' flex-1 min-w-[200px]'} placeholder="Commentaire (optionnel)" value={drafts[a.code] ?? ''}
+                  onChange={(e) => setDrafts({ ...drafts, [a.code]: e.target.value })} />
+                <Button onClick={() => void decide(a.code, 'VALIDE')} disabled={!canDecide}>Valider</Button>
+                <Button variant="ghost" onClick={() => { setProposals({ ...proposals, [a.code]: proposals[a.code] ?? a.proposal }); setEditing(a.code) }} disabled={!canDecide}>Modifier</Button>
+                <Button variant="ghost" onClick={() => void decide(a.code, 'IGNORE')} disabled={!canDecide}>Ignorer</Button>
+              </div>
+            </>
+          )}
         </Card>
       ))}
-      {shown.length === 0 && <Notice>Aucune alerte à traiter.</Notice>}
+      {shown.length === 0 && <Notice>Aucune alerte dans cette vue.</Notice>}
     </div>
   )
 }

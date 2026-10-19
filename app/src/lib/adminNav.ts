@@ -1,7 +1,7 @@
 /** Pages de l'administration, regroupées sur deux niveaux (groupe > page). Source unique pour la barre latérale et la page. */
 export type AdminPageKey =
   | 'import' | 'donnees' | 'perimetre' | 'referentiels' | 'entreprises'
-  | 'alertes' | 'validations' | 'tracabilite'
+  | 'alertes' | 'controles' | 'validations' | 'tracabilite'
   | 'modeles' | 'fichiers' | 'utilisateurs'
 
 export type AdminPage = { key: AdminPageKey; label: string; superOnly: boolean }
@@ -21,6 +21,7 @@ export const ADMIN_GROUPS: AdminGroup[] = [
     label: 'Contrôle',
     pages: [
       { key: 'alertes', label: 'Alertes', superOnly: false },
+      { key: 'controles', label: 'Commandes à contrôler', superOnly: false },
       { key: 'validations', label: 'Validations', superOnly: true },
       { key: 'entreprises', label: 'Entreprises', superOnly: true },
       { key: 'tracabilite', label: 'Traçabilité', superOnly: true },

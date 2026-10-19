@@ -56,4 +56,5 @@ export interface AlertRow {
   proposal: string
   status: AlertStatus
   decision_comment: string | null
+  options: string[] | null
 }

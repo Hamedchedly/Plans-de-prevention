@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { Button, Card, Notice, errMsg, fieldClass } from '../components/ui'
 
+interface PurgeCounts { orders: number; companies: number; companies_kept: number }
+
 /** Tables consultables depuis l'admin (lecture seule). */
 const TABLES = [
   'natures', 'nature_lots', 'nature_risks', 'nature_measures', 'lots', 'risks', 'measures', 'lot_risks', 'measure_risk_rules',
@@ -10,6 +12,68 @@ const TABLES = [
   'companies', 'company_proposals', 'scope_rules', 'profiles', 'audit_logs', 'trace_highlights',
 ]
 const PAGE = 50
+
+/** Purge des commandes hors périmètre (HO) et des entreprises qui ne leur sont rattachées que. Super Admin, avec confirmation. */
+function PurgeCard() {
+  const [counts, setCounts] = useState<PurgeCounts | null>(null)
+  const [confirming, setConfirming] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+
+  const refresh = async () => {
+    const { data, error } = await supabase.rpc('purge_preview')
+    if (error) { setErr(error.message); return }
+    setCounts(data as PurgeCounts)
+  }
+  useEffect(() => { void refresh() }, [])
+
+  const purge = async () => {
+    setBusy(true); setErr(null); setMsg(null)
+    const { data, error } = await supabase.rpc('purge_out_of_scope')
+    setBusy(false)
+    if (error) { setErr(error.message); return }
+    const r = data as { orders: number; companies: number }
+    setMsg(`Purge effectuée : ${r.orders} commande(s) et ${r.companies} entreprise(s) supprimées. Sauvegarde conservée dans purge_log.`)
+    setConfirming(false)
+    void refresh()
+  }
+
+  return (
+    <Card className="space-y-3">
+      <div>
+        <h2 className="font-semibold">Purge des commandes hors périmètre</h2>
+        <p className="text-sm text-muted-foreground">
+          Supprime les commandes hors périmètre (HO) et les entreprises qui ne sont rattachées qu’à elles. Les entreprises encore utilisées par une commande dans le périmètre sont conservées.
+          Les données supprimées sont sauvegardées dans <span className="font-mono">purge_log</span>.
+        </p>
+      </div>
+      {err && <Notice tone="error">{err}</Notice>}
+      {msg && <Notice tone="ok">{msg}</Notice>}
+      {counts && (
+        <p className="text-sm">
+          À supprimer : <strong>{counts.orders}</strong> commande(s) et <strong>{counts.companies}</strong> entreprise(s).
+          {counts.companies_kept > 0 && <> Conservées (encore utilisées) : {counts.companies_kept} entreprise(s).</>}
+        </p>
+      )}
+      {!confirming ? (
+        <Button variant="ghost" onClick={() => setConfirming(true)} disabled={!counts || (counts.orders === 0 && counts.companies === 0)}>
+          Purger…
+        </Button>
+      ) : (
+        <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 space-y-2">
+          <p className="text-sm">
+            Confirmer la suppression définitive de <strong>{counts?.orders ?? 0}</strong> commande(s) et <strong>{counts?.companies ?? 0}</strong> entreprise(s) ?
+          </p>
+          <div className="flex gap-2">
+            <Button variant="danger" onClick={() => void purge()} disabled={busy}>Confirmer la purge</Button>
+            <Button variant="ghost" onClick={() => setConfirming(false)} disabled={busy}>Annuler</Button>
+          </div>
+        </div>
+      )}
+    </Card>
+  )
+}
 
 /** Visionneuse de la base : permet de vérifier et d'améliorer les données directement depuis l'admin. */
 export function DataSection() {
@@ -50,6 +114,8 @@ export function DataSection() {
   }
 
   return (
+    <div className="space-y-4">
+    <PurgeCard />
     <Card className="space-y-3">
       <div className="flex flex-wrap items-end gap-3">
         <div>
@@ -89,5 +155,6 @@ export function DataSection() {
         </div>
       )}
     </Card>
+    </div>
   )
 }

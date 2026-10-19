@@ -68,6 +68,15 @@ function AlertsSection() {
     setErr(null); setEditing(null); void load()
   }
 
+  /** Choix proposés : le premier est la proposition (statut VALIDE), les autres sont des modifications (MODIFIE). */
+  const choose = async (a: AlertRow, option: string, index: number) => {
+    const { error } = await supabase.rpc('decide_alert_edit', {
+      p_code: a.code, p_status: index === 0 ? 'VALIDE' : 'MODIFIE', p_comment: drafts[a.code] ?? null, p_proposal: option,
+    })
+    if (error) { setErr(error.message); return }
+    setErr(null); void load()
+  }
+
   const open = (a: AlertRow) => a.status === 'A_VALIDER' || a.status === 'APPLIQUE_A_VALIDER'
   const shown = filter === 'OUVERTES' ? rows.filter(open) : filter === 'VALIDEES' ? rows.filter((a) => a.status === 'VALIDE') : rows
   const tone = (s: AlertRow['status']) => (s === 'VALIDE' ? 'ok' : s === 'IGNORE' ? 'off' : s === 'MODIFIE' ? 'warn' : 'default') as 'ok' | 'off' | 'warn' | 'default'
@@ -108,6 +117,14 @@ function AlertsSection() {
             <>
               <p className="mt-1 text-sm text-muted-foreground">Proposition : {a.proposal}</p>
               {a.decision_comment && <p className="mt-1 text-xs text-muted-foreground">Commentaire : {a.decision_comment}</p>}
+              {a.options && a.options.length > 0 && (
+                <div className="mt-3 space-y-1.5">
+                  <p className="text-xs font-medium text-muted-foreground">Choisir :</p>
+                  {a.options.map((o, i) => (
+                    <Button key={o} variant="ghost" className="h-auto w-full justify-start whitespace-normal py-2 text-left" onClick={() => void choose(a, o, i)} disabled={!canDecide}>{o}</Button>
+                  ))}
+                </div>
+              )}
               <div className="mt-3 flex flex-wrap gap-2">
                 <input className={fieldClass + ' flex-1 min-w-[200px]'} placeholder="Commentaire (optionnel)" value={drafts[a.code] ?? ''}
                   onChange={(e) => setDrafts({ ...drafts, [a.code]: e.target.value })} />

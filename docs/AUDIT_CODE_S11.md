@@ -41,13 +41,14 @@ Vérification après application : aucune fonction du schéma n'est exécutable 
 | Fonctions `public.*` sans `search_path` figé | Faible | Hors périmètre S11 |
 | Fonctions `plans_prevention.company_fields` sans `search_path` figé | Faible | Figer `search_path` à la prochaine migration |
 
-## 4. Avertissements de lint restants (sans impact fonctionnel constaté)
+## 4. Avertissements de lint restants (mise à jour 2026-10-19 : 11 avertissements, tous de rafraîchissement à chaud)
 
 - `react-refresh/only-export-components` (fichiers qui exportent aussi des fonctions ou constantes : `ui.tsx`, `auth.tsx`, `router.tsx`, `AdminCompanies.tsx`, `AdminOps.tsx`) : impact uniquement sur le rafraîchissement à chaud en développement.
-- `react-hooks/exhaustive-deps` : `Admin.tsx` (2 effets qui chargent avec `load` absent des dépendances), `AdminOps.tsx` (1), `PlanEditor.tsx` (1, dépendance `order`). Risque : données périmées après changement de paramètre. À corriger en stabilisant `load` (useCallback) lors de la prochaine passe.
+- `react-hooks/exhaustive-deps` : traité. Les effets concernés chargent une seule fois au montage (sections d'administration) ou quand le numéro de commande change (fiche) ; la dérogation est signalée dans le code.
 
 ## 5. Points non couverts par cet audit
 
 - Parcours connectés dans un navigateur (création de fiche, export PDF, envoi, administration) : non testés automatiquement, faute de session de test dans l'environnement d'audit.
 - Tests automatisés : seules les règles de mesures sont testées.
+- Fonctions `apply_scope_rules` et `apply_order_audit` : contrôle de rôle ajouté le 2026-10-19 (migration `20261019110000`), appliquée.
 - Performance : pas d'analyse des requêtes lentes (aucun avertissement de performance remonté par Supabase au moment de l'audit).

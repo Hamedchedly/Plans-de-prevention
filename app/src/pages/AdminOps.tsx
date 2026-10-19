@@ -134,6 +134,8 @@ export function KpiSection() {
     if (error) { setErr(error.message); return }
     setKpi(data as Kpi)
   }
+  // Chargement unique au montage : `load` ne lit que des états de cette section.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void load() }, [])
 
   const cards: { label: string; value: string | number; hint?: string }[] = kpi ? [

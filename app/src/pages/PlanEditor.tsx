@@ -146,6 +146,8 @@ export default function PlanEditor({ order, onBack }: { order: OrderRow; onBack:
       }
     })()
     return () => { alive = false }
+    // Rechargé seulement quand la commande change ; `order` n'est lu qu'à l'ouverture.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order.order_number])
 
   // ---- mise à jour du brouillon

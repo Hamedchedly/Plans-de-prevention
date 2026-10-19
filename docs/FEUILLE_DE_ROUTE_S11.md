@@ -52,6 +52,7 @@ Les mentions « non testé en navigateur » signifient que le code a été véri
 | Administration en trois groupes (Données, Contrôle, Paramétrage) ; pages du groupe en seconde ligne | Fait, non testé en navigateur |
 | Pastilles des pages et groupes ayant des actions à traiter (alertes, validations) | Fait, non testé en navigateur |
 | Titre de l'onglet « PN - Plans de prévention » | Fait |
+| Date de la dernière mise à jour du fichier commandes, en haut de la liste | Fait, non testé en navigateur |
 | Filtres de la liste (secteur, recherche, période, chargé) dans l'adresse | À faire |
 
 ## Données et référentiels
@@ -84,11 +85,11 @@ Les mentions « non testé en navigateur » signifient que le code a été véri
 | Sujet | Statut |
 |---|---|
 | Vérification de type, build, tests unitaires (6) | Fait |
-| Lint : 0 erreur, 15 avertissements à traiter | Partiel (voir audit) |
+| Lint : 0 erreur, 11 avertissements (rafraîchissement à chaud) | Fait, à finir |
 | Audit de code et de sécurité de la base | Fait le 2026-10-19 (`docs/AUDIT_CODE_S11.md`) |
 | Fonctions sensibles non appelables anonymement ; `promote_super_admin` retirée des droits client | Fait le 2026-10-19 |
 | Protection des mots de passe compromis (réglage Supabase Auth) | À faire |
-| Contrôles de rôle dans `apply_order_audit`, `apply_scope_rules` | À faire |
+| Contrôles de rôle dans `apply_order_audit`, `apply_scope_rules` | Fait le 2026-10-19 |
 | Tests de parcours connectés (navigateur) | À faire |
 | Tests automatisés des parcours et des fonctions SQL | À faire |
 

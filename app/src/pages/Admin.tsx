@@ -124,6 +124,8 @@ function ValidationsSection() {
     setLots(Object.fromEntries((l.data ?? []).map((x: { code: number; name: string }) => [x.code, x.name])))
     setEmails(Object.fromEntries((pr.data ?? []).map((x: { user_id: string; email: string | null }) => [x.user_id, x.email ?? x.user_id])))
   }
+  // Chargement unique au montage : `load` ne lit que des états de cette section.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void load() }, [])
 
   const [adjust, setAdjust] = useState<Record<number, { label: string; lots: number[]; lot?: number }>>({})
@@ -271,6 +273,8 @@ function TraceSection() {
       setUsers((data ?? []) as { user_id: string; email: string | null }[])
     })()
     void load()
+  // Chargement unique au montage : `load` ne lit que des états de cette section.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const categories = [...new Set(rows.map((r) => r.category))].sort()

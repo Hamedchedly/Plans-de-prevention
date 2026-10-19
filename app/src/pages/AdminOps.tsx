@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { Badge, Button, Card, EmptyState, Notice, errMsg, fieldClass } from '../components/ui'
+import { Badge, Button, Card, EmptyState, Notice, fieldClass } from '../components/ui'
 import { DEFAULT_ALERT, DEFAULT_FOOTER } from '../lib/planPdf'
 import { DEFAULT_MAIL_CORPS, DEFAULT_MAIL_OBJET } from '../lib/sheet'
 import { Download, UserCheck } from 'lucide-react'
@@ -134,6 +134,8 @@ export function KpiSection() {
     if (error) { setErr(error.message); return }
     setKpi(data as Kpi)
   }
+  // Chargement unique au montage : `load` ne lit que des états de cette section.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void load() }, [])
 
   const cards: { label: string; value: string | number; hint?: string }[] = kpi ? [

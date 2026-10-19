@@ -5,22 +5,22 @@ type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'link'
 type Size = 'sm' | 'md' | 'icon'
 
 const BASE =
-  'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md font-medium transition-colors ' +
+  'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full font-medium transition-colors ' +
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ' +
   'disabled:pointer-events-none disabled:opacity-50'
 
 const VARIANTS: Record<Variant, string> = {
   primary: 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90',
   secondary: 'bg-muted text-foreground hover:bg-muted/70',
-  ghost: 'border border-border bg-background text-foreground hover:bg-muted',
+  ghost: 'bg-card text-foreground shadow-sm hover:bg-muted',
   danger: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
   link: 'text-primary underline-offset-4 hover:underline px-0',
 }
 
 const SIZES: Record<Size, string> = {
-  md: 'h-9 px-3.5 text-sm',
-  sm: 'h-8 px-2.5 text-xs',
-  icon: 'h-8 w-8 p-0',
+  md: 'h-10 px-5 text-sm',
+  sm: 'h-8 px-3.5 text-xs',
+  icon: 'h-9 w-9 p-0',
 }
 
 export function Button({
@@ -49,7 +49,7 @@ export function Badge({ children, tone = 'default' }: { children: ReactNode; ton
     info: 'bg-sky-50 text-sky-800 ring-sky-200',
   }[tone]
   return (
-    <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${styles}`}>{children}</span>
+    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${styles}`}>{children}</span>
   )
 }
 
@@ -60,11 +60,11 @@ export function Notice({ tone = 'info', children }: { tone?: 'info' | 'error' | 
     ok: 'border-emerald-200 bg-emerald-50 text-emerald-800',
     warn: 'border-amber-200 bg-amber-50 text-amber-900',
   }[tone]
-  return <div role={tone === 'error' ? 'alert' : undefined} className={`rounded-md border px-3.5 py-2.5 text-sm ${styles}`}>{children}</div>
+  return <div role={tone === 'error' ? 'alert' : undefined} className={`rounded-2xl border px-4 py-3 text-sm ${styles}`}>{children}</div>
 }
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <div className={`rounded-xl border border-border bg-card p-5 shadow-sm ${className}`}>{children}</div>
+  return <div className={`rounded-[1.75rem] bg-card p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04)] ${className}`}>{children}</div>
 }
 
 /** En-tête de page : titre, sous-titre et actions à droite. */
@@ -72,7 +72,7 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
   return (
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div className="min-w-0">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
+        <h1 className="text-3xl font-semibold tracking-tight text-foreground">{title}</h1>
         {subtitle && <p className="mt-0.5 text-sm text-muted-foreground">{subtitle}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
@@ -106,7 +106,7 @@ export function Field({ label, hint, children, className = '' }: { label: ReactN
 }
 
 export const fieldClass =
-  'w-full h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground/70 ' +
+  'w-full h-10 rounded-xl border border-input bg-card px-4 text-sm text-foreground shadow-sm placeholder:text-muted-foreground/70 ' +
   'outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-60'
 
 export function errMsg(e: unknown): string {

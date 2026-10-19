@@ -4,23 +4,24 @@
 
 @layer base {
   :root {
-    --background: 210 25% 98%;
-    --foreground: 222 47% 11%;
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    /* Thème « tableau de bord » : fond gris clair, cartes blanches très arrondies, boutons noirs en pastille */
+    --background: 0 0% 93%;
+    --foreground: 0 0% 8%;
+    --card: 0 0% 99%;
+    --card-foreground: 0 0% 8%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --muted: 210 25% 95.5%;
-    --muted-foreground: 215 16% 42%;
-    --accent: 221 83% 53%;
+    --popover-foreground: 0 0% 8%;
+    --muted: 0 0% 95%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 0 0% 10%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-    --border: 214 22% 88%;
-    --input: 214 22% 84%;
-    --ring: 221 83% 53%;
-    --radius: 0.5rem;
-    --primary: 221 83% 53%;
+    --border: 0 0% 90%;
+    --input: 0 0% 87%;
+    --ring: 0 0% 25%;
+    --radius: 1.25rem;
+    --primary: 0 0% 9%;
     --primary-foreground: 0 0% 100%;
     --secondary: 215 16% 47%;
     --secondary-foreground: 0 0% 100%;

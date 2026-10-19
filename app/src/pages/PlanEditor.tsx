@@ -33,7 +33,7 @@ function reportUnmatched(orderNumber: string, naac: string | null, corps: string
 }
 const EDITABLE: PlanStatus[] = ['NON_QUALIFIEE', 'A_ENVOYER']
 const STATUS_LABEL: Record<PlanStatus, string> = {
-  NON_QUALIFIEE: 'Non qualifiée', A_ENVOYER: 'À envoyer', EN_ATTENTE_RETOUR: 'En attente retour entreprise', ARCHIVEE: 'Archivée',
+  NON_QUALIFIEE: 'Non qualifiée', A_ENVOYER: 'À envoyer', EN_ATTENTE_RETOUR: 'En attente retour entreprise', SIGNEE: 'Signée', ARCHIVEE: 'Archivée',
   ENVOYE_MANUELLEMENT: 'Envoyée manuellement (hors application)',
 }
 
@@ -146,6 +146,8 @@ export default function PlanEditor({ order, onBack }: { order: OrderRow; onBack:
       }
     })()
     return () => { alive = false }
+    // Rechargé seulement quand la commande change ; `order` n'est lu qu'à l'ouverture.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order.order_number])
 
   // ---- mise à jour du brouillon
@@ -630,7 +632,8 @@ export default function PlanEditor({ order, onBack }: { order: OrderRow; onBack:
         <h2 className="mb-2 font-semibold">5. Suite du dossier</h2>
         <div className="flex flex-wrap gap-2">
           {status === 'A_ENVOYER' && <Button onClick={() => void advance('EN_ATTENTE_RETOUR')} disabled={busy}>Marquer comme envoyé</Button>}
-          {status === 'EN_ATTENTE_RETOUR' && <Button onClick={() => void advance('ARCHIVEE')} disabled={busy}>Retour reçu, archiver</Button>}
+          {status === 'EN_ATTENTE_RETOUR' && <Button onClick={() => void advance('SIGNEE')} disabled={busy}>Retour reçu (signée)</Button>}
+          {status === 'SIGNEE' && <Button onClick={() => void advance('ARCHIVEE')} disabled={busy}>Archiver</Button>}
           <Button variant="ghost" disabled>Aperçu PDF</Button>
           <Button variant="ghost" disabled>Exporter</Button>
           <Button variant="ghost" disabled>Préparer le mail</Button>

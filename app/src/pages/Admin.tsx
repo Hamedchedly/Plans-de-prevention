@@ -3,55 +3,37 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { getReferentiel } from '../lib/refdata'
 import { importReferentielV4 } from '../lib/referentiel'
+import { checkReferentielFile, downloadJson, exportReferentiel, lastReferentielLoad } from '../lib/referentielIO'
 import type { AlertRow, Profile, Role } from '../lib/types'
-import { Badge, Button, Card, Notice, errMsg, fieldClass } from '../components/ui'
+import { Badge, Button, Card, Notice, PageHeader, errMsg, fieldClass } from '../components/ui'
 import { CompaniesSection, CompanyProposalsSection } from './AdminCompanies'
 import { DataSection } from './AdminData'
 import { startImpersonation } from '../lib/impersonation'
 import ProfileDialog from '../components/ProfileDialog'
-import { CreatorsSection, KpiSection, TemplatesSection } from './AdminOps'
+import { CreatorsSection, TemplatesSection } from './AdminOps'
+import ImportPage from './Import'
+import { adminPageLabel, visibleAdminGroups } from '../lib/adminNav'
 
-type Section = 'validations' | 'tracabilite' | 'perimetre' | 'referentiels' | 'entreprises' | 'donnees' | 'alertes' | 'utilisateurs' | 'fichiers' | 'chargés' | 'indicateurs' | 'modeles'
-
-const SECTIONS: { key: Section; label: string; superOnly: boolean }[] = [
-  { key: 'alertes', label: 'Alertes', superOnly: false },
-  { key: 'indicateurs', label: 'Indicateurs', superOnly: false },
-  { key: 'chargés', label: 'Chargés d’opérations', superOnly: false },
-  { key: 'validations', label: 'Validations', superOnly: true },
-  { key: 'tracabilite', label: 'Traçabilité', superOnly: true },
-  { key: 'perimetre', label: 'Périmètre', superOnly: true },
-  { key: 'referentiels', label: 'Référentiels', superOnly: true },
-  { key: 'entreprises', label: 'Entreprises', superOnly: true },
-  { key: 'donnees', label: 'Base de données', superOnly: true },
-  { key: 'utilisateurs', label: 'Utilisateurs', superOnly: true },
-  { key: 'fichiers', label: 'Fichiers de fiches', superOnly: true },
-  { key: 'modeles', label: 'Modèles mail et PDF', superOnly: true },
-]
-
-export default function Admin() {
+/** Une page d'administration, choisie par l'adresse (/administration/:section). */
+export default function Admin({ section }: { section: string }) {
   const { can, profile } = useAuth()
   const isSuper = can('SUPER_ADMIN')
-  const visible = SECTIONS.filter((s) => !s.superOnly || isSuper)
-  const [section, setSection] = useState<Section>(visible[0].key)
+  const allowed = visibleAdminGroups(isSuper).some((g) => g.pages.some((p) => p.key === section))
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        {visible.map((s) => (
-          <Button key={s.key} variant={section === s.key ? 'primary' : 'ghost'} onClick={() => setSection(s.key)}>{s.label}</Button>
-        ))}
-      </div>
-      {section === 'alertes' && <AlertsSection />}
-      {section === 'validations' && isSuper && <><ValidationsSection /><CompanyProposalsSection /></>}
-      {section === 'tracabilite' && isSuper && <TraceSection />}
-      {section === 'perimetre' && isSuper && <ScopeSection />}
-      {section === 'referentiels' && isSuper && <ReferentielSection userId={profile?.user_id ?? ''} />}
-      {section === 'entreprises' && isSuper && <CompaniesSection />}
-      {section === 'donnees' && isSuper && <DataSection />}
-      {section === 'utilisateurs' && isSuper && <UsersSection />}
-      {section === 'fichiers' && isSuper && <FileNameSection />}
-      {section === 'modeles' && isSuper && <TemplatesSection />}
-      {section === 'indicateurs' && <KpiSection />}
-      {section === 'chargés' && <CreatorsSection />}
+    <div className="space-y-5">
+      <PageHeader title={adminPageLabel(section)} subtitle="Administration" />
+      {!allowed && <Notice tone="error">Cette page n’est pas accessible avec votre rôle.</Notice>}
+      {allowed && section === 'alertes' && <AlertsSection />}
+      {allowed && section === 'validations' && <><ValidationsSection /><CompanyProposalsSection /></>}
+      {allowed && section === 'tracabilite' && <TraceSection />}
+      {allowed && section === 'perimetre' && <ScopeSection />}
+      {allowed && section === 'referentiels' && <ReferentielSection userId={profile?.user_id ?? ''} />}
+      {allowed && section === 'entreprises' && <CompaniesSection />}
+      {allowed && section === 'donnees' && <DataSection />}
+      {allowed && section === 'fichiers' && <FileNameSection />}
+      {allowed && section === 'modeles' && <TemplatesSection />}
+      {allowed && section === 'utilisateurs' && <><CreatorsSection />{isSuper && <UsersSection />}</>}
+      {allowed && section === 'import' && <ImportPage />}
     </div>
   )
 }
@@ -142,6 +124,8 @@ function ValidationsSection() {
     setLots(Object.fromEntries((l.data ?? []).map((x: { code: number; name: string }) => [x.code, x.name])))
     setEmails(Object.fromEntries((pr.data ?? []).map((x: { user_id: string; email: string | null }) => [x.user_id, x.email ?? x.user_id])))
   }
+  // Chargement unique au montage : `load` ne lit que des états de cette section.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { void load() }, [])
 
   const [adjust, setAdjust] = useState<Record<number, { label: string; lots: number[]; lot?: number }>>({})
@@ -152,7 +136,7 @@ function ValidationsSection() {
     const a = adjustFor(p)
     let error: { message: string } | null = null
     if (p.kind === 'CORPS_NAAC') {
-      ;({ error } = await supabase.rpc('decide_corps_naac', { p_id: p.id, p_approve: approve, p_comment: c, p_lot: modified ? a.lot ?? null : null }))
+      ({ error } = await supabase.rpc('decide_corps_naac', { p_id: p.id, p_approve: approve, p_comment: c, p_lot: modified ? a.lot ?? null : null }))
     } else {
       const adjusted = modified && approve
         ? { ...p.payload, label: a.label.trim(), lots: a.lots }
@@ -289,6 +273,8 @@ function TraceSection() {
       setUsers((data ?? []) as { user_id: string; email: string | null }[])
     })()
     void load()
+  // Chargement unique au montage : `load` ne lit que des états de cette section.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const categories = [...new Set(rows.map((r) => r.category))].sort()
@@ -415,23 +401,59 @@ function ReferentielSection({ userId }: { userId: string }) {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
-  const run = async () => {
+  const [last, setLast] = useState<Awaited<ReturnType<typeof lastReferentielLoad>> | undefined>(undefined)
+
+  const refreshLast = () => { lastReferentielLoad().then(setLast).catch((e) => setErr(errMsg(e))) }
+  useEffect(() => { refreshLast() }, [])
+
+  const run = async (task: () => Promise<string>) => {
     setBusy(true); setErr(null); setMsg(null)
     try {
-      setMsg(await importReferentielV4(userId))
+      setMsg(await task())
       await getReferentiel(true)
+      refreshLast()
     } catch (e) { setErr(errMsg(e)) } finally { setBusy(false) }
   }
+
+  const exportRef = () => run(async () => {
+    const data = await exportReferentiel()
+    downloadJson(`referentiel_${new Date().toISOString().slice(0, 10)}.json`, data)
+    return `Référentiel exporté (${data.lots.length} lots, ${data.risks.length} risques, ${data.measures.length} mesures, ${data.natures.length} natures).`
+  })
+
+  const importFile = async (file: File) => {
+    await run(async () => {
+      const data = checkReferentielFile(JSON.parse(await file.text()))
+      return `Fichier « ${file.name} » : ${await importReferentielV4(userId, data)}`
+    })
+  }
+
   return (
-    <Card className="max-w-xl space-y-3">
-      <h2 className="font-semibold">Référentiel V4 (proposé, non validé)</h2>
+    <Card className="max-w-xl space-y-4">
+      <div>
+        <h2 className="font-semibold">Référentiel</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {last === undefined ? 'Chargement de la date…' : last
+            ? <>Dernier chargement : <strong>{new Date(last.created_at).toLocaleString('fr-FR')}</strong> · version « {last.label} »{last.by ? ` · par ${last.by}` : ''}</>
+            : 'Jamais chargé dans la base.'}
+        </p>
+      </div>
       <p className="text-sm text-muted-foreground">
-        Charge lots, risques, mesures, règles risque→mesure, défauts par lot, natures, vocabulaire et alertes.
+        Charger lit le référentiel intégré à l’application (lots, risques, mesures, natures, vocabulaire, alertes).
         Relançable sans doublon ; les décisions déjà prises sur les alertes sont conservées.
+        Importer accepte un fichier au même format ; Exporter télécharge le référentiel actuel de la base.
       </p>
       {err && <Notice tone="error">{err}</Notice>}
       {msg && <Notice tone="ok">{msg}</Notice>}
-      <Button onClick={() => void run()} disabled={busy}>{busy ? 'Chargement…' : 'Charger / recharger le référentiel'}</Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button onClick={() => void run(async () => importReferentielV4(userId))} disabled={busy}>{busy ? 'En cours…' : 'Charger le référentiel intégré'}</Button>
+        <Button variant="ghost" onClick={() => void exportRef()} disabled={busy}>Exporter</Button>
+        <label className={`inline-flex h-10 cursor-pointer items-center rounded-full bg-card px-5 text-sm font-medium shadow-sm hover:bg-muted ${busy ? 'pointer-events-none opacity-50' : ''}`}>
+          Importer un fichier
+          <input type="file" accept="application/json,.json" className="sr-only" disabled={busy}
+            onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void importFile(f) }} />
+        </label>
+      </div>
     </Card>
   )
 }
@@ -551,6 +573,7 @@ function UsersSection() {
   return (
     <div className="space-y-3">
       <h2 className="font-semibold">Utilisateurs et droits</h2>
+      <NoAccountCodes />
       {identityFor && <ProfileDialog userId={identityFor} isSelf={identityFor === session?.user.id} onClose={() => setIdentityFor(null)} />}
       <div className="space-y-3 rounded-lg border border-border bg-card p-4">
         <div>
@@ -631,5 +654,40 @@ function UsersSection() {
         </table>
       </div>
     </div>
+  )
+}
+
+/** Codes chargés ayant créé des commandes mais sans compte : à inviter pour que personne ne soit oublié. */
+function NoAccountCodes() {
+  const [rows, setRows] = useState<{ code: string; orders: number }[] | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+  useEffect(() => {
+    void supabase.rpc('list_order_creators').then(({ data, error }) => {
+      if (error) { setErr(error.message); return }
+      const groups = data as { NON_INSCRIT?: { code: string; orders: number }[] } | null
+      setRows((groups?.NON_INSCRIT ?? []).slice().sort((a, b) => b.orders - a.orders))
+    })
+  }, [])
+  if (err) return <Notice tone="error">{err}</Notice>
+  if (!rows) return null
+  return (
+    <Card className="space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 className="text-sm font-semibold">Chargés sans compte ({rows.length})</h3>
+        <span className="text-xs text-muted-foreground">Codes ayant créé des commandes, sans compte. À inviter ici ; le détail est dans « Chargés d’opérations ».</span>
+      </div>
+      {rows.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Tous les chargés créateurs ont un compte.</p>
+      ) : (
+        <div className="flex flex-wrap gap-1.5">
+          {rows.map((r) => (
+            <span key={r.code} className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/50 px-2 py-1 font-mono text-xs">
+              {r.code}
+              <span className="font-sans text-muted-foreground">· {r.orders} cmd</span>
+            </span>
+          ))}
+        </div>
+      )}
+    </Card>
   )
 }

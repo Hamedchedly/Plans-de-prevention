@@ -1,422 +1,75 @@
-# 📋 Plans de Prévention V6 — Internal Prevention Plan Management System
+# Plans de prévention S11
 
-**Status:** Phase 0 Complete ✓ | Phase 1 Infrastructure Guide Ready 📖  
-**Branch:** `claude/prevention-plans-app-v6-liv6ji`  
-**Last Updated:** 2026-09-18
+Application interne de gestion des plans de prévention du secteur S11 : import des commandes, périmètre, qualification, fiche de prévention, export PDF, envoi, retour et archivage.
 
----
+**Version stable : 2026-10-19** · Branche de développement : `claude/plans-prevention-s11` · Déploiement : `main` (Vercel)
 
-## 🎯 Project Overview
+## Fonctionnalités
 
-Plans de Prévention V6 is a comprehensive internal application for managing construction/maintenance prevention plans in a large housing management organization.
+- **Commandes** : liste avec regroupement (sans regroupement, par lot, par mots-clés), tri par colonne, barre d'avancement par chargé, couleurs selon l'ancienneté, corbeille.
+- **Fiche de prévention** : assistant en trois étapes (natures et lots, risques et mesures, entreprise et date), éditeur avancé, prévisualisation, PDF une page au modèle, export ZIP groupé.
+- **Suivi** : envoi par mailto, confirmation d'envoi, retour reçu (signée), archivage manuel ou automatique (6 mois).
+- **Périmètre** : règles GT / GE / CP / AC, demandes d'exclusion avec décision, réaffectation journalisée.
+- **Import** : commandes et suivi budgétaire (Excel) ; audit importé appliqué automatiquement ; analyse des doublons sur tous les imports.
+- **Référentiel** : chargement, export et import (JSON) ; date du dernier chargement.
+- **Administration** (responsables et Super Admin) : Données (import, base, périmètre, référentiels, entreprises), Contrôle (alertes, validations, entreprises, traçabilité), Paramétrage (modèles, noms de fichiers, utilisateurs et chargés). Pastilles pour les actions à traiter.
+- **Indicateurs chargés** (responsables et Super Admin) : avancement par chargé, filtre de la barre.
 
-**Key Features:**
-- Excel-based order management (867 orders from master source)
-- Multi-trade order qualification (78% require manual assignment)
-- Company & contact management with OS (Official Signatory) email support
-- Prevention plan creation with risk/measure assessment
-- PDF generation with operator signature injection
-- Email workflow (mailto-based in V1)
-- Full audit trail and compliance tracking
-- Role-based access control (SUPER_ADMIN, RESPONSABLE, CHARGE_OPERATIONS)
+## Rôles
 
-**Workflow:**
-```
-Excel Import → Scope Filtering → Reconciliation → 
-Qualification → Plan Creation → Risk Analysis → 
-PDF Generation → Email → Operator Confirmation → Archive
-```
+| Rôle | Accès |
+|---|---|
+| Chargé d'opérations | Ses commandes ; fiches ; propositions d'entreprises |
+| Responsable | Tout le périmètre ; administration (sauf comptes) ; indicateurs |
+| Super Admin | Tout, dont utilisateurs, entreprises, traçabilité, impersonation (journalisée) |
 
----
+## Stack
 
-## 📊 Data Overview
+- Front : React 19, TypeScript, Vite 5, Tailwind CSS, lucide-react, TanStack Router (adresses), pdf-lib, xlsx, jszip
+- Données : Supabase (PostgreSQL, schéma `plans_prevention`, RLS, fonctions SQL), authentification Supabase
+- Fonctions Edge : `supabase/functions/invite-user`, `supabase/functions/impersonate`
+- Hébergement : Vercel (réécriture SPA dans `app/vercel.json` et `vercel.json`)
 
-| Metric | Value |
-|--------|-------|
-| Total Orders (Master Source) | 867 |
-| Unique Order Numbers | 867 |
-| Orders Matched in Budget Tracking | 186 (21%) |
-| Orders Requiring Qualification | 681 (79%) |
-| Companies | 197 |
-| Operational Managers | 37 |
-| Work Natures | 516 |
-| Trade Codes | 26 |
-| Risk Categories | 14 |
-| Safety Measures | 27 |
+## Démarrage
 
----
-
-## 📚 Documentation Structure
-
-### Essential Reading (In Order)
-1. **PHASE_0_ANALYSIS_COMPLETE.md** ← Start here!
-   - Complete data reconciliation results
-   - Database schema (locked)
-   - Feature breakdown by phase
-   - Implementation guidelines
-
-2. **CLAUDE.md**
-   - Development guidelines
-   - Architecture decisions
-   - Critical implementation rules
-   - Bootstrap configuration
-
-3. **PHASE_1_INFRASTRUCTURE.md**
-   - Step-by-step Supabase setup
-   - Database schema creation
-   - RLS policy configuration
-   - React + Vite scaffold guide
-   - Deployment instructions
-
-### Detailed Specifications
-- `docs/COMPILATION_FONCTIONNALITES.md` — 28 features broken down
-- `docs/CAHIER_DES_CHARGES.md` — Detailed requirements
-- `docs/DATA_MODEL.md` — Database schema (locked)
-- `docs/ARCHITECTURE.md` — Technical decisions
-- `docs/MODELE_EXPORT.md` — PDF template structure
-- `docs/PHASE_0_RECONCILIATION.md` — Reconciliation details
-
-### Reference Data
-- `reference/ANM_COMD_TRAV_ER_6.xlsx` — Master orders (867 rows)
-- `reference/ANM_SUIVTRXSECT_7.xlsx` — Budget tracking (1,379 rows)
-- `reference/REFERENTIEL_CORPS_ETAT.xlsx` — Trade catalog
-- `reference/REFERENTIEL_RISQUES_PLANS_PREVENTION.xlsx` — Risks & Measures
-- `reference/PLAN_DE_PREVENTION.xlsx` — PDF template example
-- `reference/MAPPING_IMPORTS.xlsx` — Column mapping guide
-
-### Analysis Data
-- `analysis/RECONCILIATION_STATS.json` — Key metrics
-- `analysis/COMMANDES_A_QUALIFIER.csv` — Orders needing qualification
-
----
-
-## 🏗️ Tech Stack
-
-```
-Frontend:        React 19 + TypeScript + Vite
-Styling:         Tailwind CSS + shadcn/ui
-State Management: TanStack Router + TanStack Query  
-Backend:         Supabase PostgreSQL
-Authentication:  Supabase Auth (email/password)
-File Storage:    Supabase Storage
-Validation:      Zod
-Deployment:      Railway
-```
-
----
-
-## 🔑 Architecture Highlights
-
-### Data Integrity
-- **Never delete source data** — Mark as OUT_OF_SCOPE instead
-- **Source preservation** — All imports stored with historical tracking
-- **Scope management** — Rules can be changed anytime without data loss
-- **Audit trail** — Every mutation tracked with actor vs. subject
-
-### Multi-Trade Support
-```sql
--- One order can have multiple trades
-orders → order_trades → trades
--- Stores source (BUDGET_TRACKING, INTC_MAPPING, AI_ASSISTED, MANUAL)
--- Stores confidence_score (0.0-1.0)
-```
-
-### Role-Based Access Control
-- **SUPER_ADMIN** → All data, all configurations
-- **RESPONSABLE** → All orders + KPI, can substitute for operators
-- **CHARGE_OPERATIONS** → Own orders + delegated
-
-### Qualification Strategy
-1. **BUDGET_TRACKING** (1.0) — Found in ANM_SUIVTRXSECT
-2. **INTC_MAPPING** (0.92) — Intervention code → trade lookup
-3. **NATURE_MATCH** (0.75) — Work nature string matching
-4. **AI_ASSISTED** (0.60) — Description analysis
-5. **MANUAL** (null) — User selection required
-
----
-
-## 📋 Implementation Phases
-
-### ✓ Phase 0: Analysis & Reconciliation (COMPLETE)
-- Data reconciliation completed
-- Schema locked
-- Features prioritized
-- Reference data catalogued
-
-### → Phase 1: Infrastructure Setup (GUIDE READY)
-- Supabase project creation
-- Database schema migration
-- RLS policy configuration
-- React + Vite scaffold
-- Authentication setup
-- **Estimated duration:** 3-4 days
-
-### → Phase 2: Import & Filtering
-- Excel upload interface
-- Column mapping
-- Duplicate detection
-- Scope filtering rules
-- Reconciliation matching
-
-### → Phase 3: Company Management
-- Company CRUD
-- Contact management
-- OS email assignment
-- Address management
-- Alert system
-
-### → Phase 4: Dashboard & UI
-- KPI calculations
-- Filter system
-- Multi-select actions
-- Grouping & sorting
-- Onglets (tabs)
-
-### → Phase 5: Trade Qualification
-- Manual selection UI
-- Multi-trade support
-- Confidence display
-- "À QUALIFIER" workflow
-
-### → Phase 6: Plan Creation
-- Plan form UI
-- Auto-prefill from order/company
-- Nature search
-- Date/period selection
-
-### → Phase 7: Risk & Measure Analysis
-- Risk/Measure proposal engine
-- Nature → Risk/Measure rules
-- Manual selection UI
-- Source tracking
-
-### → Phase 8: PDF Generation & Preview
-- Template engine (structured blocks)
-- Block types: SECTION, TEXT, FIELD, CHECKBOX, RISK_TABLE, MEASURE_TABLE, TABLE, IMAGE, SIGNATURE
-- Preview rendering
-- PDF export
-
-### → Phase 9: Email & Mailto
-- Email template editor
-- Variable substitution
-- Mailto link generation
-- Send confirmation
-
-### → Phase 10: Workflow (Send/Receive/Relance)
-- Send confirmation UI
-- Receive confirmation
-- Relance functionality
-
-### → Phase 11-14: Advanced Features
-- Delegation & substitution
-- Notifications
-- Archive management
-- Audit UI
-- Super Admin configuration
-
----
-
-## 🚀 Quick Start
-
-### Read First (5 minutes)
 ```bash
-cat PHASE_0_ANALYSIS_COMPLETE.md
-cat CLAUDE.md
-```
-
-### Phase 1: Infrastructure (3-4 days)
-```bash
-# Follow PHASE_1_INFRASTRUCTURE.md step-by-step
-# 1. Create Supabase project
-# 2. Run database migrations
-# 3. Create React app
-# 4. Deploy to Railway
-```
-
-### Development Workflow
-```bash
-# Install dependencies
+cd app
+cp .env.example .env.local     # renseigner VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY (clé publishable uniquement)
 npm install
-
-# Start dev server
 npm run dev
-
-# Build for production
-npm run build
-
-# Deploy to Railway
-git push origin claude/prevention-plans-app-v6-liv6ji
 ```
 
----
+Scripts :
 
-## 🔐 Critical Implementation Rules
+| Commande | Rôle |
+|---|---|
+| `npm run dev` | Serveur de développement |
+| `npm run build` | Vérification de types puis build de production |
+| `npm run lint` | Lint (0 erreur attendue) |
+| `npm test` | Tests unitaires (règles de mesures) |
 
-✅ **Data Integrity**
-- Never cascade delete orders
-- Always preserve source imports
-- Mark scope status on every rule change
-- Maintain complete audit trail
+## Base de données
 
-✅ **Business Logic**
-- One order = multiple possible trades
-- Budget tracking is qualification tool, not master
-- Manual qualification required when ambiguous
-- Distinguish actor (who did it) vs. subject (who affected)
+- Migrations de la base S11 : `supabase/s11/migrations/` (à appliquer dans l'ordre des dates). Le dossier `supabase/migrations/` contient l'historique du projet initial (V6) et ne décrit pas la base S11.
+- Référentiel intégré : `app/src/data/referentiel_v4.json` (lots, risques, mesures, natures, vocabulaire, alertes).
+- La clé `service_role` n'est utilisée que dans les fonctions Edge, jamais dans l'application.
 
-✅ **User Experience**
-- Never auto-submit → explicit confirmation always
-- No background operations without awareness
-- Preview = final PDF rendering (same engine)
-- Operator controls signature, not system
+## Documentation
 
-✅ **V1 Constraints**
-- Email: mailto only (no SMTP backend)
-- No company portal (V2 independent)
-- No automated risk validation
-- Manual send/receive confirmation
+- `docs/FEUILLE_DE_ROUTE_S11.md` : statut de chaque fonctionnalité, version stable, étapes restantes
+- `docs/AUDIT_CODE_S11.md` : audit de code et de sécurité du 2026-10-19
+- `docs/COMPILATION_FONCTIONNALITES.md` : liste détaillée des fonctionnalités (historique)
+- `docs/DATA_MODEL.md`, `docs/ARCHITECTURE.md` : modèle de données et choix techniques (historiques, à relire avant modification du schéma)
 
----
+## Versions stables
 
-## 👥 Bootstrap Accounts (Development)
+Les versions stables sont des branches figées, les tags étant refusés par le dépôt :
+- `stable/s11-main-d56fcb8`, `stable/s11-b70aaaf` : versions précédentes
+- `backup/s11-20261019-0030` : sauvegarde du 2026-10-19 (version stable annoncée)
 
-```
-super_admin / password → SUPER_ADMIN role
-user / password → CHARGE_OPERATIONS (test operator)
-```
+## Limites connues
 
-Change passwords on first login in production!
-
----
-
-## 🗄️ Database Schema (23 Tables)
-
-**Core:**
-- `orders` — Master orders with scope_status
-- `order_trades` — Multi-trade associations
-- `order_reconciliation` — Budget tracking matches
-
-**Company:**
-- `companies`
-- `company_contacts`
-- `company_os_contacts`
-
-**Reference Data:**
-- `trades`, `nature_catalog`
-- `risk_catalog`, `measure_catalog`
-- `nature_risk_rules`, `nature_measure_rules`
-
-**Plans:**
-- `prevention_plans`
-- `prevention_plan_risks`
-- `prevention_plan_measures`
-
-**Administration:**
-- `command_scope_rules`, `command_scope_rule_values`
-- `email_templates`
-- `plan_templates`, `plan_template_versions`
-- `delegation_permissions`
-- `imports`
-
-**Audit:**
-- `audit_logs`
-- `workflow_events`
-- `notifications`
-- `archive_records`
-
-See `docs/DATA_MODEL.md` for complete schema definition.
-
----
-
-## 🔍 Key Insights from Phase 0
-
-### Reconciliation Results
-- **186 orders** (21%) matched with budget tracking
-- **681 orders** (79%) require manual trade qualification
-- **S11 sector:** 36 orders (16 need qualification)
-- **Date distribution:** Peak activity last 30 days (431 orders)
-
-### Data Quality
-- All 867 orders are unique by COMN_NUM
-- 197 distinct companies, 37 operators
-- 516 work natures (many similar, consolidated in catalog)
-- Most commandes from last 90 days
-
-### Implementation Impact
-- Manual qualification is critical path
-- Company data enrichment required upfront
-- Multi-trade support non-negotiable
-- Scope filtering must support policy changes
-
----
-
-## 📝 Commit Message Convention
-
-All commits include:
-```
-<phase>: <description>
-
-- Detail 1
-- Detail 2
-- Detail 3
-
-Next phase: [phase name]
-```
-
-Signed with Claude Haiku 4.5 attribution footer.
-
----
-
-## 🔗 Important Links
-
-- **GitHub Repo:** https://github.com/Hamedchedly/Plans-de-prevention
-- **Branch:** `claude/prevention-plans-app-v6-liv6ji`
-- **Supabase Dashboard:** [Project-specific URL]
-- **Railway Dashboard:** [Project-specific URL]
-
----
-
-## ✅ Verification Checklist
-
-Before starting Phase 1:
-- [ ] Read PHASE_0_ANALYSIS_COMPLETE.md
-- [ ] Read CLAUDE.md
-- [ ] Review PHASE_1_INFRASTRUCTURE.md
-- [ ] Understand data flow: Excel → Orders → Trades → Plans → PDF
-- [ ] Verify reference files in `reference/` directory
-- [ ] Confirm branch: `claude/prevention-plans-app-v6-liv6ji`
-
-Before finishing each phase:
-- [ ] All features for phase implemented
-- [ ] Unit/integration tests pass
-- [ ] Code review completed
-- [ ] Documentation updated
-- [ ] Changes committed and pushed
-- [ ] Next phase guide created
-
----
-
-## 📞 Support
-
-For questions:
-1. Check PHASE_0_ANALYSIS_COMPLETE.md
-2. Review CLAUDE.md for guidelines
-3. Consult phase-specific documentation
-4. Check reference files for data mapping
-5. Review commit history for implementation examples
-
----
-
-## 📄 License
-
-Internal project for [Organization]. All rights reserved.
-
-**Version:** V6  
-**Status:** Phase 0 Complete, Phase 1 Ready  
-**Last Updated:** 2026-09-18
-
----
-
-**Ready to build! 🚀**
-
-Start with: `PHASE_0_ANALYSIS_COMPLETE.md` then `PHASE_1_INFRASTRUCTURE.md`
+- Parcours connectés non couverts par des tests automatiques (vérifications manuelles dans le navigateur).
+- Invitations des chargés sans compte et relances : à venir.
+- Relances d'envoi, notifications et signature électronique : prévues en V2.
+- Le portail entreprise est prévu en V2 ; l'envoi reste manuel par mailto.

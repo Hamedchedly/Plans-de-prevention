@@ -4,6 +4,7 @@ import { useAuth } from '../lib/auth'
 import { mapCommande, mapSuivi, readRows, sha256, type ImportKind } from '../lib/importers'
 import { Button, Card, Notice, errMsg, fieldClass } from '../components/ui'
 import { logActivity, logError } from '../lib/activity'
+import ImportDuplicates from '../components/ImportDuplicates'
 
 const chunk = <T,>(xs: T[], n = 200) => Array.from({ length: Math.ceil(xs.length / n) }, (_, i) => xs.slice(i * n, i * n + n))
 const check = (res: { error: { message: string } | null }) => { if (res.error) throw new Error(res.error.message) }
@@ -43,7 +44,10 @@ export default function ImportPage() {
     const updated = numbers.length - inserted
     const scoped = await supabase.rpc('apply_scope_rules')
     check(scoped)
-    return { inserted, updated, scopeRecalculated: scoped.data as number }
+    // audit importé : applique ENVOYE / SIGNE aux commandes nouvelles ou encore non qualifiées (les décisions prises ne sont pas écrasées)
+    const audited = await supabase.rpc('apply_order_audit')
+    check(audited)
+    return { inserted, updated, scopeRecalculated: scoped.data as number, auditApplied: (audited.data as number) ?? 0 }
   }
 
   const importSuivi = async (rows: Record<string, unknown>[], importId: string) => {
@@ -53,7 +57,7 @@ export default function ImportPage() {
         import_id: importId, row_no: m.row_no, order_number: m.order_number, raw: m.raw,
       }))))
     }
-    return { inserted: mapped.length, updated: 0, scopeRecalculated: 0 }
+    return { inserted: mapped.length, updated: 0, scopeRecalculated: 0, auditApplied: 0 }
   }
 
   const onFile = async (file: File) => {
@@ -82,7 +86,10 @@ export default function ImportPage() {
       setLog([
         `${rows.length} lignes lues dans « ${file.name} ».`,
         `${res.inserted} nouvelle(s) ligne(s), ${res.updated} mise(s) à jour (données source uniquement).`,
-        ...(kind === 'COMMANDES' ? [`Périmètre recalculé sur ${res.scopeRecalculated} commande(s) non fixée(s) manuellement.`] : []),
+        ...(kind === 'COMMANDES' ? [
+          `Périmètre recalculé sur ${res.scopeRecalculated} commande(s) non fixée(s) manuellement.`,
+          `Audit appliqué à ${res.auditApplied} commande(s) (envoyé ou signé, si encore non qualifiée).`,
+        ] : []),
       ])
     } catch (e) {
       logError('import ' + kind, e)
@@ -94,7 +101,7 @@ export default function ImportPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
+    <div className="mx-auto max-w-3xl space-y-4">
       <Card>
         <h1 className="mb-1 text-lg font-semibold">Import des exports</h1>
         <p className="mb-4 text-sm text-muted-foreground">
@@ -112,6 +119,7 @@ export default function ImportPage() {
       {err && <Notice tone="error">{err}</Notice>}
       {log.length > 0 && <Notice tone="ok">{log.map((l) => <div key={l}>{l}</div>)}</Notice>}
       <Button variant="ghost" onClick={() => setLog([])} disabled={busy || log.length === 0}>Effacer le message</Button>
+      <ImportDuplicates />
     </div>
   )
 }

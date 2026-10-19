@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import * as XLSX from 'xlsx'
 import { supabase } from '../lib/supabase'
-import { Badge, Button, Card, Notice, errMsg, fieldClass } from '../components/ui'
+import { Button, Card, Notice, errMsg, fieldClass } from '../components/ui'
 
 export interface CompanyRow {
   isis_code: string

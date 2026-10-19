@@ -10,7 +10,7 @@ export async function sha256(file: ArrayBuffer): Promise<string> {
 
 /** En-têtes des exports : « COMN_NUM.ANA_COMD_TRAV_ER » → « COMN_NUM ». */
 export function cleanHeader(h: unknown): string {
-  return String(h ?? '').split('.')[0].replace(/ /g, ' ').trim()
+  return String(h ?? '').split('.')[0].replace(/\u00A0/g, ' ').trim()
 }
 
 export function readRows(buffer: ArrayBuffer): Record<string, unknown>[] {
@@ -27,7 +27,7 @@ export function readRows(buffer: ArrayBuffer): Record<string, unknown>[] {
 
 const str = (v: unknown): string | null => {
   if (v === null || v === undefined) return null
-  const s = String(v).replace(/ /g, ' ').trim()
+  const s = String(v).replace(/\u00A0/g, ' ').trim()
   return s === '' || s === 'None' ? null : s
 }
 const num = (v: unknown): number | null => {

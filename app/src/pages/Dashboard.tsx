@@ -6,6 +6,7 @@ import { getReferentiel, type Referentiel } from '../lib/refdata'
 import { buildSuggestion, type OrderSuggestion } from '../lib/natureSuggest'
 import type { OrderRow } from '../lib/types'
 import { Badge, Button, Card, EmptyState, IconButton, Notice, PageHeader, fieldClass, errMsg } from '../components/ui'
+import { Bubble } from '../components/Bubble'
 import CompanyDialog from '../components/CompanyDialog'
 import BulkPlanWizard from '../components/BulkPlanWizard'
 import OrderActionDialog from '../components/OrderActionDialog'
@@ -490,7 +491,15 @@ export default function Dashboard({ onOpen, view, setView }: {
         subtitle={<>
           <span>Connecté comme {profile?.email}</span>
         </>}
-        actions={<Button variant="ghost" onClick={() => void load()} disabled={loading}>Actualiser</Button>}
+        actions={<>
+          {!isTrashView && cutoff != null && hiddenOld > 0 && (
+            <Bubble tone="warn" label={`${hiddenOld} masquée${hiddenOld > 1 ? 's' : ''}`}>
+              <p>{hiddenOld} commande{hiddenOld > 1 ? 's' : ''} plus ancienne{hiddenOld > 1 ? 's' : ''} que le filtre « {PRESETS[activePreset].label} » {hiddenOld > 1 ? 'sont masquées' : 'est masquée'}.</p>
+              <Button variant="ghost" size="sm" className="mt-3" onClick={() => setPreset(PRESETS.length - 1)}>Tout afficher</Button>
+            </Bubble>
+          )}
+          <Button variant="ghost" onClick={() => void load()} disabled={loading}>Actualiser</Button>
+        </>}
       />
 
       <Card className="space-y-4">
@@ -501,7 +510,28 @@ export default function Dashboard({ onOpen, view, setView }: {
         <PipelineBar counts={pipeline} onSelect={(t) => changeTab(t as Tab)} />
       </Card>
 
-      <Card className="grid grid-cols-2 items-end gap-3 md:flex md:flex-wrap">
+      <Card className="space-y-3">
+        <div className="grid gap-3 md:grid-cols-2 md:items-end">
+          <div>
+            <label className="mb-1 block text-xs text-muted-foreground">Recherche</label>
+            <input className={`${fieldClass} w-full`} value={q} onChange={(e) => setQ(e.target.value)} placeholder="N° commande, adresse, nature…" />
+          </div>
+          <div>
+            <p className="mb-1 text-xs text-muted-foreground">
+              Commandes passées depuis <span className="font-semibold text-foreground">{PRESETS[activePreset].label}</span>
+              {cutoff != null && <> · depuis le {fmtDay(cutoff)}</>}
+            </p>
+            <input type="range" aria-label="Période des commandes" className="w-full accent-primary" min={0} max={PRESETS.length - 1} step={1}
+              value={activePreset} onChange={(e) => setPreset(Number(e.target.value))} />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              {PRESETS.map((p, i) => (
+                <button key={p.label} type="button" onClick={() => setPreset(i)}
+                  className={i === activePreset ? 'font-semibold text-foreground' : 'hover:text-foreground'}>{p.label}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 items-end gap-3 md:flex md:flex-wrap">
         <div>
           <label className="mb-1 block text-xs text-muted-foreground">Secteur</label>
           <select className={`${fieldClass} md:w-32`} value={sector} onChange={(e) => setSector(e.target.value)}>
@@ -519,10 +549,6 @@ export default function Dashboard({ onOpen, view, setView }: {
           </div>
         )}
         <div>
-          <label className="mb-1 block text-xs text-muted-foreground">Recherche</label>
-          <input className={`${fieldClass} md:w-56`} value={q} onChange={(e) => setQ(e.target.value)} placeholder="N° commande, adresse, nature…" />
-        </div>
-        <div>
           <label className="mb-1 block text-xs text-muted-foreground">Lot (suggéré)</label>
           <select className={`${fieldClass} md:w-44`} value={lotFilter} onChange={(e) => setLotFilter(e.target.value)}>
             <option value="">Tous</option>
@@ -537,34 +563,17 @@ export default function Dashboard({ onOpen, view, setView }: {
             {groupOptions.map((g) => <option key={g} value={g}>{g}</option>)}
           </select>
         </div>
+          {sansContact.length > 0 && (
+            <div className="col-span-2 md:ml-auto md:self-end">
+              <Bubble tone="warn" label={`${sansContact.length} fiche${sansContact.length > 1 ? 's' : ''} à compléter`}>
+                <p>{sansContact.length} fiche(s) créée(s) ou envoyée(s) dont la personne à alerter n’est pas complète ({sansContactCodes.join(', ')}).</p>
+                <p className="mt-2 text-muted-foreground">Le PDF affiche alors « Responsable d’intervention ». Complétez l’identité (Administration › Utilisateurs et chargés ou Vérifier mes infos).</p>
+              </Bubble>
+            </div>
+          )}
+        </div>
       </Card>
 
-      <Card className="space-y-3">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <p className="text-sm">
-            Commandes passées depuis <span className="font-semibold">{PRESETS[activePreset].label}</span>
-            {cutoff != null && <span className="text-muted-foreground"> · depuis le {fmtDay(cutoff)}</span>}
-          </p>
-        </div>
-        <input type="range" aria-label="Période des commandes" className="w-full accent-primary" min={0} max={PRESETS.length - 1} step={1}
-          value={activePreset} onChange={(e) => setPreset(Number(e.target.value))} />
-        <div className="flex justify-between text-xs text-muted-foreground">
-          {PRESETS.map((p, i) => (
-            <button key={p.label} type="button" onClick={() => setPreset(i)}
-              className={i === activePreset ? 'font-semibold text-foreground' : 'hover:text-foreground'}>{p.label}</button>
-          ))}
-        </div>
-        {!isTrashView && cutoff != null && hiddenOld > 0 && (
-          <Notice tone="warn">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span>
-                {hiddenOld} commande{hiddenOld > 1 ? 's' : ''} plus ancienne{hiddenOld > 1 ? 's' : ''} que le filtre « {PRESETS[activePreset].label} » {hiddenOld > 1 ? 'sont masquées' : 'est masquée'}.
-              </span>
-              <Button variant="ghost" size="sm" onClick={() => setPreset(PRESETS.length - 1)}>Tout afficher</Button>
-            </div>
-          </Notice>
-        )}
-      </Card>
 
       <div className="flex flex-wrap items-center gap-1 border-b border-border">
         {MAIN_TABS.map((t) => (
@@ -606,12 +615,6 @@ export default function Dashboard({ onOpen, view, setView }: {
         </div>
       )}
 
-      {sansContact.length > 0 && (
-        <Notice tone="warn">
-          {sansContact.length} fiche(s) créée(s) ou envoyée(s) dont la personne à alerter n’est pas complète ({sansContactCodes.join(', ')}).
-          Le PDF affiche alors « Responsable d’intervention ». Complétez l’identité (Administration › Utilisateurs et chargés ou Vérifier mes infos).
-        </Notice>
-      )}
       {err && <Notice tone="error">{err}</Notice>}
       {notice && <Notice tone="ok">{notice}</Notice>}
 

@@ -63,9 +63,11 @@ begin
   if not plans_prevention.is_super_admin() then raise exception 'Réservé au Super Admin'; end if;
   -- sauvegarde avant suppression
   select coalesce(jsonb_agg(to_jsonb(o)), '[]'::jsonb) into v_orders from plans_prevention.orders o where o.scope_status = 'OUT_OF_SCOPE';
+  -- entreprises sans email OS : conservées (signalées en rouge jusqu'au prochain import)
   select coalesce(jsonb_agg(to_jsonb(c)), '[]'::jsonb) into v_companies from plans_prevention.companies c
    where c.isis_code in (select isis_code from plans_prevention.orders where scope_status = 'OUT_OF_SCOPE' and isis_code is not null)
-     and not exists (select 1 from plans_prevention.orders i where i.isis_code = c.isis_code and i.scope_status = 'IN_SCOPE');
+     and not exists (select 1 from plans_prevention.orders i where i.isis_code = c.isis_code and i.scope_status = 'IN_SCOPE')
+     and c.os_email is not null;
   select coalesce(jsonb_agg(to_jsonb(x)), '[]'::jsonb) into v_natures from plans_prevention.order_natures x
    where x.order_number in (select order_number from plans_prevention.orders where scope_status = 'OUT_OF_SCOPE');
   select coalesce(jsonb_agg(to_jsonb(x)), '[]'::jsonb) into v_lots from plans_prevention.order_lots x

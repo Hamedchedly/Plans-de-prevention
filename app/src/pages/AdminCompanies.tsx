@@ -272,15 +272,22 @@ export function CompaniesSection() {
           <tbody>
             {shown.slice(0, 300).map((e) => {
               const dirty = Boolean(edits[e.isis])
+              const noOs = !valueOf(e, 'os_email')
+              const incomplete = INFO_FIELDS.some((k) => !valueOf(e, k))
+              const rowTone = dirty ? 'bg-amber-50' : noOs ? 'bg-red-50' : ''
               return (
-                <tr key={e.isis} className={`border-t border-border ${dirty ? 'bg-amber-50' : ''}`}>
+                <tr key={e.isis} className={`border-t border-border ${rowTone}`}>
                   <td className="px-3 py-2 font-mono text-xs">
                     <span className="inline-flex items-center gap-1.5">
                       {e.isis}
-                      {INFO_FIELDS.some((k) => !valueOf(e, k)) && (
+                      {noOs && (
+                        <span className="inline-block h-2 w-2 rounded-full bg-red-500" title="Email OS manquant : à supprimer si absent du prochain import" />
+                      )}
+                      {!noOs && incomplete && (
                         <span className="inline-block h-2 w-2 rounded-full bg-yellow-400" title="Informations complémentaires manquantes (non bloquant)" />
                       )}
                     </span>
+                    {noOs && <span className="block text-[10px] font-semibold text-red-700">Email OS manquant · à supprimer si absent du prochain import</span>}
                   </td>
                   <td className="px-3 py-2 text-right font-semibold">{e.count}</td>
                   {COMPANY_FIELDS.map((f) => (

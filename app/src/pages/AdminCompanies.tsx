@@ -43,6 +43,9 @@ async function fetchOrderCounts(): Promise<Map<string, number>> {
 /** Champs importants pour les envois mailto : nom de l'entreprise et email OS. */
 export const isComplete = (c: CompanyRow | undefined) => Boolean(c?.name && c?.os_email)
 
+// Champs non bloquants : leur absence affiche seulement une pastille jaune.
+const INFO_FIELDS = ['company_phone', 'os_email', 'director_name', 'director_email', 'director_phone'] as const
+
 type Tab = 'REMPLIES' | 'A_VERIFIER' | 'A_COMPLETER'
 const TABS: { key: Tab; label: string; hint: string }[] = [
   { key: 'REMPLIES', label: 'Remplies', hint: 'Nom et email OS validés' },
@@ -271,7 +274,14 @@ export function CompaniesSection() {
               const dirty = Boolean(edits[e.isis])
               return (
                 <tr key={e.isis} className={`border-t border-border ${dirty ? 'bg-amber-50' : ''}`}>
-                  <td className="px-3 py-2 font-mono text-xs">{e.isis}</td>
+                  <td className="px-3 py-2 font-mono text-xs">
+                    <span className="inline-flex items-center gap-1.5">
+                      {e.isis}
+                      {INFO_FIELDS.some((k) => !valueOf(e, k)) && (
+                        <span className="inline-block h-2 w-2 rounded-full bg-yellow-400" title="Informations complémentaires manquantes (non bloquant)" />
+                      )}
+                    </span>
+                  </td>
                   <td className="px-3 py-2 text-right font-semibold">{e.count}</td>
                   {COMPANY_FIELDS.map((f) => (
                     <td key={f.key} className="px-2 py-1.5">

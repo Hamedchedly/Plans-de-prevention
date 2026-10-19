@@ -54,6 +54,8 @@ const PLAN_LABEL: Record<string, string> = {
 const STATUS_LABEL: Record<string, string> = { ...PLAN_LABEL, A_ENVOYER: 'Fiche créée' }
 /** Onglets dont les commandes peuvent recevoir une fiche (sélection groupée). */
 const ACTIONABLE: Tab[] = ['NON_QUALIFIEE', 'A_ENVOYER']
+/** Onglets où l'on coche des commandes (actions groupées). */
+const SELECTABLE: Tab[] = ['NON_QUALIFIEE', 'A_ENVOYER', 'EN_ATTENTE_RETOUR']
 const PAGE = 15
 
 /** Regroupement des commandes dans la liste (pour sélectionner en lot des cas similaires). */
@@ -281,8 +283,8 @@ export default function Dashboard({ onOpen, view, setView }: {
   const visible = base.filter((o) => inTab(o, tab))
   const isTrashView = tab === 'CORBEILLE'
   const list = isTrashView ? trashed.filter(matches) : visible
-  const canSelectOrder = (o: OrderRow) => (ACTIONABLE.includes(tab) && o.scope_status === 'IN_SCOPE') || (isScopeTab && isManager)
-  const colCount = (ACTIONABLE.includes(tab) || isScopeTab ? 1 : 0) + (isManager ? 9 : 8)
+  const canSelectOrder = (o: OrderRow) => (SELECTABLE.includes(tab) && o.scope_status === 'IN_SCOPE') || (isScopeTab && isManager)
+  const colCount = (SELECTABLE.includes(tab) || isScopeTab ? 1 : 0) + (isManager ? 8 : 7)
   // Lot affiché (même règle que la colonne « Lot »)
   const lotLabelOf = (o: OrderRow): string | null => {
     const sg = suggestions.get(o.order_number)
@@ -380,7 +382,7 @@ export default function Dashboard({ onOpen, view, setView }: {
     </th>
   )
   const count = (t: Tab) => (t === 'CORBEILLE' ? trashedCount : base.filter((o) => inTab(o, t)).length)
-  const actionableVisible = visible.filter((o) => (ACTIONABLE.includes(tab) && o.scope_status === 'IN_SCOPE') || (isScopeTab && isManager))
+  const actionableVisible = visible.filter((o) => (SELECTABLE.includes(tab) && o.scope_status === 'IN_SCOPE') || (isScopeTab && isManager))
   const activeMore = MORE_TABS.find((t) => t.key === tab)
 
   // Retour à 15 lignes dès qu'on change d'onglet ou de filtre.
@@ -404,6 +406,23 @@ export default function Dashboard({ onOpen, view, setView }: {
   const returnReceived = (o: OrderRow) => {
     if (!window.confirm(`Marquer le retour de l’entreprise pour la commande ${o.order_number} ?\nLa fiche passera en « Signée ».`)) return
     void runAction('advance_plan_status', { p_order: o.order_number, p_to: 'SIGNEE' }, `Retour enregistré : commande ${o.order_number} signée.`)
+  }
+  /** Retour reçu pour plusieurs fiches : passage en « Signée », une par une, arrêt à la première erreur. */
+  const markReceivedMany = (numbers: string[]) => {
+    if (!window.confirm(`Marquer le retour de ${numbers.length} entreprise(s) ?\nLes fiches passeront en « Signée ».`)) return
+    void (async () => {
+      setBusy(true); setErr(null)
+      let done = 0
+      for (const n of numbers) {
+        const { error } = await supabase.rpc('advance_plan_status', { p_order: n, p_to: 'SIGNEE' })
+        if (error) { setErr(`${n} : ${error.message}`); break }
+        done++
+      }
+      setBusy(false)
+      setSelected(new Set())
+      setNotice(`${done} retour(s) enregistré(s) : fiche(s) signée(s).`)
+      await load()
+    })()
   }
   const archiveOrder = (o: OrderRow) => {
     if (!window.confirm(`Archiver la commande ${o.order_number} ?`)) return
@@ -627,11 +646,12 @@ export default function Dashboard({ onOpen, view, setView }: {
         </div>
       </div>
 
-      {selected.size > 0 && (ACTIONABLE.includes(tab) || manualTab || isScopeTab) && (
+      {selected.size > 0 && (SELECTABLE.includes(tab) || manualTab || isScopeTab) && (
         <div className="inline-flex max-w-full flex-wrap items-center gap-2 self-start rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
           <span className="mr-auto font-medium">{selected.size} sélectionnée(s)</span>
           {tab === 'NON_QUALIFIEE' && <Button onClick={() => setWizard({ orders: selectedOrders, mode: 'create' })} disabled={busy || !ref}>Créer les fiches</Button>}
-          {tab === 'A_ENVOYER' && <Button onClick={() => void downloadSelectedZip()} disabled={busy || !ref}>Télécharger les PDF (ZIP)</Button>}
+          {(tab === 'A_ENVOYER' || tab === 'EN_ATTENTE_RETOUR') && <Button onClick={() => void downloadSelectedZip()} disabled={busy || !ref}>Télécharger les PDF (ZIP)</Button>}
+          {tab === 'EN_ATTENTE_RETOUR' && <Button onClick={() => markReceivedMany([...selected])} disabled={busy}>Marquer comme reçu</Button>}
           {ACTIONABLE.includes(tab) && <Button variant="ghost" onClick={() => sendManually([...selected])} disabled={busy}>Déjà envoyée manuellement</Button>}
           {manualTab && <Button variant="ghost" onClick={() => restoreManual([...selected])} disabled={busy}>Remettre à traiter</Button>}
           {isScopeTab && isManager && <Button onClick={() => void reintegrateMany([...selected])} disabled={busy}>Réintégrer au périmètre</Button>}
@@ -686,11 +706,10 @@ export default function Dashboard({ onOpen, view, setView }: {
             <table className="w-full text-sm">
               <thead className="bg-muted/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  {(ACTIONABLE.includes(tab) || isScopeTab) && (
+                  {(SELECTABLE.includes(tab) || isScopeTab) && (
                     <th className="px-3 py-2"><input type="checkbox" aria-label="Tout sélectionner" checked={allChecked} onChange={toggleAll} /></th>
                   )}
                   {sortTh('order_number', 'Commande')}
-                  {sortTh('order_date', 'Date')}
                   {sortTh('company', 'Entreprise')}
                   {sortTh('address', 'Adresse')}
                   {sortTh('nature', 'Nature / description')}
@@ -710,7 +729,7 @@ export default function Dashboard({ onOpen, view, setView }: {
                   const companyName = o.isis_code ? companies.get(o.isis_code)?.name : null
                   return (
                     <tr key={o.order_number} className={`align-top ${rowTone(o) || 'hover:bg-muted/30'}`}>
-                      {(ACTIONABLE.includes(tab) || isScopeTab) && (
+                      {(SELECTABLE.includes(tab) || isScopeTab) && (
                         <td className="px-3 py-2.5">
                           {canSelect && <input type="checkbox" aria-label={`Sélectionner ${o.order_number}`}
                             checked={selected.has(o.order_number)} onChange={() => toggle(o.order_number)} />}
@@ -718,8 +737,8 @@ export default function Dashboard({ onOpen, view, setView }: {
                       )}
                       <td className="px-3 py-2.5">
                         <div className="font-mono text-xs font-medium">{o.order_number}</div>
+                        <div className={`whitespace-nowrap text-[11px] ${isOverdue(o) ? 'font-semibold text-red-600' : 'text-muted-foreground'}`} title={isOverdue(o) ? 'Plus d’un mois sans action' : undefined}>{o.order_date ?? '—'}</div>
                       </td>
-                      <td className={`whitespace-nowrap px-3 py-2.5 text-xs ${isOverdue(o) ? 'font-semibold text-red-600' : 'text-muted-foreground'}`} title={isOverdue(o) ? 'Plus d’un mois sans action' : undefined}>{o.order_date ?? '—'}</td>
                       <td className="px-3 py-2.5">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="text-sm">{companyName ?? o.isis_code ?? '—'}</span>

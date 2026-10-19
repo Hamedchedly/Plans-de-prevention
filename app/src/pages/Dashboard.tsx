@@ -91,28 +91,36 @@ const todayDay = () => Math.floor(Date.now() / 86400000)
 const fmtDay = (n: number) => new Date(n * 86400000).toLocaleDateString('fr-FR')
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('fr-FR')
 
-/** Taille d'une tranche de commandes : la première s'affiche dès son arrivée, les suivantes sont chargées en parallèle. */
+/** Secteur affiché par défaut : ses commandes sont chargées et affichées en premier. */
+const DEFAULT_SECTOR = 'S11'
+/** Taille d'une tranche de commandes, chargées en parallèle. */
 const ORDER_CHUNK = 1000
+/** Partie des commandes : le secteur par défaut, ou tous les autres. */
+type Part = 'default' | 'others'
+const partFilter = (part: Part) => (part === 'default'
+  ? `sector_code.eq.${DEFAULT_SECTOR}`
+  : `sector_code.is.null,sector_code.neq.${DEFAULT_SECTOR}`)
 
-async function fetchOrdersChunk(from: number): Promise<OrderRow[]> {
-  const { data, error } = await supabase.from('orders').select('*').is('trashed_at', null)
+async function fetchOrdersChunk(part: Part, from: number): Promise<OrderRow[]> {
+  const { data, error } = await supabase.from('orders').select('*').is('trashed_at', null).or(partFilter(part))
     .order('order_date', { ascending: false, nullsFirst: false }).order('order_number')
     .range(from, from + ORDER_CHUNK - 1)
   if (error) throw new Error(error.message)
   return (data ?? []) as OrderRow[]
 }
 
-async function countActiveOrders(): Promise<number> {
-  const { count, error } = await supabase.from('orders').select('order_number', { count: 'exact', head: true }).is('trashed_at', null)
+async function countOrders(part: Part): Promise<number> {
+  const { count, error } = await supabase.from('orders').select('order_number', { count: 'exact', head: true })
+    .is('trashed_at', null).or(partFilter(part))
   if (error) throw new Error(error.message)
   return count ?? 0
 }
 
-/** Charge les tranches restantes en parallèle, dans l'ordre d'affichage. */
-async function fetchOrdersRest(total: number, firstLength: number): Promise<OrderRow[]> {
+/** Toutes les tranches d'une partie, chargées en parallèle. */
+async function fetchOrdersPart(part: Part, total: number): Promise<OrderRow[]> {
   const starts: number[] = []
-  for (let from = firstLength; from < total; from += ORDER_CHUNK) starts.push(from)
-  const chunks = await Promise.all(starts.map((from) => fetchOrdersChunk(from)))
+  for (let from = 0; from < total; from += ORDER_CHUNK) starts.push(from)
+  const chunks = await Promise.all(starts.map((from) => fetchOrdersChunk(part, from)))
   return chunks.flat()
 }
 
@@ -182,26 +190,26 @@ export default function Dashboard({ onOpen, view, setView }: {
     try {
       // Archivage automatique (idempotent) en parallèle du chargement ; relecture seulement si des commandes ont changé de statut.
       const archiving = supabase.rpc('auto_archive_plans').then(({ data }) => (typeof data === 'number' ? data : 0), () => 0)
-      const firstP = fetchOrdersChunk(0)
-      const [archived, total, first, referentiel, comps, trashedRes, settingsRes] = await Promise.all([
-        archiving, countActiveOrders(), firstP, getReferentiel(), fetchCompanies().catch(() => []),
+      const [archived, defaultTotal, othersTotal, defaultFirst, referentiel, comps, trashedRes, settingsRes] = await Promise.all([
+        archiving, countOrders('default'), countOrders('others'), fetchOrdersChunk('default', 0), getReferentiel(), fetchCompanies().catch(() => []),
         supabase.from('orders').select('order_number', { count: 'exact', head: true }).not('trashed_at', 'is', null),
         readSettings(),
       ])
-      // Première tranche affichée tout de suite (relue seulement si l'archivage a changé des statuts)
-      const firstRows = archived > 0 ? await fetchOrdersChunk(0) : first
+      // Secteur affiché par défaut d'abord (relu seulement si l'archivage a changé des statuts)
+      const defaultRows = archived > 0 || defaultTotal > defaultFirst.length
+        ? await fetchOrdersPart('default', defaultTotal) : defaultFirst
       setRef(referentiel)
       setCompanies(new Map(comps.map((c) => [c.isis_code, c])))
       setTrashedCount(trashedRes.count ?? 0)
       setSettings(settingsRes)
-      setRows(firstRows)
+      setRows(defaultRows)
       setVersion((v) => v + 1)
       setLoading(false)
-      if (firstRows.length < total) setProgress({ loaded: firstRows.length, total })
+      if (othersTotal > 0) setProgress({ loaded: defaultRows.length, total: defaultRows.length + othersTotal })
 
-      // Tranches suivantes en parallèle : la liste se complète sans bloquer l'affichage
-      const rest = await fetchOrdersRest(total, firstRows.length)
-      const orders = [...firstRows, ...rest]
+      // Les autres secteurs arrivent ensuite : la liste se complète sans bloquer l'affichage
+      const others = await fetchOrdersPart('others', othersTotal)
+      const orders = [...defaultRows, ...others]
       setRows(orders)
       setProgress(null)
       // Personne à alerter et dates de fiche : complètent la liste sans la retarder

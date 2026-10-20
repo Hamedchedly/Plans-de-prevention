@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
-import { getReferentiel } from '../lib/refdata'
+import { getReferentiel, type Referentiel } from '../lib/refdata'
+import { searchNatures } from '../lib/rules'
 import { importReferentielV4 } from '../lib/referentiel'
 import { checkReferentielFile, downloadJson, exportReferentiel, lastReferentielLoad } from '../lib/referentielIO'
 import type { AlertRow, Profile, Role } from '../lib/types'
@@ -48,8 +49,12 @@ function AlertsSection() {
   const { can } = useAuth()
   const [rows, setRows] = useState<AlertRow[]>([])
   const [drafts, setDrafts] = useState<Record<string, string>>({})
-  const [proposals, setProposals] = useState<Record<string, string>>({})
+  const [ref, setRef] = useState<Referentiel | null>(null)
+  /** Option proposée sélectionnée, en attente de confirmation (rien n'est enregistré avant « Confirmer le choix »). */
+  const [choice, setChoice] = useState<Record<string, number>>({})
   const [editing, setEditing] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
+  const [picked, setPicked] = useState<string[]>([])
   const [err, setErr] = useState<string | null>(null)
   const [filter, setFilter] = useState<'OUVERTES' | 'VALIDEES' | 'TOUTES'>('OUVERTES')
 
@@ -58,29 +63,39 @@ function AlertsSection() {
     if (error) setErr(error.message); else setRows((data ?? []) as AlertRow[])
   }
   useEffect(() => { void load() }, [])
+  useEffect(() => { void getReferentiel().then(setRef).catch(() => setRef(null)) }, [])
 
   const decide = async (code: string, status: 'VALIDE' | 'IGNORE') => {
     const { error } = await supabase.rpc('decide_alert', { p_code: code, p_status: status, p_comment: drafts[code] ?? null })
     if (error) setErr(error.message); else { setErr(null); void load() }
   }
-  /** « Modifier » : enregistre la proposition corrigée et le commentaire. */
-  const saveEdit = async (a: AlertRow) => {
+
+  /** Confirmation d'une option : le premier choix est la proposition (VALIDE), les autres des modifications (MODIFIE). */
+  const confirmChoice = async (a: AlertRow) => {
+    const i = choice[a.code]
+    if (i === undefined || !a.options?.[i]) return
     const { error } = await supabase.rpc('decide_alert_edit', {
-      p_code: a.code, p_status: 'MODIFIE', p_comment: drafts[a.code] ?? null, p_proposal: proposals[a.code] ?? a.proposal,
+      p_code: a.code, p_status: i === 0 ? 'VALIDE' : 'MODIFIE', p_comment: drafts[a.code] ?? null, p_proposal: a.options[i],
+    })
+    if (error) { setErr(error.message); return }
+    setErr(null)
+    setChoice((c) => { const next = { ...c }; delete next[a.code]; return next })
+    void load()
+  }
+
+  const startEdit = (a: AlertRow) => { setEditing(a.code); setQuery(''); setPicked([]); setErr(null) }
+  const togglePick = (label: string) => setPicked((p) => (p.includes(label) ? p.filter((x) => x !== label) : [...p, label]))
+  /** Enregistre les natures choisies dans le référentiel comme proposition corrigée (MODIFIE). */
+  const saveEdit = async (a: AlertRow) => {
+    if (!picked.length) { setErr('Choisissez au moins une nature dans le référentiel.'); return }
+    const { error } = await supabase.rpc('decide_alert_edit', {
+      p_code: a.code, p_status: 'MODIFIE', p_comment: drafts[a.code] ?? null, p_proposal: picked.join(' ; '),
     })
     if (error) { setErr(error.message); return }
     setErr(null); setEditing(null); void load()
   }
 
-  /** Choix proposés : le premier est la proposition (statut VALIDE), les autres sont des modifications (MODIFIE). */
-  const choose = async (a: AlertRow, option: string, index: number) => {
-    const { error } = await supabase.rpc('decide_alert_edit', {
-      p_code: a.code, p_status: index === 0 ? 'VALIDE' : 'MODIFIE', p_comment: drafts[a.code] ?? null, p_proposal: option,
-    })
-    if (error) { setErr(error.message); return }
-    setErr(null); void load()
-  }
-
+  const hits = ref && query.trim() ? searchNatures(query, ref.natures, ref.vocab, ref.lotNameByCode, 12) : []
   const open = (a: AlertRow) => a.status === 'A_VALIDER' || a.status === 'APPLIQUE_A_VALIDER'
   const shown = filter === 'OUVERTES' ? rows.filter(open) : filter === 'VALIDEES' ? rows.filter((a) => a.status === 'VALIDE') : rows
   const tone = (s: AlertRow['status']) => (s === 'VALIDE' ? 'ok' : s === 'IGNORE' ? 'off' : s === 'MODIFIE' ? 'warn' : 'default') as 'ok' | 'off' | 'warn' | 'default'
@@ -105,15 +120,41 @@ function AlertsSection() {
           </div>
           <div className="text-sm font-medium">{a.object}</div>
           <p className="mt-1 text-sm">{a.finding}</p>
+
           {editing === a.code ? (
-            <div className="mt-2 space-y-2">
-              <label className="block text-xs text-muted-foreground">Proposition</label>
-              <textarea className={fieldClass + ' min-h-[80px] w-full'} value={proposals[a.code] ?? a.proposal}
-                onChange={(e) => setProposals({ ...proposals, [a.code]: e.target.value })} />
+            <div className="mt-3 space-y-3 rounded-md border border-dashed border-border p-3">
+              <p className="text-xs font-medium text-muted-foreground">Choisir les natures dans le référentiel</p>
+              {picked.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {picked.map((l) => (
+                    <button key={l} type="button" onClick={() => togglePick(l)}
+                      className="rounded-full border border-primary bg-primary/10 px-3 py-1 text-left text-xs font-semibold">
+                      ✓ {l} <span className="text-muted-foreground">×</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <input className={fieldClass + ' w-full'} placeholder="Rechercher une nature (ex. chute, flocage, PMR)" value={query} onChange={(e) => setQuery(e.target.value)} />
+              {!ref && <p className="text-xs text-muted-foreground">Référentiel en cours de chargement…</p>}
+              {query.trim() && ref && (
+                <div className="max-h-64 space-y-1 overflow-y-auto">
+                  {hits.length === 0 && <p className="text-xs text-muted-foreground">Aucune nature trouvée.</p>}
+                  {hits.map((h) => {
+                    const on = picked.includes(h.nature.label)
+                    return (
+                      <button key={h.nature.id} type="button" onClick={() => togglePick(h.nature.label)} aria-pressed={on}
+                        className={`flex w-full flex-col rounded-md border px-3 py-1.5 text-left text-sm ${on ? 'border-primary bg-primary/10 font-semibold' : 'border-border hover:bg-muted'}`}>
+                        <span>{on ? '✓ ' : ''}{h.nature.label}</span>
+                        <span className="text-xs font-normal text-muted-foreground">{h.nature.groupLabel ?? ''}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
               <input className={fieldClass + ' w-full'} placeholder="Commentaire (optionnel)" value={drafts[a.code] ?? ''}
                 onChange={(e) => setDrafts({ ...drafts, [a.code]: e.target.value })} />
               <div className="flex flex-wrap gap-2">
-                <Button onClick={() => void saveEdit(a)} disabled={!canDecide}>Enregistrer la modification</Button>
+                <Button onClick={() => void saveEdit(a)} disabled={!canDecide || picked.length === 0}>Enregistrer la modification</Button>
                 <Button variant="ghost" onClick={() => setEditing(null)}>Annuler</Button>
               </div>
             </div>
@@ -123,17 +164,25 @@ function AlertsSection() {
               {a.decision_comment && <p className="mt-1 text-xs text-muted-foreground">Commentaire : {a.decision_comment}</p>}
               {a.options && a.options.length > 0 && (
                 <div className="mt-3 space-y-1.5">
-                  <p className="text-xs font-medium text-muted-foreground">Choisir :</p>
-                  {a.options.map((o, i) => (
-                    <Button key={o} variant="ghost" className="h-auto w-full justify-start whitespace-normal py-2 text-left" onClick={() => void choose(a, o, i)} disabled={!canDecide}>{o}</Button>
-                  ))}
+                  <p className="text-xs font-medium text-muted-foreground">Choisir une option, puis confirmer :</p>
+                  {a.options.map((o, i) => {
+                    const on = choice[a.code] === i
+                    return (
+                      <button key={o} type="button" aria-pressed={on} disabled={!canDecide}
+                        onClick={() => setChoice({ ...choice, [a.code]: i })}
+                        className={`w-full rounded-md border px-3 py-2 text-left text-sm disabled:opacity-50 ${on ? 'border-primary bg-primary/10 font-semibold' : 'border-border hover:bg-muted'}`}>
+                        {on ? '✓ ' : ''}{o}
+                      </button>
+                    )
+                  })}
+                  <Button onClick={() => void confirmChoice(a)} disabled={!canDecide || choice[a.code] === undefined}>Confirmer le choix</Button>
                 </div>
               )}
               <div className="mt-3 flex flex-wrap gap-2">
                 <input className={fieldClass + ' flex-1 min-w-[200px]'} placeholder="Commentaire (optionnel)" value={drafts[a.code] ?? ''}
                   onChange={(e) => setDrafts({ ...drafts, [a.code]: e.target.value })} />
                 <Button onClick={() => void decide(a.code, 'VALIDE')} disabled={!canDecide}>Valider</Button>
-                <Button variant="ghost" onClick={() => { setProposals({ ...proposals, [a.code]: proposals[a.code] ?? a.proposal }); setEditing(a.code) }} disabled={!canDecide}>Modifier</Button>
+                <Button variant="ghost" onClick={() => startEdit(a)} disabled={!canDecide}>Modifier</Button>
                 <Button variant="ghost" onClick={() => void decide(a.code, 'IGNORE')} disabled={!canDecide}>Ignorer</Button>
               </div>
             </>

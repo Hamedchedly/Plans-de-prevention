@@ -7,7 +7,7 @@ import { natureCandidates, type OrderSuggestion } from '../lib/natureSuggest'
 import { supabase } from '../lib/supabase'
 import { derive, natureIdsOf, contactFor, fetchContacts, measuresFor, savePlans, buildSheetsZip, downloadBlob, buildSheetPdf, unique, planFileName, DEFAULT_MAIL_OBJET, DEFAULT_MAIL_CORPS, type Contact, type Line } from '../lib/sheet'
 import MailDialog from './MailDialog'
-import type { OrderRow } from '../lib/types'
+import { addressOf, type OrderRow } from '../lib/types'
 import type { CompanyRow } from '../pages/AdminCompanies'
 import { Badge, Button, Card, Notice, errMsg, fieldClass } from './ui'
 
@@ -24,6 +24,27 @@ function IdentityNotice({ codes }: { codes: string[] }) {
       Identité incomplète ou compte non inscrit pour : <span className="font-mono">{codes.join(', ')}</span>.
       La personne à alerter doit être complétée (Administration › Utilisateurs et chargés, ou saisie par la personne à son inscription) avant l’export des PDF.
     </Notice>
+  )
+}
+
+/** Adresse du chantier, modifiable par le chargé avant la création de la fiche. */
+function AddressField({ order, onSave }: { order: OrderRow; onSave: (value: string) => Promise<void> }) {
+  const current = addressOf(order) ?? ''
+  const [draft, setDraft] = useState(current)
+  const [busy, setBusy] = useState(false)
+  const dirty = draft.trim() !== current.trim()
+  return (
+    <div className="flex flex-wrap items-center gap-2 pt-1">
+      <label htmlFor={`addr-${order.order_number}`} className="text-xs text-muted-foreground">Adresse du chantier</label>
+      <input id={`addr-${order.order_number}`} className={fieldClass + ' min-w-[16rem] flex-1'} value={draft}
+        placeholder="Adresse à renseigner" onChange={(e) => setDraft(e.target.value)} />
+      {dirty && (
+        <Button variant="ghost" disabled={busy} onClick={async () => { setBusy(true); await onSave(draft); setBusy(false) }}>
+          {busy ? 'Enregistrement…' : 'Enregistrer l’adresse'}
+        </Button>
+      )}
+      {order.address_manual && !dirty && <span className="text-xs text-muted-foreground">Corrigée par le chargé</span>}
+    </div>
   )
 }
 
@@ -60,7 +81,19 @@ export default function BulkPlanWizard({
   // Référentiel local : une nature proposée depuis la fiche devient utilisable immédiatement.
   const [ref, setRef] = useState<Referentiel>(refInitial)
 
-  const byNumber = useMemo(() => new Map(orders.map((o) => [o.order_number, o])), [orders])
+  // Adresses corrigées dans l'assistant : appliquées tout de suite (fiche, PDF, mail).
+  const [addressEdits, setAddressEdits] = useState<Record<string, string>>({})
+  const byNumber = useMemo(() => new Map(orders.map((o) => [
+    o.order_number, o.order_number in addressEdits ? { ...o, address_manual: addressEdits[o.order_number] || null } : o,
+  ])), [orders, addressEdits])
+
+  const saveAddress = async (orderNumber: string, value: string) => {
+    setErr(null)
+    const { error } = await supabase.rpc('update_order_address', { p_order: orderNumber, p_address: value })
+    if (error) { setErr(error.message); return }
+    setAddressEdits((m) => ({ ...m, [orderNumber]: value.trim() }))
+    setProgress('Adresse enregistrée : elle apparaît sur la fiche et le PDF.')
+  }
 
   // Préremplissage : nature seulement si la suggestion est fiable ; lots et risques/mesures en découlent.
   const [lines, setLines] = useState<Line[]>(() => orders.map((o) => {
@@ -386,11 +419,12 @@ export default function BulkPlanWizard({
           <Card className="space-y-1 bg-muted/40">
             <div className="flex flex-wrap items-baseline gap-2">
               <span className="font-mono text-sm font-semibold">{order.order_number}</span>
-              <span className="text-xs text-muted-foreground">{[order.address, order.city].filter(Boolean).join(', ') || '—'}</span>
+              <span className="text-xs text-muted-foreground">{[addressOf(order), order.city].filter(Boolean).join(', ') || '—'}</span>
               <span className="ml-auto text-xs text-muted-foreground">Commande {cur + 1} / {lines.length}</span>
             </div>
             <p className="text-sm"><span className="text-xs text-muted-foreground">Libellé source · </span>{order.nature_text || '—'}</p>
             <p className="text-sm text-muted-foreground"><span className="text-xs">Descriptif · </span>{order.description || '—'}</p>
+            <AddressField key={order.order_number} order={order} onSave={(v) => saveAddress(order.order_number, v)} />
           </Card>
         )}
 

@@ -14,6 +14,9 @@ export interface Profile {
   contact_email: string | null
 }
 
+/** Adresse à afficher : correction saisie par le chargé, sinon adresse source (commande ou suivi budgétaire). */
+export const addressOf = (o: Pick<OrderRow, 'address' | 'address_manual'>): string | null => o.address_manual || o.address || null
+
 export type ScopeStatus = 'IN_SCOPE' | 'OUT_OF_SCOPE'
 export type PlanStatus = 'NON_QUALIFIEE' | 'A_ENVOYER' | 'EN_ATTENTE_RETOUR' | 'SIGNEE' | 'ARCHIVEE' | 'ENVOYE_MANUELLEMENT'
 export type ArchiveReason = 'MANUEL' | 'OBSOLETE' | 'ENVOI_SANS_RETOUR' | 'SIGNEE_6_MOIS'
@@ -25,6 +28,7 @@ export interface OrderRow {
   sector_code: string | null
   tranche_name: string | null
   address: string | null
+  address_manual: string | null
   city: string | null
   nature_text: string | null
   description: string | null

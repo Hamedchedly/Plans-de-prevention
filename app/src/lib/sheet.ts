@@ -4,7 +4,7 @@ import type { Referentiel } from './refdata'
 import { computeMeasures, proposeRisks } from './rules'
 import { buildPlanPdf, brandLogo, planFileName, DOTTED_PERIOD, type PlanHistory, type PlanPdfData } from './planPdf'
 import { defaultPeriod, fmtFr } from './period'
-import type { OrderRow } from './types'
+import { addressOf, type OrderRow } from './types'
 
 /**
  * Fiche de prévention : données partagées par l'assistant de création, l'aperçu,
@@ -70,7 +70,7 @@ export function sheetPdfInput(l: Line, o: OrderRow, ref: Referentiel, companyNam
     lotNames: l.lots.map((c) => ref.lotNameByCode.get(c) ?? `Lot ${c}`),
     taskLabel: labels.join(' ; ') || o.nature_text || '',
     activity: o.nature_text ?? o.description ?? '',
-    zone: [o.address, o.city, o.tranche_name].filter(Boolean).join(' · '),
+    zone: [addressOf(o), o.city, o.tranche_name].filter(Boolean).join(' · '),
     period: l.companyFills ? DOTTED_PERIOD : `du ${periodLabel(l)}`,
     companyLabel: companyName,
     sector: o.sector_code ?? '',

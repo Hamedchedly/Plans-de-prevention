@@ -82,10 +82,14 @@ export default function ImportPage() {
         status: 'TERMINE', inserted_count: res.inserted, updated_count: res.updated,
         summary: { scope_recalculated: res.scopeRecalculated },
       }).eq('id', importId))
+      // Adresse réelle : reprise du suivi budgétaire (l'import des commandes réécrit l'adresse source)
+      const addressed = await supabase.rpc('apply_budget_addresses')
+      check(addressed)
       void logActivity('IMPORT', kind, importId, { file: file.name, summary: `${res.inserted} nouvelles, ${res.updated} mises à jour` })
       setLog([
         `${rows.length} lignes lues dans « ${file.name} ».`,
         `${res.inserted} nouvelle(s) ligne(s), ${res.updated} mise(s) à jour (données source uniquement).`,
+        `Adresse reprise du suivi budgétaire sur ${(addressed.data as number) ?? 0} commande(s).`,
         ...(kind === 'COMMANDES' ? [
           `Périmètre recalculé sur ${res.scopeRecalculated} commande(s) non fixée(s) manuellement.`,
           `Audit appliqué à ${res.auditApplied} commande(s) (envoyé ou signé, si encore non qualifiée).`,

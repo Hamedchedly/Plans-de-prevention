@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { corpsMatch, getReferentiel, lotFromCorpsEtat, type Referentiel } from '../lib/refdata'
 import { computeMeasures, fold, proposeRisks, searchNatures, type NatureRef } from '../lib/rules'
 import { autoNature } from '../lib/natureSuggest'
-import type { OrderRow, PlanStatus } from '../lib/types'
+import { addressOf, type OrderRow, type PlanStatus } from '../lib/types'
 import { Badge, Button, Card, Notice, fieldClass, errMsg } from '../components/ui'
 import { logActivity, logError } from '../lib/activity'
 import { defaultPeriod } from '../lib/period'
@@ -394,7 +394,7 @@ export default function PlanEditor({ order, onBack }: { order: OrderRow; onBack:
         <Button variant="ghost" onClick={onBack}>← Retour</Button>
         <div className="mr-auto">
           <div className="font-mono text-xs text-muted-foreground">{order.order_number}</div>
-          <div className="text-sm font-semibold">{[order.address, order.city].filter(Boolean).join(', ') || 'Adresse non renseignée'}</div>
+          <div className="text-sm font-semibold">{[addressOf(order), order.city].filter(Boolean).join(', ') || 'Adresse non renseignée'}</div>
         </div>
         <Badge tone={status === 'ARCHIVEE' ? 'off' : status === 'NON_QUALIFIEE' ? 'warn' : 'ok'}>{STATUS_LABEL[status]}</Badge>
         {editable && <Button onClick={() => void save()} disabled={busy}>{busy ? 'Enregistrement…' : 'Enregistrer le plan'}</Button>}

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { OrderRow } from '../lib/types'
+import { addressOf, type OrderRow } from '../lib/types'
 import { Button, Notice, fieldClass } from './ui'
 
 type Choice = 'EXCLUSION' | 'NON_CONCERNEE' | 'REAFFECTER' | 'MANUEL'
@@ -63,7 +63,7 @@ export default function OrderActionDialog({
       <div className="w-full max-w-lg space-y-4 rounded-xl border border-border bg-card p-5 shadow-xl">
         <div>
           <h2 className="font-semibold">Commande {order.order_number}</h2>
-          <p className="text-sm text-muted-foreground">{[order.address, order.city].filter(Boolean).join(', ') || '—'}</p>
+          <p className="text-sm text-muted-foreground">{[addressOf(order), order.city].filter(Boolean).join(', ') || '—'}</p>
         </div>
 
         <div className="space-y-2" role="radiogroup" aria-label="Action">

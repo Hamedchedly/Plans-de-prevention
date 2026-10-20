@@ -6,7 +6,7 @@ import { getReferentiel, type Referentiel } from '../lib/refdata'
 import { readCache, writeCache } from '../lib/cache'
 import { MultiSelect } from '../components/MultiSelect'
 import { buildSuggestion, type OrderSuggestion } from '../lib/natureSuggest'
-import type { OrderRow } from '../lib/types'
+import { addressOf, type OrderRow } from '../lib/types'
 import { Badge, Button, Card, EmptyState, IconButton, Notice, PageHeader, fieldClass, errMsg } from '../components/ui'
 import { Bubble } from '../components/Bubble'
 import CompanyDialog from '../components/CompanyDialog'
@@ -381,7 +381,7 @@ export default function Dashboard({ onOpen, view, setView }: {
   const terms = tokens(q)
   const matches = (o: OrderRow) => {
     if (!terms.length) return true
-    const hay = fold([o.order_number, o.address, o.city, o.tranche_name, o.nature_text, o.description, o.isis_code].filter(Boolean).join(' '))
+    const hay = fold([o.order_number, addressOf(o), o.city, o.tranche_name, o.nature_text, o.description, o.isis_code].filter(Boolean).join(' '))
     return terms.every((t) => hay.includes(t))
   }
   const matchesFilters = (o: OrderRow, cut: number | null) => {
@@ -422,7 +422,7 @@ export default function Dashboard({ onOpen, view, setView }: {
       case 'order_number': return o.order_number
       case 'order_date': return o.order_date ?? ''
       case 'company': return o.isis_code ? companies.get(o.isis_code)?.name || o.isis_code : ''
-      case 'address': return [o.address, o.city].filter(Boolean).join(', ')
+      case 'address': return [addressOf(o), o.city].filter(Boolean).join(', ')
       case 'nature': return o.nature_text ?? ''
       case 'lot': return lotLabelOf(o) ?? ''
       case 'operator': return o.operator_code ?? ''
@@ -892,7 +892,7 @@ export default function Dashboard({ onOpen, view, setView }: {
                         </div>
                         {o.isis_code && companyName && <div className="font-mono text-[11px] text-muted-foreground">{o.isis_code}</div>}
                       </td>
-                      <td className="px-3 py-2.5">{[o.address, o.city].filter(Boolean).join(', ') || '—'}</td>
+                      <td className="px-3 py-2.5">{[addressOf(o), o.city].filter(Boolean).join(', ') || '—'}</td>
                       <td className="max-w-md px-3 py-2.5">
                         <div>{o.nature_text ?? '—'}</div>
                         {o.description && <div className="line-clamp-2 text-xs text-muted-foreground">{o.description}</div>}

@@ -411,6 +411,12 @@ export default function BulkPlanWizard({
                     </div>
                     {natureOpen && (
                       <div className="max-h-72 space-y-3 overflow-y-auto rounded-md border border-border p-2">
+                        {natureQ.trim() && (
+                          <button type="button" onClick={() => { openProposal(); setNatureOpen(false) }}
+                            className="flex w-full items-center gap-2 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-left text-sm font-medium text-red-700 hover:bg-red-100">
+                            Nature absente de la liste ? Proposer « {natureQ.trim()} »
+                          </button>
+                        )}
                         {natureHits ? (
                           natureHits.length ? natureHits.map((n) => natureRow(n)) : <p className="p-2 text-xs text-muted-foreground">Aucune nature trouvée.</p>
                         ) : (
@@ -424,9 +430,7 @@ export default function BulkPlanWizard({
                       </div>
                     )}
                   </div>
-                  {!proposing ? (
-                    <Button variant="ghost" onClick={openProposal}>Nature absente de la liste ? Proposer une nature</Button>
-                  ) : (
+                  {proposing && (
                     <div className="space-y-2 rounded-md border border-dashed border-border p-3">
                       <p className="text-xs text-muted-foreground">La proposition est envoyée au Super Admin et retenue sur cette fiche tout de suite.</p>
                       <input className={fieldClass} value={newNature.label} onChange={(e) => setNewNature({ ...newNature, label: e.target.value })} placeholder="Libellé de la nature" />

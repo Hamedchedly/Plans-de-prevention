@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Referentiel } from '../lib/refdata'
-import { computeMeasures, fold, searchNatures, tokens, type NatureRef } from '../lib/rules'
+import { computeMeasures, fold, proposeRisks, searchNatures, tokens, type NatureRef } from '../lib/rules'
+import { getReferentiel } from '../lib/refdata'
 import { fmtFr, defaultPeriod } from '../lib/period'
 import { natureCandidates, type OrderSuggestion } from '../lib/natureSuggest'
 import { supabase } from '../lib/supabase'
@@ -26,7 +27,7 @@ function IdentityNotice({ codes }: { codes: string[] }) {
 }
 
 export default function BulkPlanWizard({
-  orders, suggestions, ref, companies, template, initial, mode = 'create', onClose, onDone,
+  orders, suggestions, ref: refInitial, companies, template, initial, mode = 'create', onClose, onDone,
 }: {
   orders: OrderRow[]
   suggestions: Map<string, OrderSuggestion>
@@ -52,6 +53,9 @@ export default function BulkPlanWizard({
   const identityMissing = contactsReady && operatorsIncomplete.length > 0
   const contactOf = (o: OrderRow) => contactFor(contacts, o)
   const [created, setCreated] = useState(false)
+
+  // Référentiel local : une nature proposée depuis la fiche devient utilisable immédiatement.
+  const [ref, setRef] = useState<Referentiel>(refInitial)
 
   const byNumber = useMemo(() => new Map(orders.map((o) => [o.order_number, o])), [orders])
 
@@ -79,6 +83,8 @@ export default function BulkPlanWizard({
   const [progress, setProgress] = useState<string | null>(null)
   const [previewIndex, setPreviewIndex] = useState(0)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [proposing, setProposing] = useState(false)
+  const [newNature, setNewNature] = useState({ label: '', lots: [] as number[], reason: '' })
 
   const line = lines[cur]
   const order = byNumber.get(line.orderNumber)
@@ -222,14 +228,40 @@ export default function BulkPlanWizard({
     id === line.natureId ? 'retained' : selectedIds.includes(id) ? 'selected' : 'off'
   const stateClass = (st: 'retained' | 'selected' | 'off') =>
     st === 'retained' ? 'border-emerald-600 bg-emerald-50 font-bold text-emerald-900'
-      : st === 'selected' ? 'border-primary bg-primary/10 font-medium'
+      : st === 'selected' ? 'border-sky-500 bg-sky-50 font-medium text-sky-900'
       : 'border-border hover:bg-muted'
+
+  const openProposal = () => {
+    setNewNature({ label: natureQ || (order?.nature_text ?? ''), lots: line.lots, reason: '' })
+    setProposing(true)
+  }
+  /** Nature absente du référentiel : proposition envoyée au Super Admin, puis retenue sur cette fiche. */
+  const proposeNature = async () => {
+    setBusy(true); setErr(null)
+    try {
+      const lots = newNature.lots
+      const risks = [...proposeRisks(ref.lotDefaults, lots, []).keys()]
+      const measures = [...computeMeasures(new Set(risks), ref.rules)]
+      const label = newNature.label.trim()
+      const { error } = await supabase.rpc('propose_referential', {
+        p_kind: 'NATURE_NOUVELLE', p_nature_id: null, p_label: label, p_lots: lots,
+        p_risks: risks, p_measures: measures, p_reason: newNature.reason.trim() || null,
+      })
+      if (error) throw new Error(error.message)
+      const fresh = await getReferentiel(true)
+      setRef(fresh)
+      const created = fresh.natures.find((n) => n.pending && n.label === label)
+      if (created) toggleNature(created.id)
+      setProposing(false)
+      setProgress(`Nature « ${label} » proposée et retenue sur cette fiche. Elle deviendra définitive après validation du Super Admin.`)
+    } catch (e) { setErr(errMsg(e)) } finally { setBusy(false) }
+  }
 
   const natureRow = (n: NatureRef, badge?: string) => {
     const st = natureState(n.id)
     return (
       <button key={n.id} type="button" onClick={() => toggleNature(n.id)} aria-pressed={st !== 'off'}
-        className={`flex w-full items-start justify-between gap-3 rounded-md border px-3 py-2 text-left text-sm transition-colors ${stateClass(st)}`}>
+        className={`flex w-full items-start justify-between gap-3 rounded-md border px-3 py-2 text-left text-sm transition-colors ${st === 'off' && badge ? 'border-dashed border-amber-400 bg-amber-50/60 hover:bg-amber-50' : stateClass(st)}`}>
         <span className="min-w-0">
           <span className="block">{st !== 'off' ? (st === 'retained' ? '★ ' : '✓ ') : ''}{n.label}</span>
           <span className="block text-xs font-normal text-muted-foreground">{n.groupLabel ?? ''}{n.id < 0 ? ' · proposition en attente' : ''}</span>
@@ -354,8 +386,8 @@ export default function BulkPlanWizard({
                   )}
                   {selectedIds.length > 0 && (
                     <div className="space-y-1.5">
-                      <p className="text-xs text-muted-foreground">Natures activées ({selectedIds.length}) · la nature retenue est en gras</p>
-                      {selectedIds.map((id) => {
+                      <p className="text-xs text-muted-foreground">Natures activées ({selectedIds.length}) · la nature retenue est en vert, en tête</p>
+                      {[...selectedIds].sort((a, b) => Number(b === line.natureId) - Number(a === line.natureId)).map((id) => {
                         const n = ref.natures.find((x) => x.id === id)
                         if (!n) return null
                         const retained = id === line.natureId
@@ -392,6 +424,28 @@ export default function BulkPlanWizard({
                       </div>
                     )}
                   </div>
+                  {!proposing ? (
+                    <Button variant="ghost" onClick={openProposal}>Nature absente de la liste ? Proposer une nature</Button>
+                  ) : (
+                    <div className="space-y-2 rounded-md border border-dashed border-border p-3">
+                      <p className="text-xs text-muted-foreground">La proposition est envoyée au Super Admin et retenue sur cette fiche tout de suite.</p>
+                      <input className={fieldClass} value={newNature.label} onChange={(e) => setNewNature({ ...newNature, label: e.target.value })} placeholder="Libellé de la nature" />
+                      <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+                        {ref.lots.map((l) => (
+                          <label key={l.code} className="flex items-center gap-2 text-sm">
+                            <input type="checkbox" checked={newNature.lots.includes(l.code)}
+                              onChange={() => setNewNature({ ...newNature, lots: newNature.lots.includes(l.code) ? newNature.lots.filter((x) => x !== l.code) : [...newNature.lots, l.code] })} />
+                            {l.name}
+                          </label>
+                        ))}
+                      </div>
+                      <input className={fieldClass} value={newNature.reason} onChange={(e) => setNewNature({ ...newNature, reason: e.target.value })} placeholder="Motif (optionnel)" />
+                      <div className="flex gap-2">
+                        <Button onClick={() => void proposeNature()} disabled={busy || !newNature.label.trim() || newNature.lots.length === 0}>Proposer et retenir</Button>
+                        <Button variant="ghost" onClick={() => setProposing(false)}>Annuler</Button>
+                      </div>
+                    </div>
+                  )}
                 </Card>
 
                 <Card className="space-y-3">

@@ -125,10 +125,13 @@ export function searchNatures(
     if (wantsDepose && labelFold.includes('depos')) s += 0.5
     if (wantsPose && /\bpose\b|^installation|\binstall/.test(labelFold)) s += 0.5
     // un mot qui désigne le lot (ex. « toiture » → Couverture) compte aussi
-    for (const lot of n.lots) {
-      const lname = fold(lotNameByCode.get(lot) ?? '')
-      for (const w of qe) if (w.length >= 4 && lname.includes(w)) s += 0.5
+    // un mot qui désigne le lot compte (0,2 par mot, 0,3 au plus) : il ne suffit pas seul à pré-sélectionner une nature
+    let lotBonus = 0
+    for (const w of qe) {
+      if (w.length < 4) continue
+      if (n.lots.some((lot) => fold(lotNameByCode.get(lot) ?? '').includes(w))) lotBonus += 0.2
     }
+    s += Math.min(lotBonus, 0.3)
     if (s > 0) hits.push({ nature: n, score: s })
   }
   return hits.sort((a, b) => b.score - a.score).slice(0, limit)

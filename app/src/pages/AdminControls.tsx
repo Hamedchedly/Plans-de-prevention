@@ -119,7 +119,7 @@ export function ControlsSection() {
         {err && <Notice tone="error">{err}</Notice>}
         {list && list.length === 0 && <Notice tone="ok">Aucune incohérence : tous les états d’audit sont appliqués.</Notice>}
         {list && list.length > 0 && (
-          <div className="overflow-x-auto">
+          <div className="max-h-[60vh] overflow-auto">
             <table className="w-full text-sm">
               <thead className="text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>

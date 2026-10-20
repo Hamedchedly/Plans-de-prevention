@@ -2,18 +2,18 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { fetchContacts, type Contact } from '../lib/sheet'
 import { Card, Notice, PageHeader, errMsg, fieldClass } from '../components/ui'
-import { GroupedBars, HBars } from '../components/Charts'
+import { GroupedBars, HBars, LineChart } from '../components/Charts'
 import { useAuth } from '../lib/auth'
 import { PIPELINE_SEGMENTS, PipelineBar, type PipelineCounts } from '../components/PipelineBar'
 
-type Row = { operator_code: string | null; plan_status: string }
+type Row = { operator_code: string | null; plan_status: string; order_date: string | null }
 
 /** Commandes du périmètre, hors corbeille (toutes les lignes, par tranches de 1000). */
 async function fetchScopeRows(): Promise<Row[]> {
   const page = 1000
   const out: Row[] = []
   for (let from = 0; ; from += page) {
-    const { data, error } = await supabase.from('orders').select('operator_code,plan_status')
+    const { data, error } = await supabase.from('orders').select('operator_code,plan_status,order_date')
       .eq('scope_status', 'IN_SCOPE').is('trashed_at', null).range(from, from + page - 1)
     if (error) throw new Error(error.message)
     out.push(...((data ?? []) as Row[]))
@@ -55,6 +55,10 @@ interface Usage {
   stock_par_charge: { code: string; statuts: Record<string, number> }[]
   chargés: string[]
 }
+
+/** Cumul des valeurs d'une série hebdomadaire. */
+const cumul = <T extends object>(items: T[], key: keyof T & string): number[] =>
+  items.reduce<number[]>((acc, w) => { acc.push((acc[acc.length - 1] ?? 0) + Number((w as Record<string, unknown>)[key] ?? 0)); return acc }, [])
 
 /** Utilisation de l'outil (Super Admin) : connexions, fiches par semaine, stock par étape, filtrables par chargé. */
 function UsageSection() {
@@ -143,6 +147,15 @@ function UsageSection() {
             ))}
           </div>
 
+          <section className="space-y-2">
+            <h3 className="text-sm font-semibold">Évolution cumulée des fiches sur la période</h3>
+            <LineChart labels={fiches.map((w) => w.semaine)} series={[
+              { name: 'Créées', color: '#111827', values: cumul(fiches, 'creees') },
+              { name: 'Envoyées', color: '#f59e0b', values: cumul(fiches, 'envoyees') },
+              { name: 'Signées', color: '#10b981', values: cumul(fiches, 'signees') },
+            ]} />
+          </section>
+
           <div className="grid gap-5 lg:grid-cols-2">
             <section className="space-y-2">
               <h3 className="text-sm font-semibold">Récurrence de connexion par semaine</h3>
@@ -163,7 +176,7 @@ function UsageSection() {
               <h3 className="text-sm font-semibold">Stock des commandes par étape</h3>
               <HBars items={STAGES.map((s) => ({ label: s.label, value: stock[s.key] ?? 0, color: s.color }))} />
             </section>
-            <section className="space-y-2 overflow-x-auto">
+            <section className="max-h-[50vh] space-y-2 overflow-auto">
               <h3 className="text-sm font-semibold">Par chargé</h3>
               <table className="w-full text-xs">
                 <thead className="text-left text-[11px] uppercase tracking-wide text-muted-foreground">
@@ -197,6 +210,12 @@ function UsageSection() {
   )
 }
 
+const PERIOD_STEPS: { months: number | null; label: string }[] = [
+  { months: 1, label: '1 mois' }, { months: 3, label: '3 mois' }, { months: 6, label: '6 mois' }, { months: null, label: 'Toujours' },
+]
+const PAGE_SIZE = 5
+type SortKey = 'code' | 'sum' | 'pct' | 'attente' | 'fait' | 'envoye' | 'retour'
+
 export default function Indicateurs() {
   const { can } = useAuth()
   const [rows, setRows] = useState<Row[]>([])
@@ -205,6 +224,10 @@ export default function Indicateurs() {
   const [err, setErr] = useState<string | null>(null)
   /** Chargé sélectionné : sa ligne est surlignée et la barre n'affiche que ses commandes. */
   const [focus, setFocus] = useState<string | null>(null)
+  /** Curseur de période : index dans PERIOD_STEPS (3 = toujours). */
+  const [step, setStep] = useState(3)
+  const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'pct', dir: 'desc' })
+  const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -220,24 +243,63 @@ export default function Indicateurs() {
     return () => { alive = false }
   }, [])
 
+  /** Date de début de la fenêtre (AAAA-MM-JJ), ou null pour « toujours ». */
+  const cutoff = useMemo(() => {
+    const m = PERIOD_STEPS[step].months
+    if (m == null) return null
+    const d = new Date()
+    d.setMonth(d.getMonth() - m)
+    return d.toISOString().slice(0, 10)
+  }, [step])
+
+  const scoped = useMemo(() => (cutoff ? rows.filter((r) => (r.order_date ?? '') >= cutoff) : rows), [rows, cutoff])
+
   const total = useMemo(() => {
     const c = emptyCounts()
-    rows.forEach((r) => addTo(c, r.plan_status))
+    scoped.forEach((r) => addTo(c, r.plan_status))
     return c
-  }, [rows])
+  }, [scoped])
 
+  /** « % plans faits » = plans faits (fiche créée) / commandes du chargé. */
   const byOperator = useMemo(() => {
     const m = new Map<string, PipelineCounts>()
-    for (const r of rows) {
+    for (const r of scoped) {
       const code = r.operator_code ?? '—'
       if (!m.has(code)) m.set(code, emptyCounts())
       addTo(m.get(code)!, r.plan_status)
     }
     return [...m.entries()]
-      .map(([code, c]) => ({ code, c, sum: c.attente + c.fait + c.envoye + c.retour }))
+      .map(([code, c]) => {
+        const sum = c.attente + c.fait + c.envoye + c.retour
+        return { code, c, sum, pct: sum ? c.fait / sum : 0 }
+      })
       .filter((x) => x.sum > 0)
-      .sort((a, b) => b.sum - a.sum)
-  }, [rows])
+  }, [scoped])
+
+  const sorted = useMemo(() => {
+    const value = (x: (typeof byOperator)[number]) =>
+      sort.key === 'code' ? x.code : sort.key === 'sum' ? x.sum : sort.key === 'pct' ? x.pct : x.c[sort.key]
+    return [...byOperator].sort((a, b) => {
+      const va = value(a), vb = value(b)
+      let r = typeof va === 'string' ? va.localeCompare(vb as string, 'fr') : (va as number) - (vb as number)
+      if (r === 0) r = b.sum - a.sum
+      return sort.dir === 'asc' ? r : -r
+    })
+  }, [byOperator, sort])
+
+  const visible = expanded ? sorted : sorted.slice(0, PAGE_SIZE)
+  const toggleSort = (key: SortKey) =>
+    setSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: key === 'code' ? 'asc' : 'desc' }))
+  const arrow = (key: SortKey) => (sort.key === key ? (sort.dir === 'asc' ? ' ▲' : ' ▼') : '')
+  const nameOf = (code: string) => names.get(code)?.name || code
+
+  const Head = ({ k, label, right }: { k: SortKey; label: string; right?: boolean }) => (
+    <th className={`px-4 py-2 font-medium ${right ? 'text-right' : ''}`}>
+      <button type="button" onClick={() => toggleSort(k)} className="uppercase tracking-wide hover:text-foreground">
+        {label}{arrow(k)}
+      </button>
+    </th>
+  )
 
   return (
     <div className="space-y-5">
@@ -253,58 +315,75 @@ export default function Indicateurs() {
       <Card className="space-y-4">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <div>
-            <h2 className="text-base font-semibold">{focus ? `Chargé : ${names.get(focus)?.name || focus}` : 'Ensemble des chargés'}</h2>
+            <h2 className="text-base font-semibold">{focus ? `Chargé : ${nameOf(focus)}` : 'Ensemble des chargés'}</h2>
             <p className="text-xs text-muted-foreground">
               {focus ? 'Barre filtrée sur ce chargé. Cliquez à nouveau sur son nom pour revenir à l’ensemble.' : loading ? 'Chargement…' : `${byOperator.length} chargé(s) avec des commandes`}
             </p>
           </div>
           {focus && <button type="button" onClick={() => setFocus(null)} className="rounded-full bg-muted px-3.5 py-1.5 text-xs font-medium hover:bg-muted/70">Voir tous les chargés</button>}
         </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-xs text-muted-foreground">Commandes des</span>
+          <input type="range" min={0} max={PERIOD_STEPS.length - 1} step={1} value={step} aria-label="Période des commandes"
+            onChange={(e) => { setStep(Number(e.target.value)); setExpanded(false) }} className="w-56 accent-primary" />
+          <span className="text-sm font-medium">{PERIOD_STEPS[step].label === 'Toujours' ? 'toutes les commandes' : `les ${PERIOD_STEPS[step].label.toLowerCase()}`}</span>
+        </div>
         <PipelineBar counts={focus ? (byOperator.find((x) => x.code === focus)?.c ?? emptyCounts()) : total} />
       </Card>
 
-      <Card className="overflow-x-auto p-0">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
-            <tr>
-              <th className="px-4 py-2 font-medium">Chargé</th>
-              <th className="px-4 py-2 text-right font-medium">Commandes</th>
-              <th className="px-4 py-2 font-medium">Avancement</th>
-              <th className="px-4 py-2 text-right font-medium">En attente de plan</th>
-              <th className="px-4 py-2 text-right font-medium">Plan fait</th>
-              <th className="px-4 py-2 text-right font-medium">Envoyé, sans retour</th>
-              <th className="px-4 py-2 text-right font-medium">Avec retour</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {byOperator.map(({ code, c, sum }) => (
-              <tr key={code} className={`align-middle transition-colors ${focus === code ? 'bg-primary/5 ring-1 ring-inset ring-primary/20' : 'hover:bg-muted/40'}`}>
-                <td className="px-4 py-2.5">
-                  <button type="button" onClick={() => setFocus(focus === code ? null : code)} aria-pressed={focus === code}
-                    className="text-left font-medium hover:underline">
-                    {names.get(code)?.name || code}
-                  </button>
-                  {names.get(code)?.name && <div className="font-mono text-[11px] text-muted-foreground">{code}</div>}
-                </td>
-                <td className="px-4 py-2.5 text-right tabular-nums">{sum}</td>
-                <td className="px-4 py-2.5">
-                  <div className="flex h-2.5 min-w-[160px] overflow-hidden rounded-full bg-muted">
-                    {PIPELINE_SEGMENTS.map((s) => (
-                      c[s.key] > 0 ? <div key={s.key} style={{ width: `${(c[s.key] / sum) * 100}%`, background: s.color }} title={`${s.label} : ${c[s.key]}`} /> : null
-                    ))}
-                  </div>
-                </td>
-                <td className="px-4 py-2.5 text-right tabular-nums">{c.attente}</td>
-                <td className="px-4 py-2.5 text-right tabular-nums">{c.fait}</td>
-                <td className="px-4 py-2.5 text-right tabular-nums">{c.envoye}</td>
-                <td className="px-4 py-2.5 text-right tabular-nums">{c.retour}</td>
+      <Card className="space-y-3 p-0">
+        <div className={`overflow-x-auto ${expanded ? 'max-h-[60vh] overflow-y-auto' : ''}`}>
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-muted/60 text-left text-xs text-muted-foreground">
+              <tr>
+                <Head k="code" label="Chargé" />
+                <Head k="sum" label="Commandes" right />
+                <th className="px-4 py-2 font-medium uppercase tracking-wide">Avancement</th>
+                <Head k="pct" label="% plans faits" right />
+                <Head k="attente" label="En attente de plan" right />
+                <Head k="fait" label="Plan fait" right />
+                <Head k="envoye" label="Envoyé, sans retour" right />
+                <Head k="retour" label="Avec retour" right />
               </tr>
-            ))}
-            {!loading && byOperator.length === 0 && (
-              <tr><td colSpan={7} className="px-4 py-6 text-center text-muted-foreground">Aucune commande dans le périmètre.</td></tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {visible.map(({ code, c, sum, pct }) => (
+                <tr key={code} className={`align-middle transition-colors ${focus === code ? 'bg-primary/5 ring-1 ring-inset ring-primary/20' : 'hover:bg-muted/40'}`}>
+                  <td className="px-4 py-2.5">
+                    <button type="button" onClick={() => setFocus(focus === code ? null : code)} aria-pressed={focus === code}
+                      className="text-left font-medium hover:underline">
+                      {nameOf(code)}
+                    </button>
+                    {names.get(code)?.name && <div className="font-mono text-[11px] text-muted-foreground">{code}</div>}
+                  </td>
+                  <td className="px-4 py-2.5 text-right tabular-nums">{sum}</td>
+                  <td className="px-4 py-2.5">
+                    <div className="flex h-2.5 min-w-[160px] overflow-hidden rounded-full bg-muted">
+                      {PIPELINE_SEGMENTS.map((s) => (
+                        c[s.key] > 0 ? <div key={s.key} style={{ width: `${(c[s.key] / sum) * 100}%`, background: s.color }} title={`${s.label} : ${c[s.key]}`} /> : null
+                      ))}
+                    </div>
+                  </td>
+                  <td className="px-4 py-2.5 text-right tabular-nums font-medium">{Math.round(pct * 100)} %</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums">{c.attente}</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums">{c.fait}</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums">{c.envoye}</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums">{c.retour}</td>
+                </tr>
+              ))}
+              {!loading && sorted.length === 0 && (
+                <tr><td colSpan={8} className="px-4 py-6 text-center text-muted-foreground">Aucune commande dans le périmètre pour cette période.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        {sorted.length > PAGE_SIZE && (
+          <div className="border-t border-border px-4 py-2 text-center">
+            <button type="button" onClick={() => setExpanded((v) => !v)} className="text-xs font-medium text-muted-foreground hover:text-foreground">
+              {expanded ? 'Voir moins' : `Voir les ${sorted.length - PAGE_SIZE} autres chargés`}
+            </button>
+          </div>
+        )}
       </Card>
     </div>
   )

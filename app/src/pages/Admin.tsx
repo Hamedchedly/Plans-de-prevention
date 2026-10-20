@@ -113,6 +113,7 @@ function AlertsSection() {
       </div>
       {err && <Notice tone="error">{err}</Notice>}
       {!canDecide && <Notice>Réservé aux responsables.</Notice>}
+      <div className="max-h-[70vh] space-y-3 overflow-y-auto pr-1">
       {shown.map((a) => (
         <Card key={a.code}>
           <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -189,6 +190,7 @@ function AlertsSection() {
           )}
         </Card>
       ))}
+      </div>
       {shown.length === 0 && <Notice>Aucune alerte dans cette vue.</Notice>}
     </div>
   )

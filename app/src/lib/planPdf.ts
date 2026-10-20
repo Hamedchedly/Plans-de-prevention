@@ -20,6 +20,7 @@ export interface PlanPdfData {
   period: string                                      // texte affiché (ou pointillés si l'entreprise renseigne)
   companyLabel: string
   sector?: string                                     // code secteur de la commande ({secteur} dans le pied de page)
+  natureText?: string                                 // libellé de nature saisi sur la commande ({nature})
   riskOptions: { label: string; checked: boolean }[]  // tous les risques du référentiel, cochés selon la fiche
   measureOptions: { family: string; label: string; checked: boolean }[]
   redactor: { name: string; email: string; phone: string } | null
@@ -277,10 +278,17 @@ async function renderPlan(d: PlanPdfData, logo: Uint8Array | null, k: number): P
   text(sigLabel, sigX - sigW, sigTop + 26, 8, font, MUTED)
 
   // Pied de page
+  // Balises du pied de page : {commande} {secteur} {entreprise} {nature} {redacteur}
+  const footerVars: Record<string, string> = {
+    commande: d.orderNumber, secteur: d.sector ?? '', entreprise: d.companyLabel ?? '',
+    nature: d.natureText ?? '', redacteur: d.redactor?.name ?? '',
+  }
+  const footerBase = (d.footer || DEFAULT_FOOTER).replace(/\{(\w+)\}/g, (m, k: string) => (k in footerVars ? footerVars[k] : m))
   pages.forEach((p, i) => {
-    const base = (d.footer || DEFAULT_FOOTER).split('{commande}').join(d.orderNumber).split('{secteur}').join(d.sector ?? '')
-    const label = `${base}${pages.length > 1 ? ` · page ${i + 1}/${pages.length}` : ''}`
-    p.drawText(clean(label), { x: MX, y: MB, size: 6.5, font, color: MUTED })
+    const label = clean(`${footerBase}${pages.length > 1 ? ` · page ${i + 1}/${pages.length}` : ''}`)
+    // Centré horizontalement sur la page
+    const w = font.widthOfTextAtSize(label, 6.5)
+    p.drawText(label, { x: (PAGE_W - w) / 2, y: MB, size: 6.5, font, color: MUTED })
   })
 
   if (d.history) {

@@ -284,7 +284,7 @@ const TEMPLATE_KEYS = [
   { key: 'mail_objet', label: 'Objet du mail', multiline: false, help: '{secteur}, {commande}, {entreprise}, {nature}, {periode}, {redacteur}', def: DEFAULT_MAIL_OBJET },
   { key: 'mail_corps', label: 'Corps du mail', multiline: true, help: '{secteur}, {commande}, {entreprise}, {nature}, {periode}, {redacteur}', def: DEFAULT_MAIL_CORPS },
   { key: 'pdf_procedure_alerte', label: 'Procédure d’alerte (PDF)', multiline: false, help: 'Texte libre affiché dans la case « Procédure d’alerte »', def: DEFAULT_ALERT },
-  { key: 'pdf_pied_de_page', label: 'Pied de page (PDF)', multiline: false, help: '{secteur}, {commande}', def: DEFAULT_FOOTER },
+  { key: 'pdf_pied_de_page', label: 'Pied de page (PDF)', multiline: false, help: '{secteur}, {commande}, {entreprise}, {nature}, {redacteur}', def: DEFAULT_FOOTER },
 ]
 
 /** Modèles de mail et de PDF, modifiables par le Super Admin. */

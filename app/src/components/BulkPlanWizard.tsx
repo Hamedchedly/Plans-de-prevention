@@ -5,7 +5,8 @@ import { getReferentiel } from '../lib/refdata'
 import { fmtFr, defaultPeriod } from '../lib/period'
 import { natureCandidates, type OrderSuggestion } from '../lib/natureSuggest'
 import { supabase } from '../lib/supabase'
-import { derive, natureIdsOf, contactFor, fetchContacts, measuresFor, savePlans, buildSheetsZip, downloadBlob, buildSheetPdf, unique, planFileName, type Contact, type Line } from '../lib/sheet'
+import { derive, natureIdsOf, contactFor, fetchContacts, measuresFor, savePlans, buildSheetsZip, downloadBlob, buildSheetPdf, unique, planFileName, DEFAULT_MAIL_OBJET, DEFAULT_MAIL_CORPS, type Contact, type Line } from '../lib/sheet'
+import MailDialog from './MailDialog'
 import type { OrderRow } from '../lib/types'
 import type { CompanyRow } from '../pages/AdminCompanies'
 import { Badge, Button, Card, Notice, errMsg, fieldClass } from './ui'
@@ -27,7 +28,7 @@ function IdentityNotice({ codes }: { codes: string[] }) {
 }
 
 export default function BulkPlanWizard({
-  orders, suggestions, ref: refInitial, companies, template, initial, mode = 'create', onClose, onDone,
+  orders, suggestions, ref: refInitial, companies, template, initial, mode = 'create', mailObjet = DEFAULT_MAIL_OBJET, mailCorps = DEFAULT_MAIL_CORPS, onClose, onDone,
 }: {
   orders: OrderRow[]
   suggestions: Map<string, OrderSuggestion>
@@ -36,6 +37,8 @@ export default function BulkPlanWizard({
   template: string
   initial?: Map<string, Line>          // fiches déjà créées : modification
   mode?: 'create' | 'edit'
+  mailObjet?: string
+  mailCorps?: string
   onClose: () => void
   onDone: (message: string) => void
 }) {
@@ -84,6 +87,7 @@ export default function BulkPlanWizard({
   const [previewIndex, setPreviewIndex] = useState(0)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [proposing, setProposing] = useState(false)
+  const [mailing, setMailing] = useState(false)
   const [newNature, setNewNature] = useState({ label: '', lots: [] as number[], reason: '', touched: false })
 
   const line = lines[cur]
@@ -187,6 +191,19 @@ export default function BulkPlanWizard({
     } catch (e) { setBusy(false); setErr(errMsg(e)) }
   }
 
+  /** PDF unitaire d'une fiche (cas d'une seule commande). */
+  const downloadOne = async () => {
+    const l = lines[0]
+    const o = byNumber.get(l.orderNumber)
+    if (!o) return
+    setBusy(true); setErr(null)
+    try {
+      const bytes = await buildSheetPdf(l, o, ref, companyLabel(o.isis_code), contactOf(o))
+      const name = planFileName(template, { entreprise: companyLabel(o.isis_code) || o.order_number, commande: o.order_number, secteur: o.sector_code ?? '' })
+      downloadBlob(new Blob([new Uint8Array(bytes)], { type: 'application/pdf' }), name)
+    } catch (e) { setErr(errMsg(e)) } finally { setBusy(false) }
+  }
+
   const finish = () => onDone(`${lines.length} fiche(s) ${mode === 'edit' ? 'mise(s) à jour' : 'créée(s)'}.`)
 
   // ---- navigation : étapes pour chaque commande, puis aperçu et export
@@ -264,7 +281,15 @@ export default function BulkPlanWizard({
       const fresh = await getReferentiel(true)
       setRef(fresh)
       const created = fresh.natures.find((n) => n.pending && n.label === label)
-      if (created) toggleNature(created.id)
+      if (created) {
+        // Nature proposée = principale ; lots = ceux cochés dans la proposition ; risques et mesures recalculés pour ces lots.
+        updateLine(line.orderNumber, (l) => {
+          const next = [created.id, ...natureIdsOf(l).filter((x) => x !== created.id)]
+          const d = derive(fresh, next, lots, [])
+          return { natureId: created.id, extraNatures: next.slice(1), lots, risks: d.risks, measures: d.measures }
+        })
+      }
+      setNatureOpen(false)
       setProposing(false)
       setProgress(`Nature « ${label} » proposée et retenue sur cette fiche. Elle deviendra définitive après validation du Super Admin.`)
     } catch (e) { setErr(errMsg(e)) } finally { setBusy(false) }
@@ -665,18 +690,42 @@ export default function BulkPlanWizard({
                 )}
                 {identityMissing && <IdentityNotice codes={operatorsIncomplete} />}
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button onClick={() => void validate()} disabled={busy || !lines.length || lines.some((l) => l.natureId == null) || missingCompanies.length > 0}>
-                    {busy ? 'Enregistrement…' : mode === 'edit' ? `Enregistrer les modifications (${lines.length})` : `Valider et créer ${lines.length > 1 ? `les ${lines.length} fiches` : 'la fiche'}`}
-                  </Button>
-                  <Button variant="ghost" onClick={() => void download()} disabled={busy || !created || identityMissing}>Télécharger les PDF (ZIP)</Button>
+                  <Button variant="ghost" onClick={goPrev} disabled={busy}>Revenir et modifier</Button>
+                  {!created ? (
+                    <Button onClick={() => void validate()} disabled={busy || !lines.length || lines.some((l) => l.natureId == null) || missingCompanies.length > 0}>
+                      {busy ? 'Enregistrement…' : mode === 'edit' ? `Enregistrer les modifications (${lines.length})` : `Valider et créer ${lines.length > 1 ? `les ${lines.length} fiches` : 'la fiche'}`}
+                    </Button>
+                  ) : lines.length === 1 ? (
+                    <Button onClick={() => setMailing(true)} disabled={busy || identityMissing}>Envoyer</Button>
+                  ) : null}
+                  {lines.length === 1 ? (
+                    <Button variant="ghost" onClick={() => void downloadOne()} disabled={busy || !created || identityMissing}>Télécharger le PDF</Button>
+                  ) : (
+                    <Button variant="ghost" onClick={() => void download()} disabled={busy || !created || identityMissing}>Télécharger les PDF (ZIP)</Button>
+                  )}
                   {created && <Button variant="ghost" onClick={finish} disabled={busy}>Terminer</Button>}
                 </div>
+                {mailing && order && (
+                  <MailDialog
+                    mode="envoi"
+                    order={order}
+                    company={companyLabel(order.isis_code) || order.order_number}
+                    osEmail={order.isis_code ? companyOf(order.isis_code).os_email : ''}
+                    contact={contactOf(order)}
+                    objet={mailObjet}
+                    corps={mailCorps}
+                    onDownloadPdf={downloadOne}
+                    onDone={(m) => { setMailing(false); onDone(m) }}
+                    onClose={() => setMailing(false)}
+                  />
+                )}
                 {!created && <p className="text-xs text-muted-foreground">La fiche est créée dès la validation ; l’export PDF peut se faire ensuite depuis la liste.</p>}
               </div>
             )}
           </div>
         </div>
 
+        {step !== OVERVIEW && (
         <div className="flex items-center gap-2 border-t border-border pt-3">
           <Button variant="ghost" onClick={goPrev} disabled={busy || (step === 0 && cur === 0)}>Précédent</Button>
           <span className="mr-auto text-xs text-muted-foreground">
@@ -690,6 +739,7 @@ export default function BulkPlanWizard({
             </Button>
           )}
         </div>
+        )}
       </div>
     </div>
   )

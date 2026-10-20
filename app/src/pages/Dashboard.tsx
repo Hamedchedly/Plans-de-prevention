@@ -1026,6 +1026,8 @@ export default function Dashboard({ onOpen, view, setView }: {
           ref={ref}
           companies={companies}
           template={fileTemplate}
+          mailObjet={settings.mail_objet ?? DEFAULT_MAIL_OBJET}
+          mailCorps={settings.mail_corps ?? DEFAULT_MAIL_CORPS}
           onClose={() => setWizard(null)}
           onDone={(m) => { setWizard(null); setSelected(new Set()); setNotice(m); void load() }}
         />

@@ -73,6 +73,7 @@ export function sheetPdfInput(l: Line, o: OrderRow, ref: Referentiel, companyNam
     zone: [o.address, o.city, o.tranche_name].filter(Boolean).join(' · '),
     period: l.companyFills ? DOTTED_PERIOD : `du ${periodLabel(l)}`,
     companyLabel: companyName,
+    sector: o.sector_code ?? '',
     riskOptions: [...ref.riskLabel.entries()].map(([code, label]) => ({ label, checked: l.risks.includes(code) })),
     measureOptions: ref.measures.map((m) => ({ family: m.family || 'Autres', label: m.label, checked: l.measures.includes(m.code) })),
     redactor,

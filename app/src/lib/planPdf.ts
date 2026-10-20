@@ -19,11 +19,12 @@ export interface PlanPdfData {
   zone: string
   period: string                                      // texte affiché (ou pointillés si l'entreprise renseigne)
   companyLabel: string
+  sector?: string                                     // code secteur de la commande ({secteur} dans le pied de page)
   riskOptions: { label: string; checked: boolean }[]  // tous les risques du référentiel, cochés selon la fiche
   measureOptions: { family: string; label: string; checked: boolean }[]
   redactor: { name: string; email: string; phone: string } | null
   alertLine?: string   // procédure d'alerte (modèle administrable)
-  footer?: string      // pied de page (modèle administrable, {commande} remplacé)
+  footer?: string      // pied de page (modèle administrable : {commande} et {secteur} remplacés)
 }
 
 export const DEFAULT_ALERT = '15 SAMU · 18 POMPIERS · 114 URGENCES · 17 POLICE SECOURS'
@@ -263,19 +264,21 @@ async function renderPlan(d: PlanPdfData, logo: Uint8Array | null, k: number): P
     checkGrid(d.measureOptions.filter((m) => m.family === f))
   }
 
-  // Bas de page à droite : nom de l'entreprise, puis « Signature » en gris clair
+  // Bas de page à droite : nom de l'entreprise, puis « Signature » juste en dessous, à distance du bord droit
   const SIG_H = 70
+  const SIG_RIGHT = 60   // distance du bord droit de la page (réglage propre à ce bloc)
   const sigTop = CONTENT_BOTTOM - SIG_H
   if (top + 8 > sigTop) newPage()
+  const sigX = PAGE_W - SIG_RIGHT
   const nameW = bold.widthOfTextAtSize(clean(d.companyLabel || ' '), 10)
-  text(d.companyLabel, PAGE_W - MX - nameW, sigTop + 12, 10, bold, NAVY)
+  text(d.companyLabel, sigX - nameW, sigTop + 12, 10, bold, NAVY)
   const sigLabel = 'Signature'
   const sigW = font.widthOfTextAtSize(sigLabel, 8)
-  text(sigLabel, PAGE_W - MX - sigW, sigTop + SIG_H - 2, 8, font, MUTED)
+  text(sigLabel, sigX - sigW, sigTop + 26, 8, font, MUTED)
 
   // Pied de page
   pages.forEach((p, i) => {
-    const base = (d.footer || DEFAULT_FOOTER).split('{commande}').join(d.orderNumber)
+    const base = (d.footer || DEFAULT_FOOTER).split('{commande}').join(d.orderNumber).split('{secteur}').join(d.sector ?? '')
     const label = `${base}${pages.length > 1 ? ` · page ${i + 1}/${pages.length}` : ''}`
     p.drawText(clean(label), { x: MX, y: MB, size: 6.5, font, color: MUTED })
   })

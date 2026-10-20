@@ -23,6 +23,7 @@ export default function MailDialog({
 }) {
   const vars = {
     commande: order.order_number,
+    secteur: order.sector_code ?? '',
     entreprise: company,
     nature: order.nature_text ?? '',
     periode: order.period_start && order.period_end ? `du ${fmtFr(order.period_start)} au ${fmtFr(order.period_end)}` : 'à renseigner par l’entreprise',

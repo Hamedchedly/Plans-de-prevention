@@ -59,3 +59,11 @@ body {
   font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   font-feature-settings: 'cv11', 'ss01';
 }
+
+/* Règle d'interface : tout élément coché (case à cocher, multisélection) est en gras. */
+label:has(> input[type='checkbox']:checked) {
+  font-weight: 600;
+}
+tr:has(input[type='checkbox'][aria-label^='Sélectionner']:checked) {
+  font-weight: 600;
+}

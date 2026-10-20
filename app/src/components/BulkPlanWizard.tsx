@@ -84,7 +84,7 @@ export default function BulkPlanWizard({
   const [previewIndex, setPreviewIndex] = useState(0)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [proposing, setProposing] = useState(false)
-  const [newNature, setNewNature] = useState({ label: '', lots: [] as number[], reason: '' })
+  const [newNature, setNewNature] = useState({ label: '', lots: [] as number[], reason: '', touched: false })
 
   const line = lines[cur]
   const order = byNumber.get(line.orderNumber)
@@ -231,8 +231,21 @@ export default function BulkPlanWizard({
       : st === 'selected' ? 'border-sky-500 bg-sky-50 font-medium text-sky-900'
       : 'border-border hover:bg-muted'
 
+  /** Lots possiblement concernés par un libellé : lots des natures proches et lots dont le nom contient un mot du libellé. */
+  const lotsFromText = (text: string): number[] => {
+    const words = tokens(text)
+    if (!words.length) return []
+    const fromNatures = searchNatures(text, ref.natures, ref.vocab, ref.lotNameByCode, 5)
+      .filter((h) => h.score >= 0.3)
+      .flatMap((h) => h.nature.lots)
+    const fromNames = ref.lots
+      .filter((l) => words.some((w) => w.length >= 4 && fold(l.name).includes(w)))
+      .map((l) => l.code)
+    return unique([...fromNatures, ...fromNames])
+  }
   const openProposal = () => {
-    setNewNature({ label: natureQ || (order?.nature_text ?? ''), lots: line.lots, reason: '' })
+    const label = natureQ || (order?.nature_text ?? '')
+    setNewNature({ label, lots: lotsFromText(label), reason: '', touched: false })
     setProposing(true)
   }
   /** Nature absente du référentiel : proposition envoyée au Super Admin, puis retenue sur cette fiche. */
@@ -433,12 +446,14 @@ export default function BulkPlanWizard({
                   {proposing && (
                     <div className="space-y-2 rounded-md border border-dashed border-border p-3">
                       <p className="text-xs text-muted-foreground">La proposition est envoyée au Super Admin et retenue sur cette fiche tout de suite.</p>
-                      <input className={fieldClass} value={newNature.label} onChange={(e) => setNewNature({ ...newNature, label: e.target.value })} placeholder="Libellé de la nature" />
+                      <input className={fieldClass} value={newNature.label} placeholder="Libellé de la nature"
+                        onChange={(e) => setNewNature((n) => ({ ...n, label: e.target.value, lots: n.touched ? n.lots : lotsFromText(e.target.value) }))} />
+                      <p className="text-xs text-muted-foreground">Lots pré-cochés d’après le libellé : ajustez-les si besoin.</p>
                       <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
                         {ref.lots.map((l) => (
                           <label key={l.code} className="flex items-center gap-2 text-sm">
                             <input type="checkbox" checked={newNature.lots.includes(l.code)}
-                              onChange={() => setNewNature({ ...newNature, lots: newNature.lots.includes(l.code) ? newNature.lots.filter((x) => x !== l.code) : [...newNature.lots, l.code] })} />
+                              onChange={() => setNewNature((n) => ({ ...n, touched: true, lots: n.lots.includes(l.code) ? n.lots.filter((x) => x !== l.code) : [...n.lots, l.code] }))} />
                             {l.name}
                           </label>
                         ))}

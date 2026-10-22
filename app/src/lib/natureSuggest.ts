@@ -49,6 +49,28 @@ export async function loadNatureChoices(): Promise<Map<string, number>> {
   return out
 }
 
+/** Préférences de lots par nature, apprises des décisions : clé `nature:lot` → true (gardé) / false (retiré). */
+export type LotPrefs = Map<string, boolean>
+export const lotPrefKey = (nature: number, lot: number) => `${nature}:${lot}`
+
+export async function loadNatureLotPreferences(): Promise<LotPrefs> {
+  const out: LotPrefs = new Map()
+  const { data, error } = await supabase.from('nature_lot_preferences').select('nature_id,lot_code,keep')
+  if (error) return out
+  for (const r of (data ?? []) as { nature_id: number; lot_code: number; keep: boolean }[]) out.set(lotPrefKey(r.nature_id, r.lot_code), r.keep)
+  return out
+}
+
+export function recordNatureLotPreference(natureId: number, lot: number, keep: boolean) {
+  void supabase.rpc('record_nature_lot_preference', { p_nature_id: natureId, p_lot_code: lot, p_keep: keep })
+}
+
+/** Lots ajoutés automatiquement avec une nature : ceux que le chargé a retirés ne le sont plus. Le référentiel n'est pas modifié. */
+export function autoLotsOf(nature: { id: number; lots: number[] } | undefined, prefs: LotPrefs): number[] {
+  if (!nature) return []
+  return nature.lots.filter((lot) => prefs.get(lotPrefKey(nature.id, lot)) !== false)
+}
+
 /** Suggestion complète pour une commande (nature affectée, puis choix mémorisé pour ce libellé, puis analyse). */
 export function buildSuggestion(order: OrderText, ref: Referentiel, learned?: Map<string, number>): OrderSuggestion {
   const toOut = (n: NatureRef | undefined, confident: boolean, candidates: NatureRef[]): OrderSuggestion => {

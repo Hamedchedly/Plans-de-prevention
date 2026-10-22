@@ -5,6 +5,7 @@ import { getReferentiel } from '../lib/refdata'
 import { fmtFr, defaultPeriod } from '../lib/period'
 import { natureCandidates, type OrderSuggestion } from '../lib/natureSuggest'
 import { supabase } from '../lib/supabase'
+import { autoLotsOf, lotPrefKey, recordNatureLotPreference, type LotPrefs } from '../lib/natureSuggest'
 import { derive, natureIdsOf, contactFor, fetchContacts, measuresFor, savePlans, buildSheetsZip, downloadBlob, buildSheetPdf, unique, planFileName, DEFAULT_MAIL_OBJET, DEFAULT_MAIL_CORPS, type Contact, type Line } from '../lib/sheet'
 import MailDialog from './MailDialog'
 import { addressOf, type OrderRow } from '../lib/types'
@@ -49,10 +50,11 @@ function AddressField({ order, onSave }: { order: OrderRow; onSave: (value: stri
 }
 
 export default function BulkPlanWizard({
-  orders, suggestions, ref: refInitial, companies, template, initial, mode = 'create', mailObjet = DEFAULT_MAIL_OBJET, mailCorps = DEFAULT_MAIL_CORPS, onClose, onDone,
+  orders, suggestions, ref: refInitial, companies, template, initial, mode = 'create', mailObjet = DEFAULT_MAIL_OBJET, mailCorps = DEFAULT_MAIL_CORPS, onClose, onDone, lotPrefs,
 }: {
   orders: OrderRow[]
   suggestions: Map<string, OrderSuggestion>
+  lotPrefs?: LotPrefs
   ref: Referentiel
   companies: Map<string, CompanyRow>
   template: string
@@ -96,13 +98,15 @@ export default function BulkPlanWizard({
   }
 
   // Préremplissage : nature seulement si la suggestion est fiable ; lots et risques/mesures en découlent.
+  const [prefs, setPrefs] = useState<LotPrefs>(() => new Map(lotPrefs ?? []))
   const [lines, setLines] = useState<Line[]>(() => orders.map((o) => {
     const saved = initial?.get(o.order_number)
     if (saved) return saved
     const sg = suggestions.get(o.order_number)
     const natureId = sg?.confident && sg.natureId != null ? sg.natureId : null
     const nature = natureId != null ? ref.natures.find((n) => n.id === natureId) : undefined
-    const lots = unique([...(nature?.lots ?? []), ...(nature && sg?.lot != null ? [sg.lot] : [])])
+    const suggestedLot = nature && sg?.lot != null && prefs.get(lotPrefKey(nature.id, sg.lot)) !== false ? [sg.lot] : []
+    const lots = unique([...autoLotsOf(nature, prefs), ...suggestedLot])
     const d = derive(ref, natureId != null ? [natureId] : [], lots)
     return {
       orderNumber: o.order_number, natureId, extraNatures: [], lots, risks: d.risks, measures: d.measures,
@@ -137,7 +141,7 @@ export default function BulkPlanWizard({
     const wasOn = current.includes(natureId)
     const next = wasOn ? current.filter((x) => x !== natureId) : [...current, natureId]
     const main = l.natureId != null && next.includes(l.natureId) ? l.natureId : (next[0] ?? null)
-    const added = wasOn ? [] : (ref.natures.find((n) => n.id === natureId)?.lots ?? [])
+    const added = wasOn ? [] : autoLotsOf(ref.natures.find((n) => n.id === natureId), prefs)
     const lots = unique([...l.lots, ...added])
     const d = derive(ref, next, lots, l.measures)
     return { natureId: main, extraNatures: next.filter((x) => x !== main), lots, risks: unique([...l.risks, ...d.risks]), measures: d.measures }
@@ -145,11 +149,22 @@ export default function BulkPlanWizard({
   const retainNature = (natureId: number) => updateLine(line.orderNumber, (l) => ({
     natureId, extraNatures: natureIdsOf(l).filter((x) => x !== natureId),
   }))
-  const toggleLot = (code: number) => updateLine(line.orderNumber, (l) => {
-    const lots = l.lots.includes(code) ? l.lots.filter((c) => c !== code) : [...l.lots, code]
-    const d = derive(ref, natureIdsOf(l), lots, l.measures)
-    return { lots, risks: unique([...l.risks, ...d.risks]), measures: d.measures }
-  })
+  // Mémorise la décision du chargé pour les natures qui portent ce lot (retrait = ne plus l'ajouter ; ajout = le garder).
+  const toggleLot = (code: number) => {
+    const removing = line.lots.includes(code)
+    const keep = !removing
+    const natures = natureIdsOf(line).map((id) => ref.natures.find((n) => n.id === id)).filter((n): n is NonNullable<typeof n> => !!n && n.lots.includes(code))
+    const changed = natures.filter((n) => (keep ? prefs.get(lotPrefKey(n.id, code)) === false : prefs.get(lotPrefKey(n.id, code)) !== false))
+    if (changed.length) {
+      setPrefs((prev) => { const m = new Map(prev); for (const n of changed) m.set(lotPrefKey(n.id, code), keep); return m })
+      for (const n of changed) recordNatureLotPreference(n.id, code, keep)
+    }
+    updateLine(line.orderNumber, (l) => {
+      const lots = l.lots.includes(code) ? l.lots.filter((c) => c !== code) : [...l.lots, code]
+      const d = derive(ref, natureIdsOf(l), lots, l.measures)
+      return { lots, risks: unique([...l.risks, ...d.risks]), measures: d.measures }
+    })
+  }
   const toggleRisk = (code: string) => updateLine(line.orderNumber, (l) => {
     const risks = l.risks.includes(code) ? l.risks.filter((c) => c !== code) : [...l.risks, code]
     return { risks, measures: measuresFor(ref, risks, l.measures) }

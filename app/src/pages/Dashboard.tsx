@@ -5,7 +5,7 @@ import { fold, tokens } from '../lib/rules'
 import { getReferentiel, type Referentiel } from '../lib/refdata'
 import { readCache, writeCache } from '../lib/cache'
 import { MultiSelect } from '../components/MultiSelect'
-import { buildSuggestion, loadNatureChoices, type OrderSuggestion } from '../lib/natureSuggest'
+import { buildSuggestion, loadNatureChoices, loadNatureLotPreferences, type LotPrefs, type OrderSuggestion } from '../lib/natureSuggest'
 import { addressOf, type OrderRow } from '../lib/types'
 import { Badge, Button, Card, EmptyState, IconButton, Notice, PageHeader, fieldClass, errMsg } from '../components/ui'
 import { Bubble } from '../components/Bubble'
@@ -222,6 +222,8 @@ export default function Dashboard({ onOpen, view, setView }: {
   const [outOps, setOutOps] = useState<Set<string>>(new Set())
   /** Mémoire des choix de nature (libellé source → nature), rechargée au chargement de la liste. */
   const [learned, setLearned] = useState<Map<string, number>>(new Map())
+  /** Décisions apprises sur les lots des natures (retirés / gardés). */
+  const [lotPrefs, setLotPrefs] = useState<LotPrefs>(new Map())
   const [showOutOfService, setShowOutOfService] = useState(false)
   const hiddenByService = (o: OrderRow) => profile?.role === 'SUPER_ADMIN' && !showOutOfService && outOps.has(o.operator_code ?? '')
   const [lotFilter, setLotFilter] = useState('')
@@ -338,6 +340,7 @@ export default function Dashboard({ onOpen, view, setView }: {
       setSettings(settingsRes)
       setFilterOptions(options)
       setLearned(await loadNatureChoices())
+      setLotPrefs(await loadNatureLotPreferences())
       setLoading(false)
       await refreshOrders(sectors, operators, presetIdx)
     } catch (e) { setErr(errMsg(e)); setLoading(false) }
@@ -1053,6 +1056,7 @@ export default function Dashboard({ onOpen, view, setView }: {
         <BulkPlanWizard
           orders={wizard.orders}
           initial={wizard.initial}
+          lotPrefs={lotPrefs}
           mode={wizard.mode}
           suggestions={suggestions}
           ref={ref}

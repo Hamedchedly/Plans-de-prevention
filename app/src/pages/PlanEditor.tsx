@@ -5,6 +5,7 @@ import { computeMeasures, fold, proposeRisks, searchNatures, type NatureRef } fr
 import { autoNature } from '../lib/natureSuggest'
 import { addressOf, type OrderRow, type PlanStatus } from '../lib/types'
 import { Badge, Button, Card, Notice, fieldClass, errMsg } from '../components/ui'
+import { useAuth } from '../lib/auth'
 import { logActivity, logError } from '../lib/activity'
 import { defaultPeriod } from '../lib/period'
 import { buildLotTree, type TreeLot } from '../lib/lotTree'
@@ -63,6 +64,7 @@ const sameSet = (a: Iterable<number>, b: number[]) => {
 }
 
 export default function PlanEditor({ order, onBack }: { order: OrderRow; onBack: () => void }) {
+  const { profile } = useAuth()
   const [ref, setRef] = useState<Referentiel | null>(null)
   const [draft, setDraft] = useState<Draft | null>(null)
   const [status, setStatus] = useState<PlanStatus>(order.plan_status)
@@ -375,7 +377,9 @@ export default function PlanEditor({ order, onBack }: { order: OrderRow; onBack:
   if (loading) return <p className="text-sm text-muted-foreground">Chargement du plan…</p>
   if (!ref || !draft) return <Notice tone="error">{err ?? 'Référentiel indisponible.'}</Notice>
 
-  const editable = EDITABLE.includes(status)
+  // Assistant : lecture seule (aucune création ni modification de fiche)
+  const readOnly = profile?.role === 'ASSISTANT'
+  const editable = EDITABLE.includes(status) && !readOnly
   const lotName = (c: number) => ref.lotNameByCode.get(c) ?? `Lot ${c}`
   const riskLabel = (c: string) => ref.riskLabel.get(c) ?? c
   const measureLabel = (c: string) => ref.measures.find((m) => m.code === c)?.label ?? c

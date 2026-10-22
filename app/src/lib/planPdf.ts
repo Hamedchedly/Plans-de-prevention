@@ -304,6 +304,16 @@ async function renderPlan(d: PlanPdfData, logo: Uint8Array | null, k: number): P
   return { bytes: await doc.save(), pages: pages.length }
 }
 
+/** Nom du ZIP des fiches : modèle administrable ({entreprise}, {nombre}, {secteur}), caractères interdits retirés. */
+export function zipFileName(template: string, v: { entreprise: string; nombre: string; secteur: string }): string {
+  const base = template
+    .split('{entreprise}').join(v.entreprise)
+    .split('{nombre}').join(v.nombre)
+    .split('{secteur}').join(v.secteur)
+  const clean = base.replace(/[\\/:*?"<>|\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 180)
+  return `${clean || 'fiches_plans_de_prevention'}.zip`
+}
+
 /** Nom de fichier : modèle administrable ({entreprise}, {commande}, {secteur}), caractères interdits retirés. */
 export function planFileName(template: string, v: { entreprise: string; commande: string; secteur: string }): string {
   const base = template

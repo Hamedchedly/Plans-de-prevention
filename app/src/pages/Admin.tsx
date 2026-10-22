@@ -7,6 +7,7 @@ import { importReferentielV4 } from '../lib/referentiel'
 import { checkReferentielFile, downloadJson, exportReferentiel, lastReferentielLoad } from '../lib/referentielIO'
 import { addressOf, type AlertRow, type OrderRow, type Profile, type Role } from '../lib/types'
 import { Badge, Button, Card, Notice, PageHeader, errMsg, fieldClass } from '../components/ui'
+import { DEFAULT_ZIP_NAME_TEMPLATE } from '../lib/sheet'
 import { CompaniesSection, CompanyProposalsSection } from './AdminCompanies'
 import { DataSection } from './AdminData'
 import { startImpersonation } from '../lib/impersonation'
@@ -565,6 +566,9 @@ const FILE_NAME_DEFAULT = '{entreprise}_{commande}_{secteur}_Plan de prévention
 /** Modèle de nom des fichiers PDF exportés (variables : {entreprise}, {commande}, {secteur}). */
 function FileNameSection() {
   const [template, setTemplate] = useState(FILE_NAME_DEFAULT)
+  const [zipTemplate, setZipTemplate] = useState(DEFAULT_ZIP_NAME_TEMPLATE)
+  const [zipMsg, setZipMsg] = useState<string | null>(null)
+  const [zipBusy, setZipBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -574,7 +578,17 @@ function FileNameSection() {
       if (error) setErr(error.message)
       else if (typeof data === 'string' && data.trim()) setTemplate(data)
     })
+    void supabase.rpc('app_setting_get', { p_key: 'zip_name_template' }).then(({ data }) => {
+      if (typeof data === 'string' && data.trim()) setZipTemplate(data)
+    })
   }, [])
+
+  const saveZip = async () => {
+    setZipBusy(true); setErr(null); setZipMsg(null)
+    const { error } = await supabase.rpc('app_setting_set', { p_key: 'zip_name_template', p_value: zipTemplate })
+    setZipBusy(false)
+    if (error) setErr(error.message); else setZipMsg('Modèle du ZIP enregistré. Il s’applique aux prochains téléchargements.')
+  }
 
   const save = async () => {
     setBusy(true); setErr(null); setMsg(null)
@@ -600,6 +614,19 @@ function FileNameSection() {
         <input className={fieldClass} value={template} onChange={(e) => setTemplate(e.target.value)} />
         <p className="text-xs text-muted-foreground">Exemple : {example}</p>
         <Button onClick={() => void save()} disabled={busy || !template.trim()}>Enregistrer le modèle</Button>
+      </div>
+
+      <div className="mt-6 border-t border-border pt-4">
+        <h3 className="mb-2 font-semibold">Nom du ZIP des fiches</h3>
+        <p className="mb-3 text-sm text-muted-foreground">
+          Variables : <code>{'{entreprise}'}</code> (entreprise commune, sinon « Plusieurs entreprises »), <code>{'{nombre}'}</code> (nombre de fiches), <code>{'{secteur}'}</code>.
+        </p>
+        {zipMsg && <Notice tone="ok">{zipMsg}</Notice>}
+        <div className="space-y-2">
+          <input className={fieldClass} value={zipTemplate} onChange={(e) => setZipTemplate(e.target.value)} />
+          <p className="text-xs text-muted-foreground">Exemple : {zipTemplate.split('{entreprise}').join('SERRURIER TEST').split('{nombre}').join('3').split('{secteur}').join('S11')}.zip</p>
+          <Button onClick={() => void saveZip()} disabled={zipBusy || !zipTemplate.trim()}>Enregistrer le modèle du ZIP</Button>
+        </div>
       </div>
     </Card>
   )

@@ -6,7 +6,7 @@ import { fmtFr, defaultPeriod } from '../lib/period'
 import { natureCandidates, type OrderSuggestion } from '../lib/natureSuggest'
 import { supabase } from '../lib/supabase'
 import { autoLotsOf, lotPrefKey, recordNatureLotPreference, type LotPrefs } from '../lib/natureSuggest'
-import { derive, natureIdsOf, contactFor, fetchContacts, measuresFor, savePlans, buildSheetsZip, downloadBlob, buildSheetPdf, unique, planFileName, DEFAULT_MAIL_OBJET, DEFAULT_MAIL_CORPS, type Contact, type Line } from '../lib/sheet'
+import { derive, natureIdsOf, contactFor, fetchContacts, measuresFor, savePlans, buildSheetsZip, downloadBlob, buildSheetPdf, unique, planFileName, zipFileNameFor, DEFAULT_ZIP_NAME_TEMPLATE, DEFAULT_MAIL_OBJET, DEFAULT_MAIL_CORPS, type Contact, type Line } from '../lib/sheet'
 import MailDialog from './MailDialog'
 import { addressOf, type OrderRow } from '../lib/types'
 import type { CompanyRow } from '../pages/AdminCompanies'
@@ -50,8 +50,9 @@ function AddressField({ order, onSave }: { order: OrderRow; onSave: (value: stri
 }
 
 export default function BulkPlanWizard({
-  orders, suggestions, ref: refInitial, companies, template, initial, mode = 'create', mailObjet = DEFAULT_MAIL_OBJET, mailCorps = DEFAULT_MAIL_CORPS, onClose, onDone, lotPrefs,
+  orders, suggestions, ref: refInitial, companies, template, zipTemplate = DEFAULT_ZIP_NAME_TEMPLATE, initial, mode = 'create', mailObjet = DEFAULT_MAIL_OBJET, mailCorps = DEFAULT_MAIL_CORPS, onClose, onDone, lotPrefs,
 }: {
+  zipTemplate?: string
   orders: OrderRow[]
   suggestions: Map<string, OrderSuggestion>
   lotPrefs?: LotPrefs
@@ -244,7 +245,7 @@ export default function BulkPlanWizard({
     setBusy(true); setErr(null)
     try {
       const { blob, count, failures } = await buildSheetsZip(lines, byNumber, ref, companyLabel, contactOf, template, setProgress)
-      if (count > 0) downloadBlob(blob, `fiches_plans_prevention_${new Date().toISOString().slice(0, 10)}.zip`)
+      if (count > 0) downloadBlob(blob, zipFileNameFor(zipTemplate, lines.map((l) => byNumber.get(l.orderNumber)), count, companyLabel))
       setBusy(false)
       if (failures.length) setErr(`${failures.length} PDF non généré(s) :\n${failures.join('\n')}`)
     } catch (e) { setBusy(false); setErr(errMsg(e)) }

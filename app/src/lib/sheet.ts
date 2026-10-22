@@ -2,7 +2,7 @@ import JSZip from 'jszip'
 import { supabase } from './supabase'
 import type { Referentiel } from './refdata'
 import { computeMeasures, proposeRisks } from './rules'
-import { buildPlanPdf, brandLogo, planFileName, DOTTED_PERIOD, type PlanHistory, type PlanPdfData } from './planPdf'
+import { buildPlanPdf, brandLogo, planFileName, zipFileName, DOTTED_PERIOD, type PlanHistory, type PlanPdfData } from './planPdf'
 import { defaultPeriod, fmtFr } from './period'
 import { addressOf, type OrderRow } from './types'
 
@@ -25,7 +25,20 @@ export interface Redactor { name: string; email: string; phone: string }
 type ProfileLike = { first_name?: string | null; last_name?: string | null; full_name?: string | null; contact_email?: string | null; email?: string | null; phone?: string | null }
 
 export const unique = <T,>(xs: T[]) => [...new Set(xs)]
-export { planFileName }
+export { planFileName, zipFileName }
+/** Modèle par défaut du ZIP des fiches : variables {entreprise}, {nombre}, {secteur}. */
+export const DEFAULT_ZIP_NAME_TEMPLATE = '{entreprise}_Plan de prévention_{nombre} commandes_{secteur}'
+/** Nom du ZIP pour un ensemble de commandes : entreprise et secteur communs, sinon mention « Plusieurs ». */
+export function zipFileNameFor(template: string, orders: (OrderRow | undefined)[], count: number, companyNameOf: (isis: string | null) => string): string {
+  const found = orders.filter((o): o is OrderRow => !!o)
+  const companies = unique(found.map((o) => companyNameOf(o.isis_code) || o.order_number))
+  const sectors = unique(found.map((o) => o.sector_code ?? '').filter(Boolean))
+  return zipFileName(template, {
+    entreprise: companies.length === 1 ? companies[0] : 'Plusieurs entreprises',
+    nombre: String(count),
+    secteur: sectors.length === 1 ? sectors[0] : 'Plusieurs secteurs',
+  })
+}
 
 export function redactorOf(profile: ProfileLike | null | undefined): Redactor | null {
   if (!profile) return null
@@ -179,7 +192,7 @@ export function contactFor(contacts: Map<string, Contact>, o: OrderRow): Redacto
 let settingsCache: { at: number; values: Record<string, string> } | null = null
 export async function readSettings(): Promise<Record<string, string>> {
   if (settingsCache && Date.now() - settingsCache.at < 30000) return settingsCache.values
-  const keys = ['pdf_procedure_alerte', 'pdf_pied_de_page', 'mail_objet', 'mail_corps', 'mail_groupe_objet', 'mail_groupe_corps']
+  const keys = ['pdf_procedure_alerte', 'pdf_pied_de_page', 'mail_objet', 'mail_corps', 'mail_groupe_objet', 'mail_groupe_corps', 'zip_name_template']
   const values: Record<string, string> = {}
   await Promise.all(keys.map(async (k) => {
     const { data } = await supabase.rpc('app_setting_get', { p_key: k })

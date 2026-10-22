@@ -15,7 +15,7 @@ import OrderActionDialog from '../components/OrderActionDialog'
 import { fetchCompanies, type CompanyRow } from './AdminCompanies'
 import { Archive, Ban, ArrowRightLeft, CheckCheck, Download, Eye, Inbox, Info, Mail, Pencil, RotateCcw, Send, SlidersHorizontal, Trash2 } from 'lucide-react'
 import { RowMenu } from '../components/RowMenu'
-import { buildSheetPdf, buildSheetsZip, contactFor, downloadBlob, fetchContacts, fetchSavedLines, natureIdsOf, openPdf, periodLabel, planFileName, readSettings, DEFAULT_GROUP_MAIL_CORPS, DEFAULT_GROUP_MAIL_OBJET, DEFAULT_MAIL_CORPS, DEFAULT_MAIL_OBJET, type Contact, type Line } from '../lib/sheet'
+import { buildSheetPdf, buildSheetsZip, contactFor, downloadBlob, fetchContacts, fetchSavedLines, natureIdsOf, openPdf, periodLabel, planFileName, readSettings, zipFileNameFor, DEFAULT_ZIP_NAME_TEMPLATE, DEFAULT_GROUP_MAIL_CORPS, DEFAULT_GROUP_MAIL_OBJET, DEFAULT_MAIL_CORPS, DEFAULT_MAIL_OBJET, type Contact, type Line } from '../lib/sheet'
 import MailDialog from '../components/MailDialog'
 import CompanyMailDialog, { type CompanyMailItem } from '../components/CompanyMailDialog'
 import { PipelineBar, type PipelineCounts } from '../components/PipelineBar'
@@ -244,6 +244,7 @@ export default function Dashboard({ onOpen, view, setView }: {
   const [actionOrder, setActionOrder] = useState<OrderRow | null>(null)
   const [companyFor, setCompanyFor] = useState<string | null>(null)
   const [fileTemplate, setFileTemplate] = useState('{entreprise}_{commande}_{secteur}_Plan de prévention')
+  const [zipTemplate, setZipTemplate] = useState(DEFAULT_ZIP_NAME_TEMPLATE)
 
   useEffect(() => {
     if (profile?.role !== 'SUPER_ADMIN') return
@@ -255,6 +256,9 @@ export default function Dashboard({ onOpen, view, setView }: {
   useEffect(() => {
     void supabase.rpc('app_setting_get', { p_key: 'file_name_template' }).then(({ data }) => {
       if (typeof data === 'string' && data.trim()) setFileTemplate(data)
+    })
+    void supabase.rpc('app_setting_get', { p_key: 'zip_name_template' }).then(({ data }) => {
+      if (typeof data === 'string' && data.trim()) setZipTemplate(data)
     })
   }, [])
 
@@ -707,7 +711,7 @@ export default function Dashboard({ onOpen, view, setView }: {
       const lines = selectedOrders.map((o) => map.get(o.order_number)).filter((l): l is Line => !!l)
       const byNumber = new Map(selectedOrders.map((o) => [o.order_number, o]))
       const { blob, count, failures } = await buildSheetsZip(lines, byNumber, ref, companyNameOf, (x) => contactFor(contacts, x), fileTemplate, setNotice)
-      if (count > 0) downloadBlob(blob, `fiches_plans_prevention_${new Date().toISOString().slice(0, 10)}.zip`)
+      if (count > 0) downloadBlob(blob, zipFileNameFor(zipTemplate, selectedOrders, count, companyNameOf))
       if (failures.length) setErr(`${failures.length} PDF non généré(s) :\n${failures.join('\n')}`)
       else setNotice(`${count} PDF téléchargé(s).`)
     } catch (e) { setErr(errMsg(e)) } finally { setBusy(false) }
@@ -1096,6 +1100,7 @@ export default function Dashboard({ onOpen, view, setView }: {
           ref={ref}
           companies={companies}
           template={fileTemplate}
+          zipTemplate={zipTemplate}
           mailObjet={settings.mail_objet ?? DEFAULT_MAIL_OBJET}
           mailCorps={settings.mail_corps ?? DEFAULT_MAIL_CORPS}
           onClose={() => setWizard(null)}

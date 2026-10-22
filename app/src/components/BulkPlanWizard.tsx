@@ -76,7 +76,7 @@ export default function BulkPlanWizard({
   const operatorsIncomplete = unique(orders.map((o) => o.operator_code ?? '').filter((c) => !c || !contacts.get(c)?.complete))
   const identityMissing = contactsReady && operatorsIncomplete.length > 0
   const contactOf = (o: OrderRow) => contactFor(contacts, o)
-  const [created, setCreated] = useState(false)
+  const [created, setCreated] = useState(mode === 'edit')
 
   // Référentiel local : une nature proposée depuis la fiche devient utilisable immédiatement.
   const [ref, setRef] = useState<Referentiel>(refInitial)
@@ -196,6 +196,12 @@ export default function BulkPlanWizard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, previewIndex, lines, edits, contacts])
 
+  // Instantané des lignes et des corrections d'entreprise : tant qu'il diffère du dernier enregistré, la fiche est à mettre à jour
+  const snapshot = () => JSON.stringify({ lines, companies: changedCompanies() })
+  const [savedKey, setSavedKey] = useState<string | null>(null)
+  useEffect(() => { if (mode === 'edit') setSavedKey(snapshot()) }, [])   // eslint-disable-line react-hooks/exhaustive-deps
+  const unsaved = savedKey === null || snapshot() !== savedKey
+
   // ---- validation : la fiche est créée (statut « Fiche créée ») même sans export
   const validate = async () => {
     setBusy(true); setErr(null); setProgress(null)
@@ -209,6 +215,7 @@ export default function BulkPlanWizard({
     setBusy(false)
     if (failures.length) { setErr(`${failures.length} élément(s) non enregistré(s) :\n${failures.join('\n')}`); return }
     setCreated(true)
+    setSavedKey(snapshot())
     const corrections = sent.length ? ` ${sent.length} correction(s) d’entreprise envoyée(s) au Super Admin pour validation.` : ''
     setProgress(`${lines.length} fiche(s) ${mode === 'edit' ? 'mise(s) à jour' : 'créée(s)'}.${corrections} Vous pouvez prévisualiser, modifier ou télécharger les PDF.`)
   }
@@ -235,6 +242,18 @@ export default function BulkPlanWizard({
       const name = planFileName(template, { entreprise: companyLabel(o.isis_code) || o.order_number, commande: o.order_number, secteur: o.sector_code ?? '' })
       downloadBlob(new Blob([new Uint8Array(bytes)], { type: 'application/pdf' }), name)
     } catch (e) { setErr(errMsg(e)) } finally { setBusy(false) }
+  }
+
+  /** Fermeture : à partir de l'étape 2, on demande confirmation si la fiche n'est pas créée ou si la mise à jour n'est pas enregistrée. */
+  const requestClose = () => {
+    if (busy) return
+    if (step >= 1 && unsaved) {
+      const question = created
+        ? 'Des modifications ne sont pas enregistrées. Fermer sans mettre à jour la fiche ?'
+        : 'La fiche n’est pas créée. Fermer sans la créer ?'
+      if (!window.confirm(question)) return
+    }
+    onClose()
   }
 
   const finish = () => onDone(`${lines.length} fiche(s) ${mode === 'edit' ? 'mise(s) à jour' : 'créée(s)'}.`)
@@ -402,7 +421,7 @@ export default function BulkPlanWizard({
           <h2 className="mr-auto font-semibold">
             {lines.length === 1 ? `Créer la fiche · ${lines[0].orderNumber}` : `Création groupée de fiches · ${lines.length} commande(s)`}
           </h2>
-          <Button variant="ghost" onClick={onClose} disabled={busy}>Fermer</Button>
+          <Button variant="ghost" onClick={requestClose} disabled={busy}>Fermer</Button>
         </div>
 
         <div className="flex flex-wrap gap-2 text-sm">
@@ -725,9 +744,11 @@ export default function BulkPlanWizard({
                 {identityMissing && <IdentityNotice codes={operatorsIncomplete} />}
                 <div className="flex flex-wrap items-center gap-2">
                   <Button variant="ghost" onClick={goPrev} disabled={busy}>Revenir et modifier</Button>
-                  {!created ? (
+                  {unsaved ? (
                     <Button onClick={() => void validate()} disabled={busy || !lines.length || lines.some((l) => l.natureId == null) || missingCompanies.length > 0}>
-                      {busy ? 'Enregistrement…' : mode === 'edit' ? `Enregistrer les modifications (${lines.length})` : `Valider et créer ${lines.length > 1 ? `les ${lines.length} fiches` : 'la fiche'}`}
+                      {busy ? 'Enregistrement…' : created
+                        ? `Mettre à jour ${lines.length > 1 ? `les ${lines.length} fiches` : 'la fiche'}`
+                        : `Valider et créer ${lines.length > 1 ? `les ${lines.length} fiches` : 'la fiche'}`}
                     </Button>
                   ) : lines.length === 1 ? (
                     <Button onClick={() => setMailing(true)} disabled={busy || identityMissing}>Envoyer</Button>

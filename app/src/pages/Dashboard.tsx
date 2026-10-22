@@ -5,7 +5,7 @@ import { fold, tokens } from '../lib/rules'
 import { getReferentiel, type Referentiel } from '../lib/refdata'
 import { readCache, writeCache } from '../lib/cache'
 import { MultiSelect } from '../components/MultiSelect'
-import { buildSuggestion, type OrderSuggestion } from '../lib/natureSuggest'
+import { buildSuggestion, loadNatureChoices, type OrderSuggestion } from '../lib/natureSuggest'
 import { addressOf, type OrderRow } from '../lib/types'
 import { Badge, Button, Card, EmptyState, IconButton, Notice, PageHeader, fieldClass, errMsg } from '../components/ui'
 import { Bubble } from '../components/Bubble'
@@ -20,13 +20,13 @@ import MailDialog from '../components/MailDialog'
 import { PipelineBar, type PipelineCounts } from '../components/PipelineBar'
 
 /** Suggestions mises en cache : recalculées seulement si la nature ou le texte de la commande change, ou si le référentiel est rechargé. */
-const suggestionCache = new Map<string, { ref: Referentiel; value: OrderSuggestion }>()
-function cachedSuggestion(o: OrderRow, ref: Referentiel): OrderSuggestion {
+const suggestionCache = new Map<string, { ref: Referentiel; learned: Map<string, number>; value: OrderSuggestion }>()
+function cachedSuggestion(o: OrderRow, ref: Referentiel, learned: Map<string, number>): OrderSuggestion {
   const key = `${o.order_number}|${o.nature_id ?? ''}|${o.nature_text ?? ''}|${o.description ?? ''}`
   const hit = suggestionCache.get(key)
-  if (hit && hit.ref === ref) return hit.value
-  const value = buildSuggestion(o, ref)
-  suggestionCache.set(key, { ref, value })
+  if (hit && hit.ref === ref && hit.learned === learned) return hit.value
+  const value = buildSuggestion(o, ref, learned)
+  suggestionCache.set(key, { ref, learned, value })
   return value
 }
 
@@ -220,6 +220,8 @@ export default function Dashboard({ onOpen, view, setView }: {
   const readOnlyPlans = profile?.role === 'ASSISTANT'
   /** Super Admin : commandes des utilisateurs hors service masquées, sauf case dédiée. */
   const [outOps, setOutOps] = useState<Set<string>>(new Set())
+  /** Mémoire des choix de nature (libellé source → nature), rechargée au chargement de la liste. */
+  const [learned, setLearned] = useState<Map<string, number>>(new Map())
   const [showOutOfService, setShowOutOfService] = useState(false)
   const hiddenByService = (o: OrderRow) => profile?.role === 'SUPER_ADMIN' && !showOutOfService && outOps.has(o.operator_code ?? '')
   const [lotFilter, setLotFilter] = useState('')
@@ -335,6 +337,7 @@ export default function Dashboard({ onOpen, view, setView }: {
       setTrashedCount(trashedRes.count ?? 0)
       setSettings(settingsRes)
       setFilterOptions(options)
+      setLearned(await loadNatureChoices())
       setLoading(false)
       await refreshOrders(sectors, operators, presetIdx)
     } catch (e) { setErr(errMsg(e)); setLoading(false) }
@@ -353,9 +356,9 @@ export default function Dashboard({ onOpen, view, setView }: {
   const suggestions = useMemo(() => {
     const out = new Map<string, OrderSuggestion>()
     if (!ref) return out
-    for (const o of rows) out.set(o.order_number, cachedSuggestion(o, ref))
+    for (const o of rows) out.set(o.order_number, cachedSuggestion(o, ref, learned))
     return out
-  }, [rows, ref])
+  }, [rows, ref, learned])
 
   const sectors = filterOptions.sectors
   const operators = filterOptions.operators.filter((c) => showOutOfService || !outOps.has(c))

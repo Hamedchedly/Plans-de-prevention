@@ -216,6 +216,10 @@ export default function BulkPlanWizard({
     if (failures.length) { setErr(`${failures.length} élément(s) non enregistré(s) :\n${failures.join('\n')}`); return }
     setCreated(true)
     setSavedKey(snapshot())
+    // Mémoire des choix : la nature retenue pour un libellé source sert de suggestion aux prochaines commandes (erreurs ignorées, n'interrompt pas).
+    for (const l of lines) {
+      if (l.natureId != null) void supabase.rpc('record_nature_choice', { p_order: l.orderNumber, p_nature_id: l.natureId })
+    }
     const corrections = sent.length ? ` ${sent.length} correction(s) d’entreprise envoyée(s) au Super Admin pour validation.` : ''
     setProgress(`${lines.length} fiche(s) ${mode === 'edit' ? 'mise(s) à jour' : 'créée(s)'}.${corrections} Vous pouvez prévisualiser, modifier ou télécharger les PDF.`)
   }

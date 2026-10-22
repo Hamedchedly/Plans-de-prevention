@@ -1,6 +1,7 @@
 import { searchNatures, type NatureRef, type SearchHit } from './rules'
 import type { Referentiel } from './refdata'
 import type { OrderRow } from './types'
+import { supabase } from './supabase'
 
 /**
  * Logique unique de proposition de nature, utilisée partout (liste, création de fiche, éditeur) :
@@ -36,8 +37,20 @@ export function natureCandidates(order: OrderText, ref: Referentiel, limit = 3):
     .slice(0, limit)
 }
 
-/** Suggestion complète pour une commande (nature affectée prioritaire). */
-export function buildSuggestion(order: OrderText, ref: Referentiel): OrderSuggestion {
+/** Clé d'un libellé source pour la mémoire des choix (identique côté base : minuscules, espaces simplifiés). */
+export const choiceKey = (s: string | null | undefined) => (s ?? '').toLowerCase().replace(/\s+/g, ' ').trim()
+
+/** Mémoire des choix : libellé source → nature retenue la dernière fois. */
+export async function loadNatureChoices(): Promise<Map<string, number>> {
+  const out = new Map<string, number>()
+  const { data, error } = await supabase.from('nature_choices').select('label_key,nature_id')
+  if (error) return out
+  for (const r of (data ?? []) as { label_key: string; nature_id: number }[]) out.set(r.label_key, r.nature_id)
+  return out
+}
+
+/** Suggestion complète pour une commande (nature affectée, puis choix mémorisé pour ce libellé, puis analyse). */
+export function buildSuggestion(order: OrderText, ref: Referentiel, learned?: Map<string, number>): OrderSuggestion {
   const toOut = (n: NatureRef | undefined, confident: boolean, candidates: NatureRef[]): OrderSuggestion => {
     const lot = n?.lots[0] ?? null
     return {
@@ -55,13 +68,19 @@ export function buildSuggestion(order: OrderText, ref: Referentiel): OrderSugges
     if (assigned) return toOut(assigned, true, [])
   }
   const hits = natureCandidates(order, ref, 3)
+  const learnedId = learned?.get(choiceKey(order.nature_text))
+  const learnedNature = learnedId != null ? ref.natures.find((n) => n.id === learnedId) : undefined
+  if (learnedNature) {
+    const others = hits.map((h) => h.nature).filter((n) => n.id !== learnedNature.id)
+    return toOut(learnedNature, true, [learnedNature, ...others].slice(0, 3))
+  }
   const top = hits[0]
   const confident = !!top && top.score >= SUGGEST_MIN_SCORE
   return toOut(top?.nature, confident, hits.map((h) => h.nature))
 }
 
 /** Nature pré-sélectionnée à l'ouverture d'une fiche : uniquement si la suggestion est fiable. */
-export function autoNature(order: OrderText, ref: Referentiel): NatureRef | null {
-  const s = buildSuggestion(order, ref)
+export function autoNature(order: OrderText, ref: Referentiel, learned?: Map<string, number>): NatureRef | null {
+  const s = buildSuggestion(order, ref, learned)
   return s.confident && s.natureId != null ? ref.natures.find((n) => n.id === s.natureId) ?? null : null
 }

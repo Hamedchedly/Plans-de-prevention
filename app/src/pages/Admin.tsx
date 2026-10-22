@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { getReferentiel, type Referentiel } from '../lib/refdata'
 import { searchNatures } from '../lib/rules'
 import { importReferentielV4 } from '../lib/referentiel'
 import { checkReferentielFile, downloadJson, exportReferentiel, lastReferentielLoad } from '../lib/referentielIO'
-import type { AlertRow, Profile, Role } from '../lib/types'
+import { addressOf, type AlertRow, type OrderRow, type Profile, type Role } from '../lib/types'
 import { Badge, Button, Card, Notice, PageHeader, errMsg, fieldClass } from '../components/ui'
 import { CompaniesSection, CompanyProposalsSection } from './AdminCompanies'
 import { DataSection } from './AdminData'
@@ -605,6 +605,67 @@ function FileNameSection() {
   )
 }
 
+/** Commandes d'un utilisateur : les siennes par défaut, ou toutes celles de ses secteurs. */
+function UserOrders({ user }: { user: Profile }) {
+  const [sectorWide, setSectorWide] = useState(!user.operator_code)
+  const [rows, setRows] = useState<OrderRow[] | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+  const sectorsKey = user.sector_codes.join(',')
+
+  useEffect(() => {
+    setRows(null); setErr(null)
+    if (sectorWide && user.sector_codes.length === 0) { setRows([]); return }
+    if (!sectorWide && !user.operator_code) { setRows([]); return }
+    const base = supabase.from('orders')
+      .select('order_number,order_date,address,address_manual,city,sector_code,operator_code,plan_status,scope_status')
+      .is('trashed_at', null).order('order_date', { ascending: false }).limit(300)
+    const query = sectorWide ? base.in('sector_code', user.sector_codes) : base.eq('operator_code', user.operator_code ?? '')
+    void query.then(({ data, error }) => {
+      if (error) setErr(error.message); else setRows((data ?? []) as OrderRow[])
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.user_id, user.operator_code, sectorsKey, sectorWide])
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-medium">
+          {sectorWide ? `Toutes les commandes du secteur ${user.sector_codes.join(', ') || '—'}` : `Commandes de ${user.email ?? 'cet utilisateur'} (code ${user.operator_code ?? '—'})`}
+          {rows && <span className="ml-2 text-xs text-muted-foreground">{rows.length} affichée(s){rows.length >= 300 ? ' (300 maximum)' : ''}</span>}
+        </p>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={sectorWide} onChange={(e) => setSectorWide(e.target.checked)} />
+          Toutes les commandes de son secteur
+        </label>
+      </div>
+      {err && <Notice tone="error">{err}</Notice>}
+      {!err && !rows && <p className="text-sm text-muted-foreground">Chargement…</p>}
+      {rows && rows.length === 0 && <p className="text-sm text-muted-foreground">Aucune commande.</p>}
+      {rows && rows.length > 0 && (
+        <div className="max-h-[50vh] overflow-auto rounded-md border border-border bg-card">
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 bg-muted text-left text-muted-foreground">
+              <tr><th className="px-2 py-1.5">Commande</th><th className="px-2 py-1.5">Date</th><th className="px-2 py-1.5">Adresse</th><th className="px-2 py-1.5">Secteur</th><th className="px-2 py-1.5">Chargé</th><th className="px-2 py-1.5">Statut</th></tr>
+            </thead>
+            <tbody>
+              {rows.map((o) => (
+                <tr key={o.order_number} className="border-t border-border">
+                  <td className="px-2 py-1 font-mono">{o.order_number}</td>
+                  <td className="px-2 py-1">{o.order_date ?? '—'}</td>
+                  <td className="px-2 py-1">{[addressOf(o), o.city].filter(Boolean).join(', ') || '—'}</td>
+                  <td className="px-2 py-1">{o.sector_code ?? '—'}</td>
+                  <td className="px-2 py-1">{o.operator_code ?? '—'}</td>
+                  <td className="px-2 py-1">{o.scope_status === 'OUT_OF_SCOPE' ? 'Hors périmètre' : o.plan_status}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function UsersSection() {
   const [users, setUsers] = useState<Profile[]>([])
   const [err, setErr] = useState<string | null>(null)
@@ -617,6 +678,20 @@ function UsersSection() {
   useEffect(() => { void load() }, [])
 
   const patch = (id: string, p: Partial<Profile>) => setUsers(users.map((u) => (u.user_id === id ? { ...u, ...p } : u)))
+
+  /** Hors service : compte masqué de cette vue et de la vue commandes ; son accès reste ouvert. */
+  const [showOut, setShowOut] = useState(false)
+  const [openUser, setOpenUser] = useState<string | null>(null)
+  const outCount = users.filter((u) => u.in_service === false).length
+  const visibleUsers = users.filter((u) => showOut || u.in_service !== false)
+  const serviceChange = async (u: Profile) => {
+    const next = u.in_service === false
+    if (!next && !window.confirm(`Sortir ${u.email ?? 'cet utilisateur'} du service ? Ses commandes seront masquées de votre vue. Son accès reste ouvert.`)) return
+    setErr(null); setMsg(null)
+    const { error } = await supabase.rpc('set_in_service', { p_user_id: u.user_id, p_value: next })
+    if (error) setErr(error.message)
+    else { patch(u.user_id, { in_service: next }); setMsg(`${u.email ?? 'Compte'} ${next ? 'remis en service' : 'sorti du service'}.`) }
+  }
 
   const { session } = useAuth()
   const [identityFor, setIdentityFor] = useState<string | null>(null)
@@ -711,10 +786,11 @@ function UsersSection() {
           </div>
           <div>
             <label className="mb-1 block text-xs text-muted-foreground">Rôle</label>
-            <select className={fieldClass} value={draft.role} onChange={(e) => setDraft({ ...draft, role: e.target.value as Role })}>
+            <select className={fieldClass} value={draft.role} onChange={(e) => setDraft({ ...draft, role: e.target.value as Role, operator: e.target.value === 'ASSISTANT' ? '' : draft.operator })}>
               <option value="SUPER_ADMIN">Super Admin</option>
               <option value="RESPONSABLE">Responsable</option>
               <option value="CHARGE_OPERATIONS">Chargé d’opérations</option>
+              <option value="ASSISTANT">Assistant</option>
             </select>
           </div>
           <div>
@@ -742,8 +818,16 @@ function UsersSection() {
           </div>
         )}
       </div>
-      <Folded title={`Utilisateurs inscrits (${users.length})`} hint="Droits, code chargé et secteurs de chaque compte, modifiables.">
-      <p className="text-sm text-muted-foreground">Les comptes existants apparaissent ci-dessous ; leur profil peut être modifié à tout moment.</p>
+      <Folded title={`Utilisateurs inscrits (${visibleUsers.length})`} hint="Droits, code chargé et secteurs de chaque compte, modifiables.">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-muted-foreground">Les comptes existants apparaissent ci-dessous ; leur profil peut être modifié à tout moment.</p>
+        {outCount > 0 && (
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={showOut} onChange={(e) => setShowOut(e.target.checked)} />
+            Afficher les hors service ({outCount})
+          </label>
+        )}
+      </div>
       {err && <Notice tone="error">{err}</Notice>}
       {msg && <Notice tone="ok">{msg}</Notice>}
       <div className="overflow-x-auto rounded-lg border border-border bg-card">
@@ -752,14 +836,16 @@ function UsersSection() {
             <tr><th className="px-3 py-2">E-mail</th><th className="px-3 py-2">Rôle</th><th className="px-3 py-2">Code chargé</th><th className="px-3 py-2">Secteurs</th><th className="px-3 py-2">Actif</th><th className="px-3 py-2" /></tr>
           </thead>
           <tbody>
-            {users.map((u) => (
-              <tr key={u.user_id} className="border-t border-border">
-                <td className="px-3 py-2">{u.email ?? '—'}</td>
+            {visibleUsers.map((u) => (
+              <Fragment key={u.user_id}>
+              <tr className={`border-t border-border ${u.in_service === false ? 'opacity-60' : ''}`}>
+                <td className="px-3 py-2">{u.email ?? '—'}{u.in_service === false && <span className="ml-2 text-xs text-muted-foreground">(hors service)</span>}</td>
                 <td className="px-3 py-2">
-                  <select className={fieldClass} value={u.role} onChange={(e) => patch(u.user_id, { role: e.target.value as Role })}>
+                  <select className={fieldClass} value={u.role} onChange={(e) => patch(u.user_id, e.target.value === 'ASSISTANT' ? { role: 'ASSISTANT', operator_code: null } : { role: e.target.value as Role })}>
                     <option value="SUPER_ADMIN">Super Admin</option>
                     <option value="RESPONSABLE">Responsable</option>
                     <option value="CHARGE_OPERATIONS">Chargé d’opérations</option>
+                    <option value="ASSISTANT">Assistant</option>
                   </select>
                 </td>
                 <td className="px-3 py-2"><input className={fieldClass} value={u.operator_code ?? ''} onChange={(e) => patch(u.user_id, { operator_code: e.target.value })} /></td>
@@ -769,6 +855,8 @@ function UsersSection() {
                   <Button variant="ghost" onClick={() => void impersonate(u)}
                     disabled={!canImpersonate(u)} title={canImpersonate(u) ? '' : 'Indisponible pour ce compte'}>Se connecter en tant que</Button>
                   <Button variant="ghost" onClick={() => setIdentityFor(u.user_id)} className="ml-2">Identité</Button>
+                  <Button variant="ghost" onClick={() => setOpenUser(openUser === u.user_id ? null : u.user_id)} className="ml-2">Commandes</Button>
+                  <Button variant="ghost" onClick={() => void serviceChange(u)} className="ml-2">{u.in_service === false ? 'Remettre en service' : 'Sortir du service'}</Button>
                   <Button onClick={() => void save(u)} className="ml-2">Enregistrer</Button>
                   <Button variant="ghost" onClick={() => void manageUser(u, 'new_link')} className="ml-2"
                     title="Pour un compte jamais configuré : génère un nouveau lien de configuration">Nouveau lien</Button>
@@ -776,6 +864,12 @@ function UsersSection() {
                     title="Pour un compte jamais configuré uniquement">Supprimer</Button>
                 </td>
               </tr>
+              {openUser === u.user_id && (
+                <tr className="border-t border-border bg-muted/30">
+                  <td colSpan={6} className="px-3 py-3"><UserOrders user={u} /></td>
+                </tr>
+              )}
+              </Fragment>
             ))}
           </tbody>
         </table>

@@ -15,7 +15,7 @@ const signupLink = (hashed: string) => `${SIGNUP_URL}?token_hash=${encodeURIComp
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } })
 
-const ROLES = ['SUPER_ADMIN', 'RESPONSABLE', 'CHARGE_OPERATIONS']
+const ROLES = ['SUPER_ADMIN', 'RESPONSABLE', 'CHARGE_OPERATIONS', 'ASSISTANT']
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
 
     // Le trigger crée le profil ; on fixe ici le rôle et les périmètres demandés.
     const { error: profErr } = await service.from('profiles').update({
-      role, operator_code: body.operator_code?.trim() || null, sector_codes: sectors, is_active: true,
+      role, operator_code: role === 'ASSISTANT' ? null : (body.operator_code?.trim() || null), sector_codes: sectors, is_active: true,
     }).eq('user_id', userId)
     if (profErr) return json({ error: profErr.message }, 500)
 

@@ -73,7 +73,7 @@ export function RootLayout() {
   const currentGroup = adminGroups.find((g) => g.pages.some((p) => p.key === adminKey)) ?? adminGroups[0]
   const imp = readImpersonation()
   const initials = (profile.full_name || profile.email || '?').split(/\s+|@/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('')
-  const roleLabel: Record<string, string> = { SUPER_ADMIN: 'Super Admin', RESPONSABLE: 'Responsable', CHARGE_OPERATIONS: 'Chargé d’opérations' }
+  const roleLabel: Record<string, string> = { SUPER_ADMIN: 'Super Admin', RESPONSABLE: 'Responsable', CHARGE_OPERATIONS: 'Chargé d’opérations', ASSISTANT: 'Assistant' }
   const pill = (on: boolean, small = false) =>
     `shrink-0 whitespace-nowrap rounded-full transition-colors ${small ? 'px-3 py-1 text-xs' : 'px-4 py-2 text-sm'} font-medium ${on ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`
 

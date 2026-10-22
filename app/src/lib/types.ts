@@ -1,4 +1,4 @@
-export type Role = 'SUPER_ADMIN' | 'RESPONSABLE' | 'CHARGE_OPERATIONS'
+export type Role = 'SUPER_ADMIN' | 'RESPONSABLE' | 'CHARGE_OPERATIONS' | 'ASSISTANT'
 
 export interface Profile {
   user_id: string
@@ -8,6 +8,7 @@ export interface Profile {
   operator_code: string | null
   sector_codes: string[]
   is_active: boolean
+  in_service: boolean
   first_name: string | null
   last_name: string | null
   phone: string | null

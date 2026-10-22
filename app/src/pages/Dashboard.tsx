@@ -213,6 +213,15 @@ export default function Dashboard({ onOpen, view, setView }: {
   /** Filtres multiples. Responsable : aucune commande chargée tant qu'aucun secteur ni chargé n'est coché. */
   const [sectorSel, setSectorSel] = useState<string[]>([])
   const [operatorSel, setOperatorSel] = useState<string[]>([])
+  /** Chargé : par défaut seulement ses commandes ; la case « secteur » élargit à toutes celles de son secteur. */
+  const [sectorWide, setSectorWide] = useState(false)
+  const ownOnly = profile?.role === 'CHARGE_OPERATIONS' && !sectorWide
+  /** Assistant : lecture et envoi seulement, aucune création ni modification de fiche. */
+  const readOnlyPlans = profile?.role === 'ASSISTANT'
+  /** Super Admin : commandes des utilisateurs hors service masquées, sauf case dédiée. */
+  const [outOps, setOutOps] = useState<Set<string>>(new Set())
+  const [showOutOfService, setShowOutOfService] = useState(false)
+  const hiddenByService = (o: OrderRow) => profile?.role === 'SUPER_ADMIN' && !showOutOfService && outOps.has(o.operator_code ?? '')
   const [lotFilter, setLotFilter] = useState('')
   const [groupFilter, setGroupFilter] = useState('')
   const [preset, setPreset] = useState(DEFAULT_PRESET)
@@ -229,6 +238,13 @@ export default function Dashboard({ onOpen, view, setView }: {
   const [actionOrder, setActionOrder] = useState<OrderRow | null>(null)
   const [companyFor, setCompanyFor] = useState<string | null>(null)
   const [fileTemplate, setFileTemplate] = useState('{entreprise}_{commande}_{secteur}_Plan de prévention')
+
+  useEffect(() => {
+    if (profile?.role !== 'SUPER_ADMIN') return
+    void supabase.from('profiles').select('operator_code').eq('in_service', false).then(({ data }) => {
+      setOutOps(new Set(((data ?? []) as { operator_code: string | null }[]).map((p) => p.operator_code ?? '').filter(Boolean)))
+    })
+  }, [profile?.role])
 
   useEffect(() => {
     void supabase.rpc('app_setting_get', { p_key: 'file_name_template' }).then(({ data }) => {
@@ -342,7 +358,7 @@ export default function Dashboard({ onOpen, view, setView }: {
   }, [rows, ref])
 
   const sectors = filterOptions.sectors
-  const operators = filterOptions.operators
+  const operators = filterOptions.operators.filter((c) => showOutOfService || !outOps.has(c))
   const lotOptions = useMemo(() => ref?.lots ?? [], [ref])
   const groupOptions = useMemo(
     () => [...new Set([...suggestions.values()].filter((s) => s.confident).map((s) => s.group).filter(Boolean))] as string[],
@@ -357,6 +373,7 @@ export default function Dashboard({ onOpen, view, setView }: {
   const pipeline: PipelineCounts = { attente: 0, fait: 0, envoye: 0, retour: 0 }
   for (const o of rows) {
     if (o.scope_status !== 'IN_SCOPE') continue
+    if (hiddenByService(o)) continue
     if (sectorSel.length && !sectorSel.includes(o.sector_code ?? '')) continue
     if (pipelineOps.length && !pipelineOps.includes(o.operator_code ?? '')) continue
     if (o.plan_status === 'NON_QUALIFIEE') pipeline.attente++
@@ -394,7 +411,7 @@ export default function Dashboard({ onOpen, view, setView }: {
   }
 
   const passesFilters = (o: OrderRow, cut: number | null) =>
-    (!sectorSel.length || sectorSel.includes(o.sector_code ?? '')) && (!operatorSel.length || operatorSel.includes(o.operator_code ?? '')) && matches(o) && matchesFilters(o, cut)
+    !hiddenByService(o) && (!ownOnly || o.operator_code === profile?.operator_code) && (!sectorSel.length || sectorSel.includes(o.sector_code ?? '')) && (!operatorSel.length || operatorSel.includes(o.operator_code ?? '')) && matches(o) && matchesFilters(o, cut)
 
   // Période : le serveur ne charge que la période choisie (défaut : 2 semaines)
   const activePreset = preset
@@ -741,6 +758,18 @@ export default function Dashboard({ onOpen, view, setView }: {
           <MultiSelect label="Chargé" options={operators} value={operatorSel} placeholder="Choisir…"
             onChange={(v) => { setOperatorSel(v); void refreshOrders(sectorSel, v, preset) }} />
         )}
+        {profile?.role === 'CHARGE_OPERATIONS' && (
+          <label className="flex items-center gap-2 self-center text-sm">
+            <input type="checkbox" checked={sectorWide} onChange={(e) => setSectorWide(e.target.checked)} />
+            Toutes les commandes de mon secteur
+          </label>
+        )}
+        {profile?.role === 'SUPER_ADMIN' && outOps.size > 0 && (
+          <label className="flex items-center gap-2 self-center text-sm">
+            <input type="checkbox" checked={showOutOfService} onChange={(e) => setShowOutOfService(e.target.checked)} />
+            Afficher les commandes des hors service
+          </label>
+        )}
         <div>
           <label className="mb-1 block text-xs text-muted-foreground">Lot (suggéré)</label>
           <select className={`${fieldClass} w-full`} value={lotFilter} onChange={(e) => setLotFilter(e.target.value)}>
@@ -790,12 +819,12 @@ export default function Dashboard({ onOpen, view, setView }: {
       {selected.size > 0 && (SELECTABLE.includes(tab) || manualTab || isScopeTab) && (
         <div className="inline-flex max-w-full flex-wrap items-center gap-2 self-start rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
           <span className="mr-auto font-medium">{selected.size} sélectionnée(s)</span>
-          {tab === 'NON_QUALIFIEE' && <Button onClick={() => setWizard({ orders: selectedOrders, mode: 'create' })} disabled={busy || !ref}>Créer les fiches</Button>}
+          {!readOnlyPlans && tab === 'NON_QUALIFIEE' && <Button onClick={() => setWizard({ orders: selectedOrders, mode: 'create' })} disabled={busy || !ref}>Créer les fiches</Button>}
           {(tab === 'A_ENVOYER' || tab === 'EN_ATTENTE_RETOUR') && <Button onClick={() => void downloadSelectedZip()} disabled={busy || !ref}>Télécharger les PDF (ZIP)</Button>}
-          {tab === 'EN_ATTENTE_RETOUR' && <Button onClick={() => markReceivedMany([...selected])} disabled={busy}>Marquer comme reçu</Button>}
-          {ACTIONABLE.includes(tab) && <Button variant="ghost" onClick={() => sendManually([...selected])} disabled={busy}>Déjà envoyée manuellement</Button>}
-          {manualTab && <Button variant="ghost" onClick={() => restoreManual([...selected])} disabled={busy}>Remettre à traiter</Button>}
-          {tab === 'NON_CONCERNEE' && <Button variant="ghost" onClick={() => void restoreNotConcerned([...selected])} disabled={busy}>Remettre à qualifier</Button>}
+          {!readOnlyPlans && tab === 'EN_ATTENTE_RETOUR' && <Button onClick={() => markReceivedMany([...selected])} disabled={busy}>Marquer comme reçu</Button>}
+          {!readOnlyPlans && ACTIONABLE.includes(tab) && <Button variant="ghost" onClick={() => sendManually([...selected])} disabled={busy}>Déjà envoyée manuellement</Button>}
+          {!readOnlyPlans && manualTab && <Button variant="ghost" onClick={() => restoreManual([...selected])} disabled={busy}>Remettre à traiter</Button>}
+          {!readOnlyPlans && tab === 'NON_CONCERNEE' && <Button variant="ghost" onClick={() => void restoreNotConcerned([...selected])} disabled={busy}>Remettre à qualifier</Button>}
           {isScopeTab && isManager && <Button onClick={() => void reintegrateMany([...selected])} disabled={busy}>Réintégrer au périmètre</Button>}
           <Button variant="ghost" onClick={() => setSelected(new Set())}>Tout désélectionner</Button>
         </div>
@@ -928,10 +957,10 @@ export default function Dashboard({ onOpen, view, setView }: {
                             isManager && <IconButton icon={RotateCcw} label="Restaurer" onClick={() => setTrashedState([o.order_number], false)} disabled={busy} />
                           ) : (
                             <>
-                              {o.scope_status === 'IN_SCOPE' && o.plan_status === 'NON_QUALIFIEE' && (
+                              {!readOnlyPlans && o.scope_status === 'IN_SCOPE' && o.plan_status === 'NON_QUALIFIEE' && (
                                 <>
                                   <Button onClick={() => setWizard({ orders: [o], mode: 'create' })} disabled={!ref}>Créer la fiche</Button>
-                                  <IconButton icon={Ban} label="Demander l’exclusion" onClick={() => setActionOrder(o)} />
+                                  {!readOnlyPlans && <IconButton icon={Ban} label="Demander l’exclusion" onClick={() => setActionOrder(o)} />}
                                 </>
                               )}
                               {o.scope_status === 'IN_SCOPE' && o.plan_status === 'A_ENVOYER' && (
@@ -939,10 +968,10 @@ export default function Dashboard({ onOpen, view, setView }: {
                                   <IconButton icon={Eye} label="Prévisualiser la fiche" onClick={() => void previewSheet(o)} />
                                   <IconButton icon={Mail} label="Envoyer par mail" onClick={() => { setMailMode('envoi'); setMailOrder(o) }} disabled={busy} />
                                   <RowMenu items={[
-                                    { label: 'Modifier la fiche', icon: Pencil, onClick: () => void editSheet(o), disabled: busy || !ref },
+                                    ...(readOnlyPlans ? [] : [{ label: 'Modifier la fiche', icon: Pencil, onClick: () => void editSheet(o), disabled: busy || !ref }]),
                                     { label: 'Télécharger le PDF', icon: Download, onClick: () => void downloadSheet(o) },
-                                    { label: 'Éditeur avancé', icon: SlidersHorizontal, onClick: () => onOpen(o) },
-                                    { label: 'Demander l’exclusion', icon: Ban, onClick: () => setActionOrder(o) },
+                                    ...(readOnlyPlans ? [] : [{ label: 'Éditeur avancé', icon: SlidersHorizontal, onClick: () => onOpen(o) }]),
+                                    ...(readOnlyPlans ? [] : [{ label: 'Demander l’exclusion', icon: Ban, onClick: () => setActionOrder(o) }]),
                                     ...(isManager ? [{ label: 'Mettre à la corbeille', icon: Trash2, onClick: () => setTrashedState([o.order_number], true), disabled: busy, danger: true }] : []),
                                   ]} />
                                 </>
@@ -951,10 +980,10 @@ export default function Dashboard({ onOpen, view, setView }: {
                                 <>
                                   <IconButton icon={Eye} label="Prévisualiser la fiche" onClick={() => void previewSheet(o)} />
                                   <IconButton icon={Send} label="Relancer l’entreprise" onClick={() => { setMailMode('relance'); setMailOrder(o) }} disabled={busy} />
-                                  <IconButton icon={CheckCheck} label="Marquer comme reçu" onClick={() => returnReceived(o)} disabled={busy} />
+                                  {!readOnlyPlans && <IconButton icon={CheckCheck} label="Marquer comme reçu" onClick={() => returnReceived(o)} disabled={busy} />}
                                   <RowMenu items={[
                                     { label: 'Télécharger le PDF', icon: Download, onClick: () => void downloadSheet(o) },
-                                    { label: 'Demander l’exclusion', icon: Ban, onClick: () => setActionOrder(o) },
+                                    ...(readOnlyPlans ? [] : [{ label: 'Demander l’exclusion', icon: Ban, onClick: () => setActionOrder(o) }]),
                                     ...(isManager ? [{ label: 'Mettre à la corbeille', icon: Trash2, onClick: () => setTrashedState([o.order_number], true), disabled: busy, danger: true }] : []),
                                   ]} />
                                 </>
@@ -965,14 +994,14 @@ export default function Dashboard({ onOpen, view, setView }: {
                                   <IconButton icon={Archive} label="Archiver" onClick={() => archiveOrder(o)} disabled={busy} />
                                   <RowMenu items={[
                                     { label: 'Télécharger le PDF', icon: Download, onClick: () => void downloadSheet(o) },
-                                    { label: 'Demander l’exclusion', icon: Ban, onClick: () => setActionOrder(o) },
+                                    ...(readOnlyPlans ? [] : [{ label: 'Demander l’exclusion', icon: Ban, onClick: () => setActionOrder(o) }]),
                                   ]} />
                                 </>
                               )}
                               {o.scope_status === 'IN_SCOPE' && o.plan_status !== 'NON_QUALIFIEE' && o.plan_status !== 'A_ENVOYER' && o.plan_status !== 'EN_ATTENTE_RETOUR' && o.plan_status !== 'SIGNEE' && (
                                 <RowMenu items={[
                                   { label: 'Télécharger le PDF', icon: Download, onClick: () => void downloadSheet(o) },
-                                  { label: 'Demander l’exclusion', icon: Ban, onClick: () => setActionOrder(o) },
+                                  ...(readOnlyPlans ? [] : [{ label: 'Demander l’exclusion', icon: Ban, onClick: () => setActionOrder(o) }]),
                                 ]} />
                               )}
                               {isManager && o.scope_status === 'OUT_OF_SCOPE' && (

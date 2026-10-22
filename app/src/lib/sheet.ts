@@ -179,7 +179,7 @@ export function contactFor(contacts: Map<string, Contact>, o: OrderRow): Redacto
 let settingsCache: { at: number; values: Record<string, string> } | null = null
 export async function readSettings(): Promise<Record<string, string>> {
   if (settingsCache && Date.now() - settingsCache.at < 30000) return settingsCache.values
-  const keys = ['pdf_procedure_alerte', 'pdf_pied_de_page', 'mail_objet', 'mail_corps']
+  const keys = ['pdf_procedure_alerte', 'pdf_pied_de_page', 'mail_objet', 'mail_corps', 'mail_groupe_objet', 'mail_groupe_corps']
   const values: Record<string, string> = {}
   await Promise.all(keys.map(async (k) => {
     const { data } = await supabase.rpc('app_setting_get', { p_key: k })
@@ -190,6 +190,9 @@ export async function readSettings(): Promise<Record<string, string>> {
 }
 
 export const DEFAULT_MAIL_OBJET = 'Plan de prévention – commande {commande} – {entreprise}'
+/** Envoi groupé : variables {entreprise}, {nombre}, {liste} (une ligne par commande : numéro, nature, période), {redacteur}. */
+export const DEFAULT_GROUP_MAIL_OBJET = 'Plans de prévention – {nombre} commande(s) – {entreprise}'
+export const DEFAULT_GROUP_MAIL_CORPS = 'Bonjour,\n\nVeuillez trouver ci-joint les plans de prévention relatifs aux commandes suivantes :\n{liste}\n\nMerci de nous les retourner signés.\n\nCordialement,\n{redacteur}'
 export const DEFAULT_MAIL_CORPS = 'Bonjour,\n\nVeuillez trouver ci-joint le plan de prévention relatif à la commande {commande} ({nature}).\nPériode d’intervention : {periode}.\n\nMerci de nous le retourner signé.\n\nCordialement,\n{redacteur}'
 
 /** Remplace {variable} par sa valeur (variables inconnues vidées). */

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
 import { Button, Card, EmptyState, Notice, fieldClass } from '../components/ui'
 import { DEFAULT_ALERT, DEFAULT_FOOTER } from '../lib/planPdf'
-import { DEFAULT_MAIL_CORPS, DEFAULT_MAIL_OBJET } from '../lib/sheet'
+import { DEFAULT_GROUP_MAIL_CORPS, DEFAULT_GROUP_MAIL_OBJET, DEFAULT_MAIL_CORPS, DEFAULT_MAIL_OBJET } from '../lib/sheet'
 import { ChevronDown, Download, UserCheck } from 'lucide-react'
 
 /** Export CSV compatible Excel (séparateur ;, BOM UTF-8). */
@@ -280,11 +280,21 @@ export function KpiSection() {
   )
 }
 
-const TEMPLATE_KEYS = [
-  { key: 'mail_objet', label: 'Objet du mail', multiline: false, help: '{secteur}, {commande}, {entreprise}, {nature}, {periode}, {redacteur}', def: DEFAULT_MAIL_OBJET },
-  { key: 'mail_corps', label: 'Corps du mail', multiline: true, help: '{secteur}, {commande}, {entreprise}, {nature}, {periode}, {redacteur}', def: DEFAULT_MAIL_CORPS },
-  { key: 'pdf_procedure_alerte', label: 'Procédure d’alerte (PDF)', multiline: false, help: 'Texte libre affiché dans la case « Procédure d’alerte »', def: DEFAULT_ALERT },
-  { key: 'pdf_pied_de_page', label: 'Pied de page (PDF)', multiline: false, help: '{secteur}, {commande}, {entreprise}, {nature}, {redacteur}', def: DEFAULT_FOOTER },
+type TemplateTab = 'unique' | 'groupe' | 'pdf'
+const TEMPLATE_TABS: { key: TemplateTab; label: string }[] = [
+  { key: 'unique', label: 'Mail : envoi unique' },
+  { key: 'groupe', label: 'Mail : envoi groupé' },
+  { key: 'pdf', label: 'PDF' },
+]
+const MAIL_UNIQUE_HELP = '{secteur}, {commande}, {entreprise}, {nature}, {periode}, {redacteur}'
+const MAIL_GROUP_HELP = '{entreprise}, {nombre} (nombre de commandes), {liste} (une ligne par commande : numéro, nature, période), {redacteur}'
+const TEMPLATE_KEYS: { key: string; tab: TemplateTab; label: string; multiline: boolean; help: string; def: string }[] = [
+  { key: 'mail_objet', tab: 'unique', label: 'Objet du mail', multiline: false, help: MAIL_UNIQUE_HELP, def: DEFAULT_MAIL_OBJET },
+  { key: 'mail_corps', tab: 'unique', label: 'Corps du mail', multiline: true, help: MAIL_UNIQUE_HELP, def: DEFAULT_MAIL_CORPS },
+  { key: 'mail_groupe_objet', tab: 'groupe', label: 'Objet du mail', multiline: false, help: MAIL_GROUP_HELP, def: DEFAULT_GROUP_MAIL_OBJET },
+  { key: 'mail_groupe_corps', tab: 'groupe', label: 'Corps du mail', multiline: true, help: MAIL_GROUP_HELP, def: DEFAULT_GROUP_MAIL_CORPS },
+  { key: 'pdf_procedure_alerte', tab: 'pdf', label: 'Procédure d’alerte (PDF)', multiline: false, help: 'Texte libre affiché dans la case « Procédure d’alerte »', def: DEFAULT_ALERT },
+  { key: 'pdf_pied_de_page', tab: 'pdf', label: 'Pied de page (PDF)', multiline: false, help: '{secteur}, {commande}, {entreprise}, {nature}, {redacteur}', def: DEFAULT_FOOTER },
 ]
 
 /** Modèles de mail et de PDF, modifiables par le Super Admin. */
@@ -293,6 +303,7 @@ export function TemplatesSection() {
   const [msg, setMsg] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  const [tab, setTab] = useState<TemplateTab>('unique')
 
   useEffect(() => {
     void Promise.all(TEMPLATE_KEYS.map(async (t) => {
@@ -312,7 +323,15 @@ export function TemplatesSection() {
     <div className="space-y-4">
       {err && <Notice tone="error">{err}</Notice>}
       {msg && <Notice tone="ok">{msg}</Notice>}
-      {TEMPLATE_KEYS.map((t) => (
+      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Types de modèles">
+        {TEMPLATE_TABS.map((t) => (
+          <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)}
+            className={`rounded-md border px-3 py-1.5 text-sm ${tab === t.key ? 'border-primary bg-primary/10 font-semibold' : 'border-border text-muted-foreground hover:text-foreground'}`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {TEMPLATE_KEYS.filter((t) => t.tab === tab).map((t) => (
         <Card key={t.key}>
           <h2 className="font-semibold">{t.label}</h2>
           <p className="mb-2 text-xs text-muted-foreground">Variables : {t.help}</p>

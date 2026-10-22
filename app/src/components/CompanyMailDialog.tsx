@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Download, Mail } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import type { OrderRow } from '../lib/types'
-import type { Redactor } from '../lib/sheet'
+import { fillTemplate, type Redactor } from '../lib/sheet'
 import { Button, Notice, fieldClass } from './ui'
 
 export type CompanyMailItem = { order: string; nature: string; period: string }
@@ -12,13 +12,15 @@ export type CompanyMailItem = { order: string; nature: string; period: string }
  * Le ZIP des plans se télécharge depuis ce dialogue puis se joint à la main (mailto).
  */
 export default function CompanyMailDialog({
-  orders, items, company, osEmail, contact, onDownloadZip, onDone, onClose,
+  orders, items, company, osEmail, contact, objet, corps, onDownloadZip, onDone, onClose,
 }: {
   orders: OrderRow[]
   items: CompanyMailItem[]
   company: string
   osEmail: string
   contact: Redactor | null
+  objet: string
+  corps: string
   onDownloadZip: () => Promise<void>
   onDone: (message: string) => void
   onClose: () => void
@@ -26,10 +28,9 @@ export default function CompanyMailDialog({
   const n = orders.length
   const listed = items.map((i) => `- ${i.order} : ${i.nature || 'nature à préciser'}${i.period ? ` (${i.period})` : ''}`).join('\n')
   const [to, setTo] = useState(osEmail)
-  const [subject, setSubject] = useState(`Plans de prévention – ${n} commande(s) – ${company}`)
-  const [body, setBody] = useState(
-    `Bonjour,\n\nVeuillez trouver ci-joint les plans de prévention relatifs aux commandes suivantes :\n${listed}\n\nMerci de nous les retourner signés.\n\nCordialement,\n${contact?.name || 'Le chargé d’opérations'}`,
-  )
+  const vars = { entreprise: company, nombre: String(n), liste: listed, redacteur: contact?.name || 'Le chargé d’opérations' }
+  const [subject, setSubject] = useState(fillTemplate(objet, vars))
+  const [body, setBody] = useState(fillTemplate(corps, vars))
   const [done, setDone] = useState<Set<string>>(new Set())
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)

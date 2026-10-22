@@ -15,7 +15,7 @@ import OrderActionDialog from '../components/OrderActionDialog'
 import { fetchCompanies, type CompanyRow } from './AdminCompanies'
 import { Archive, Ban, ArrowRightLeft, CheckCheck, Download, Eye, Inbox, Info, Mail, Pencil, RotateCcw, Send, SlidersHorizontal, Trash2 } from 'lucide-react'
 import { RowMenu } from '../components/RowMenu'
-import { buildSheetPdf, buildSheetsZip, contactFor, downloadBlob, fetchContacts, fetchSavedLines, natureIdsOf, openPdf, periodLabel, planFileName, readSettings, DEFAULT_MAIL_CORPS, DEFAULT_MAIL_OBJET, type Contact, type Line } from '../lib/sheet'
+import { buildSheetPdf, buildSheetsZip, contactFor, downloadBlob, fetchContacts, fetchSavedLines, natureIdsOf, openPdf, periodLabel, planFileName, readSettings, DEFAULT_GROUP_MAIL_CORPS, DEFAULT_GROUP_MAIL_OBJET, DEFAULT_MAIL_CORPS, DEFAULT_MAIL_OBJET, type Contact, type Line } from '../lib/sheet'
 import MailDialog from '../components/MailDialog'
 import CompanyMailDialog, { type CompanyMailItem } from '../components/CompanyMailDialog'
 import { PipelineBar, type PipelineCounts } from '../components/PipelineBar'
@@ -1079,6 +1079,8 @@ export default function Dashboard({ onOpen, view, setView }: {
           company={companyNameOf(companyMail.orders[0].isis_code) || companyMail.orders[0].isis_code || ''}
           osEmail={companies.get(companyMail.orders[0].isis_code ?? '')?.os_email ?? ''}
           contact={contactFor(contacts, companyMail.orders[0])}
+          objet={settings.mail_groupe_objet ?? DEFAULT_GROUP_MAIL_OBJET}
+          corps={settings.mail_groupe_corps ?? DEFAULT_GROUP_MAIL_CORPS}
           onDownloadZip={downloadSelectedZip}
           onDone={(m) => { setCompanyMail(null); setSelected(new Set()); setNotice(m); void load() }}
           onClose={() => setCompanyMail(null)}

@@ -260,7 +260,7 @@ export default function Indicateurs() {
     return c
   }, [scoped])
 
-  /** « % plans faits » = plans faits (fiche créée) / commandes du chargé. */
+  /** « % plans faits » = fiches créées (envoyées, en attente de retour ou signées comprises) / commandes du chargé. */
   const byOperator = useMemo(() => {
     const m = new Map<string, PipelineCounts>()
     for (const r of scoped) {
@@ -271,7 +271,7 @@ export default function Indicateurs() {
     return [...m.entries()]
       .map(([code, c]) => {
         const sum = c.attente + c.fait + c.envoye + c.retour
-        return { code, c, sum, pct: sum ? c.fait / sum : 0 }
+        return { code, c, sum, pct: sum ? (c.fait + c.envoye + c.retour) / sum : 0 }
       })
       .filter((x) => x.sum > 0)
   }, [scoped])
@@ -341,7 +341,7 @@ export default function Indicateurs() {
                 <th className="px-4 py-2 font-medium uppercase tracking-wide">Avancement</th>
                 <Head k="pct" label="% plans faits" right />
                 <Head k="attente" label="En attente de plan" right />
-                <Head k="fait" label="Plan fait" right />
+                <Head k="fait" label="Fiche créée" right />
                 <Head k="envoye" label="Envoyé, sans retour" right />
                 <Head k="retour" label="Avec retour" right />
               </tr>

@@ -15,8 +15,9 @@ import OrderActionDialog from '../components/OrderActionDialog'
 import { fetchCompanies, type CompanyRow } from './AdminCompanies'
 import { Archive, Ban, ArrowRightLeft, CheckCheck, Download, Eye, Inbox, Info, Mail, Pencil, RotateCcw, Send, SlidersHorizontal, Trash2 } from 'lucide-react'
 import { RowMenu } from '../components/RowMenu'
-import { buildSheetPdf, buildSheetsZip, contactFor, downloadBlob, fetchContacts, fetchSavedLines, openPdf, planFileName, readSettings, DEFAULT_MAIL_CORPS, DEFAULT_MAIL_OBJET, type Contact, type Line } from '../lib/sheet'
+import { buildSheetPdf, buildSheetsZip, contactFor, downloadBlob, fetchContacts, fetchSavedLines, natureIdsOf, openPdf, periodLabel, planFileName, readSettings, DEFAULT_MAIL_CORPS, DEFAULT_MAIL_OBJET, type Contact, type Line } from '../lib/sheet'
 import MailDialog from '../components/MailDialog'
+import CompanyMailDialog, { type CompanyMailItem } from '../components/CompanyMailDialog'
 import { PipelineBar, type PipelineCounts } from '../components/PipelineBar'
 
 /** Suggestions mises en cache : recalculées seulement si la nature ou le texte de la commande change, ou si le référentiel est rechargé. */
@@ -61,11 +62,12 @@ const SELECTABLE: Tab[] = ['NON_QUALIFIEE', 'A_ENVOYER', 'EN_ATTENTE_RETOUR', 'N
 const PAGE = 15
 
 /** Regroupement des commandes dans la liste (pour sélectionner en lot des cas similaires). */
-type Grouping = 'NONE' | 'LOT' | 'KEYWORD'
+type Grouping = 'NONE' | 'LOT' | 'KEYWORD' | 'COMPANY'
 const GROUPINGS: { key: Grouping; label: string }[] = [
   { key: 'NONE', label: 'Sans regroupement' },
   { key: 'LOT', label: 'Par lot' },
   { key: 'KEYWORD', label: 'Par mots-clés (nature)' },
+  { key: 'COMPANY', label: 'Par entreprise' },
 ]
 type SortKey = 'order_number' | 'order_date' | 'company' | 'address' | 'nature' | 'lot' | 'operator' | 'status'
 type Sort = { key: SortKey; dir: 1 | -1 }
@@ -231,7 +233,7 @@ export default function Dashboard({ onOpen, view, setView }: {
   const [preset, setPreset] = useState(DEFAULT_PRESET)
   const [limit, setLimit] = useState(PAGE)
   const [selected, setSelected] = useState<Set<string>>(new Set())
-  const grouping: Grouping = view.regroupement === 'LOT' ? 'LOT' : view.regroupement === 'KEYWORD' ? 'KEYWORD' : 'NONE'
+  const grouping: Grouping = view.regroupement === 'LOT' ? 'LOT' : view.regroupement === 'KEYWORD' ? 'KEYWORD' : view.regroupement === 'COMPANY' ? 'COMPANY' : 'NONE'
   const sortKey: SortKey = SORT_KEYS.includes(view.tri as SortKey) ? (view.tri as SortKey) : 'order_date'
   const sort: Sort = {
     key: sortKey,
@@ -437,6 +439,7 @@ export default function Dashboard({ onOpen, view, setView }: {
   }
   const groupOf = (o: OrderRow): string => {
     if (grouping === 'LOT') return lotLabelOf(o) ?? 'Sans lot identifié'
+    if (grouping === 'COMPANY') return companies.get(o.isis_code ?? '')?.name || o.isis_code || 'Sans entreprise'
     const sg = suggestions.get(o.order_number)
     return sg?.confident && sg.group ? sg.group : 'Sans mot-clé identifié'
   }
@@ -680,6 +683,22 @@ export default function Dashboard({ onOpen, view, setView }: {
       setWizard({ orders: [o], initial, mode: 'edit' })
     } catch (e) { setErr(errMsg(e)) }
   }
+  /** Envoi groupé : un seul mail à l'entreprise listant ses commandes et leurs natures (ZIP joint à la main). */
+  const [companyMail, setCompanyMail] = useState<{ orders: OrderRow[]; items: CompanyMailItem[] } | null>(null)
+  const sameCompany = selectedOrders.length > 1 && new Set(selectedOrders.map((o) => o.isis_code ?? '')).size === 1
+  const openCompanyMail = async () => {
+    if (!ref || !sameCompany) return
+    setBusy(true); setErr(null)
+    try {
+      const map = await fetchSavedLines(selectedOrders)
+      const items = selectedOrders.map((o) => {
+        const l = map.get(o.order_number)
+        const labels = l ? natureIdsOf(l).map((id) => ref.natures.find((n) => n.id === id)?.label).filter((x): x is string => !!x) : []
+        return { order: o.order_number, nature: labels.join(' ; ') || o.nature_text || '', period: l ? periodLabel(l) : '' }
+      })
+      setCompanyMail({ orders: selectedOrders, items })
+    } catch (e) { setErr(errMsg(e)) } finally { setBusy(false) }
+  }
   const downloadSelectedZip = async () => {
     if (!ref || !selectedOrders.length) return
     setBusy(true); setErr(null)
@@ -827,6 +846,7 @@ export default function Dashboard({ onOpen, view, setView }: {
           <span className="mr-auto font-medium">{selected.size} sélectionnée(s)</span>
           {!readOnlyPlans && tab === 'NON_QUALIFIEE' && <Button onClick={() => setWizard({ orders: selectedOrders, mode: 'create' })} disabled={busy || !ref}>Créer les fiches</Button>}
           {(tab === 'A_ENVOYER' || tab === 'EN_ATTENTE_RETOUR') && <Button onClick={() => void downloadSelectedZip()} disabled={busy || !ref}>Télécharger les PDF (ZIP)</Button>}
+          {!readOnlyPlans && tab === 'A_ENVOYER' && sameCompany && <Button onClick={() => void openCompanyMail()} disabled={busy || !ref}>Envoyer à l’entreprise</Button>}
           {!readOnlyPlans && tab === 'EN_ATTENTE_RETOUR' && <Button onClick={() => markReceivedMany([...selected])} disabled={busy}>Marquer comme reçu</Button>}
           {!readOnlyPlans && ACTIONABLE.includes(tab) && <Button variant="ghost" onClick={() => sendManually([...selected])} disabled={busy}>Déjà envoyée manuellement</Button>}
           {!readOnlyPlans && manualTab && <Button variant="ghost" onClick={() => restoreManual([...selected])} disabled={busy}>Remettre à traiter</Button>}
@@ -1050,6 +1070,18 @@ export default function Dashboard({ onOpen, view, setView }: {
           onDownloadPdf={() => downloadSheet(mailOrder)}
           onDone={(m) => { setMailOrder(null); setNotice(m); void load() }}
           onClose={() => setMailOrder(null)}
+        />
+      )}
+      {companyMail && (
+        <CompanyMailDialog
+          orders={companyMail.orders}
+          items={companyMail.items}
+          company={companyNameOf(companyMail.orders[0].isis_code) || companyMail.orders[0].isis_code || ''}
+          osEmail={companies.get(companyMail.orders[0].isis_code ?? '')?.os_email ?? ''}
+          contact={contactFor(contacts, companyMail.orders[0])}
+          onDownloadZip={downloadSelectedZip}
+          onDone={(m) => { setCompanyMail(null); setSelected(new Set()); setNotice(m); void load() }}
+          onClose={() => setCompanyMail(null)}
         />
       )}
       {wizard && ref && (

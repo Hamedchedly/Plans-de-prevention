@@ -1,4 +1,4 @@
-import { searchNatures, type NatureRef, type SearchHit } from './rules'
+import { fold, searchNatures, tokens, type NatureRef, type SearchHit } from './rules'
 import type { Referentiel } from './refdata'
 import type { OrderRow } from './types'
 import { supabase } from './supabase'
@@ -21,7 +21,40 @@ export interface OrderSuggestion {
   candidates: NatureRef[]      // propositions à choisir quand la correspondance est faible
 }
 
-type OrderText = Pick<OrderRow, 'nature_text' | 'description' | 'nature_id'>
+type OrderText = Pick<OrderRow, 'nature_text' | 'description' | 'nature_id' | 'naac_code'>
+
+/** Corps d'état possibles d'une commande, d'après son code NAAC (fichier d'export), avec le lot de chacun. Vide si inconnu. */
+export function poolLotsOf(naacCode: string | null | undefined, ref: Referentiel): Map<number, { validated: boolean; labels: string[] }> {
+  const out = new Map<number, { validated: boolean; labels: string[] }>()
+  if (!naacCode) return out
+  for (const c of ref.naacCorps) {
+    if (c.naac !== naacCode || c.lotCode == null) continue
+    const e = out.get(c.lotCode) ?? { validated: false, labels: [] }
+    e.validated = e.validated || c.validated
+    e.labels.push(c.corpsLabel)
+    out.set(c.lotCode, e)
+  }
+  return out
+}
+
+/**
+ * Lot d'une commande : parmi les corps d'état de son code NAAC, départagé par les mots de la commande
+ * (libellé et description) puis par la nature retenue. Sans départage net, aucun lot plutôt qu'un lot au hasard.
+ */
+export function lotOf(order: OrderText, ref: Referentiel, nature?: NatureRef): number | null {
+  const pool = poolLotsOf(order.naac_code, ref)
+  if (!pool.size) return nature && nature.lots.length === 1 ? nature.lots[0] : null
+  const words = [...new Set(tokens(`${order.nature_text ?? ''} ${order.description ?? ''}`))].filter((w) => w.length >= 4)
+  const scored = [...pool].map(([lot, e]) => {
+    const hay = fold([ref.lotNameByCode.get(lot) ?? '', ...e.labels].join(' '))
+    const score = words.filter((w) => hay.includes(w)).length + (nature?.lots.includes(lot) ? 0.5 : 0) + (e.validated ? 0.1 : 0)
+    return { lot, score }
+  }).sort((a, b) => b.score - a.score)
+  const [top, second] = scored
+  if (top && top.score >= 1 && !(second && second.score === top.score)) return top.lot
+  const inPool = (nature?.lots ?? []).filter((l) => pool.has(l))
+  return inPool.length === 1 ? inPool[0] : null
+}
 
 /** Meilleures natures pour une commande, classées par score. */
 export function natureCandidates(order: OrderText, ref: Referentiel, limit = 3): SearchHit[] {
@@ -71,10 +104,25 @@ export function autoLotsOf(nature: { id: number; lots: number[] } | undefined, p
   return nature.lots.filter((lot) => prefs.get(lotPrefKey(nature.id, lot)) !== false)
 }
 
+/**
+ * Lots proposés pour une fiche : le lot identifié par le corps d'état de l'export s'il existe (et n'a pas été retiré
+ * par le chargé pour cette nature) ; sinon les lots de la nature qui figurent dans les corps d'état de la commande.
+ * Sans information d'export, on garde les lots de la nature.
+ */
+export function lotsForFiche(order: OrderText | undefined, ref: Referentiel, nature: NatureRef | undefined, prefs: LotPrefs): number[] {
+  const natureLots = autoLotsOf(nature, prefs)
+  if (!order) return natureLots
+  const pool = poolLotsOf(order.naac_code, ref)
+  if (!pool.size) return natureLots
+  const one = lotOf(order, ref, nature)
+  if (one != null && !(nature && prefs.get(lotPrefKey(nature.id, one)) === false)) return [one]
+  return natureLots.filter((l) => pool.has(l))
+}
+
 /** Suggestion complète pour une commande (nature affectée, puis choix mémorisé pour ce libellé, puis analyse). */
 export function buildSuggestion(order: OrderText, ref: Referentiel, learned?: Map<string, number>): OrderSuggestion {
   const toOut = (n: NatureRef | undefined, confident: boolean, candidates: NatureRef[]): OrderSuggestion => {
-    const lot = n?.lots[0] ?? null
+    const lot = lotOf(order, ref, n)
     return {
       nature: n?.label ?? null,
       natureId: n?.id ?? null,

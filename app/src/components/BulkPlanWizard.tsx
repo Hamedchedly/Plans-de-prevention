@@ -5,7 +5,7 @@ import { getReferentiel } from '../lib/refdata'
 import { fmtFr, defaultPeriod } from '../lib/period'
 import { natureCandidates, type OrderSuggestion } from '../lib/natureSuggest'
 import { supabase } from '../lib/supabase'
-import { autoLotsOf, lotPrefKey, recordNatureLotPreference, type LotPrefs } from '../lib/natureSuggest'
+import { lotPrefKey, lotsForFiche, recordNatureLotPreference, type LotPrefs } from '../lib/natureSuggest'
 import { derive, natureIdsOf, contactFor, fetchContacts, measuresFor, savePlans, buildSheetsZip, downloadBlob, buildSheetPdf, unique, planFileName, zipFileNameFor, DEFAULT_ZIP_NAME_TEMPLATE, DEFAULT_MAIL_OBJET, DEFAULT_MAIL_CORPS, type Contact, type Line } from '../lib/sheet'
 import MailDialog from './MailDialog'
 import { addressOf, type OrderRow } from '../lib/types'
@@ -106,8 +106,7 @@ export default function BulkPlanWizard({
     const sg = suggestions.get(o.order_number)
     const natureId = sg?.confident && sg.natureId != null ? sg.natureId : null
     const nature = natureId != null ? ref.natures.find((n) => n.id === natureId) : undefined
-    const suggestedLot = nature && sg?.lot != null && prefs.get(lotPrefKey(nature.id, sg.lot)) !== false ? [sg.lot] : []
-    const lots = unique([...autoLotsOf(nature, prefs), ...suggestedLot])
+    const lots = lotsForFiche(o, ref, nature, prefs)
     const d = derive(ref, natureId != null ? [natureId] : [], lots)
     return {
       orderNumber: o.order_number, natureId, extraNatures: [], lots, risks: d.risks, measures: d.measures,
@@ -142,7 +141,7 @@ export default function BulkPlanWizard({
     const wasOn = current.includes(natureId)
     const next = wasOn ? current.filter((x) => x !== natureId) : [...current, natureId]
     const main = l.natureId != null && next.includes(l.natureId) ? l.natureId : (next[0] ?? null)
-    const added = wasOn ? [] : autoLotsOf(ref.natures.find((n) => n.id === natureId), prefs)
+    const added = wasOn ? [] : lotsForFiche(order, ref, ref.natures.find((n) => n.id === natureId), prefs)
     const lots = unique([...l.lots, ...added])
     const d = derive(ref, next, lots, l.measures)
     return { natureId: main, extraNatures: next.filter((x) => x !== main), lots, risks: unique([...l.risks, ...d.risks]), measures: d.measures }

@@ -23,7 +23,7 @@ import { PipelineBar, type PipelineCounts } from '../components/PipelineBar'
 /** Suggestions mises en cache : recalculées seulement si la nature ou le texte de la commande change, ou si le référentiel est rechargé. */
 const suggestionCache = new Map<string, { ref: Referentiel; learned: Map<string, number>; value: OrderSuggestion }>()
 function cachedSuggestion(o: OrderRow, ref: Referentiel, learned: Map<string, number>): OrderSuggestion {
-  const key = `${o.order_number}|${o.nature_id ?? ''}|${o.nature_text ?? ''}|${o.description ?? ''}`
+  const key = `${o.order_number}|${o.nature_id ?? ''}|${o.nature_text ?? ''}|${o.description ?? ''}|${o.naac_code ?? ''}`
   const hit = suggestionCache.get(key)
   if (hit && hit.ref === ref && hit.learned === learned) return hit.value
   const value = buildSuggestion(o, ref, learned)
@@ -315,6 +315,9 @@ export default function Dashboard({ onOpen, view, setView }: {
 
   /** Changement de période : nouvelle fenêtre chargée depuis le serveur. */
   const changePreset = (p: number) => { setPreset(p); void refreshOrders(sectorSel, operatorSel, p) }
+  // Dernière sélection de filtres et de période : relue à la fin du chargement initial, pour ne pas écraser un changement fait entre-temps.
+  const selRef = useRef({ sectors: sectorSel, operators: operatorSel, preset })
+  useEffect(() => { selRef.current = { sectors: sectorSel, operators: operatorSel, preset } }, [sectorSel, operatorSel, preset])
 
   // Archivage automatique : au plus une fois toutes les 10 minutes et par session (il ne fait rien de nouveau entre-temps).
   const ARCHIVE_EVERY_MS = 10 * 60 * 1000
@@ -329,7 +332,7 @@ export default function Dashboard({ onOpen, view, setView }: {
     }
   }
 
-  const load = async (sectors = sectorSel, operators = operatorSel, presetIdx = preset) => {
+  const load = async () => {
     setLoading(true); setErr(null)
     try {
       const archiving = archiveDue()
@@ -348,7 +351,8 @@ export default function Dashboard({ onOpen, view, setView }: {
       setLearned(await loadNatureChoices())
       setLotPrefs(await loadNatureLotPreferences())
       setLoading(false)
-      await refreshOrders(sectors, operators, presetIdx)
+      const cur = selRef.current
+      await refreshOrders(cur.sectors, cur.operators, cur.preset)
     } catch (e) { setErr(errMsg(e)); setLoading(false) }
   }
   // Au montage, aucun filtre n'est coché : load() ne charge alors aucune commande pour le responsable.
@@ -415,7 +419,7 @@ export default function Dashboard({ onOpen, view, setView }: {
   }
   const matchesFilters = (o: OrderRow, cut: number | null) => {
     const sg = suggestions.get(o.order_number)
-    const lot = sg?.confident ? sg.lot : null
+    const lot = sg?.lot ?? null
     if (lotFilter && String(lot ?? '') !== lotFilter && !(lotFilter === 'NONE' && lot == null)) return false
     if (groupFilter && (!sg?.confident || sg.group !== groupFilter)) return false
     if (cut != null && (!o.order_date || dayOf(o.order_date) < cut)) return false
@@ -439,7 +443,7 @@ export default function Dashboard({ onOpen, view, setView }: {
   // Lot affiché (même règle que la colonne « Lot »)
   const lotLabelOf = (o: OrderRow): string | null => {
     const sg = suggestions.get(o.order_number)
-    return (o.nature_id != null || sg?.confident) && sg?.lotName ? sg.lotName : null
+    return sg?.lotName ?? null
   }
   const groupOf = (o: OrderRow): string => {
     if (grouping === 'LOT') return lotLabelOf(o) ?? 'Sans lot identifié'

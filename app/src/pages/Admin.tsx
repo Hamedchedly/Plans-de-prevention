@@ -382,6 +382,13 @@ function TraceSection() {
 
   const categories = [...new Set(rows.map((r) => r.category))].sort()
   const visible = rows.filter((r) => (!category || r.category === category) && (!onlyHighlighted || r.highlighted))
+  // Pages de 50 lignes ; retour à la première page dès qu'un filtre ou une recherche change
+  const TRACE_PAGE = 50
+  const [page, setPage] = useState(0)
+  useEffect(() => { setPage(0) }, [rows, category, onlyHighlighted])
+  const pageCount = Math.max(1, Math.ceil(visible.length / TRACE_PAGE))
+  const current = Math.min(page, pageCount - 1)
+  const pageRows = visible.slice(current * TRACE_PAGE, current * TRACE_PAGE + TRACE_PAGE)
 
   const toggleHighlight = async (r: TraceRow) => {
     const note = r.highlighted ? null : window.prompt('Note pour l’examen ultérieur (optionnel) :') ?? ''
@@ -444,7 +451,7 @@ function TraceSection() {
             <tr><th className="px-3 py-2">Date</th><th className="px-3 py-2">Utilisateur</th><th className="px-3 py-2">Catégorie</th><th className="px-3 py-2">Action</th><th className="px-3 py-2">Détail</th><th className="px-3 py-2" /></tr>
           </thead>
           <tbody>
-            {visible.slice(0, 500).map((r) => (
+            {pageRows.map((r) => (
               <tr key={r.entry_id} className={`border-t border-border align-top ${r.highlighted ? 'bg-amber-50' : ''} ${r.action === 'ERROR' ? 'text-red-700' : ''}`}>
                 <td className="px-3 py-2 whitespace-nowrap">{new Date(r.occurred_at).toLocaleString('fr-FR')}</td>
                 <td className="px-3 py-2">{r.actor_email ?? '—'}</td>
@@ -456,7 +463,16 @@ function TraceSection() {
             ))}
           </tbody>
         </table>
-        {visible.length > 500 && <p className="p-3 text-xs text-muted-foreground">500 premières entrées affichées sur {visible.length} : réduisez la période.</p>}
+        {visible.length > TRACE_PAGE && (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border p-3 text-xs text-muted-foreground">
+            <span>Lignes {current * TRACE_PAGE + 1} à {Math.min((current + 1) * TRACE_PAGE, visible.length)} sur {visible.length}</span>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" onClick={() => setPage(Math.max(0, current - 1))} disabled={current === 0}>Précédent</Button>
+              <span>Page {current + 1} / {pageCount}</span>
+              <Button variant="ghost" onClick={() => setPage(Math.min(pageCount - 1, current + 1))} disabled={current >= pageCount - 1}>Suivant</Button>
+            </div>
+          </div>
+        )}
         {!loading && visible.length === 0 && <p className="p-3 text-sm text-muted-foreground">Aucune entrée sur cette sélection.</p>}
       </div>
     </div>

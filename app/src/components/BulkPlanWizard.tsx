@@ -11,6 +11,7 @@ import MailDialog from './MailDialog'
 import { addressOf, type OrderRow } from '../lib/types'
 import type { CompanyRow } from '../pages/AdminCompanies'
 import { Badge, Button, Card, Notice, errMsg, fieldClass } from './ui'
+import { ConfirmDot } from './ConfirmDot'
 
 interface CompanyEdit { name: string; os_email: string }
 
@@ -566,7 +567,7 @@ export default function BulkPlanWizard({
 
                 <Card className="space-y-3">
                   <div>
-                    <h3 className="text-sm font-semibold">Lots concernés</h3>
+                    <h3 className="flex items-center gap-2 text-sm font-semibold">Lots concernés{sg && sg.lotStatus !== 'OK' && <ConfirmDot reason={sg.lotReason} />}</h3>
                     <p className="text-xs text-muted-foreground">Les lots suggérés par la nature et l’analyse sont en tête ; cochez ou décochez librement.</p>
                   </div>
                   <input className={`${fieldClass} md:w-64`} value={lotSearch} placeholder="Rechercher un lot" aria-label="Rechercher un lot"

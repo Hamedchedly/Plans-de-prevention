@@ -42,12 +42,6 @@ export function poolLotsOf(naacCode: string | null | undefined, ref: Referentiel
 
 export type LotStatus = 'OK' | 'NATURE' | 'NO_EXPORT' | 'UNKNOWN'
 
-/** Termes du métier absents des libellés de lots : ajoutés au texte avant la comparaison. */
-const LOT_HINTS: { test: RegExp; add: string }[] = [
-  { test: /\bvr\b|volets? roulants?/, add: 'menuiseries exterieures' },
-  { test: /motoris/, add: 'electricite' },
-]
-
 /**
  * Lots d'une commande, d'après les corps d'état de son code NAAC (fichier d'export) : tous les corps d'état dont le
  * libellé ou le lot correspond aux mots de la commande (une commande peut toucher plusieurs lots).
@@ -63,9 +57,12 @@ export function lotsOfOrder(order: OrderText, ref: Referentiel, nature?: NatureR
       : { lots: [], status: 'UNKNOWN', reason: 'Pas de code corps d’état dans l’export et pas de nature : lot à choisir.' }
   }
   const text = fold(`${order.nature_text ?? ''} ${order.description ?? ''}`)
-  const expanded = [text, ...LOT_HINTS.filter((h) => h.test.test(text)).map((h) => h.add)].join(' ')
-  const words = [...new Set(tokens(expanded))].filter((w) => w.length >= 4)
+  const words = [...new Set(tokens(text))].filter((w) => w.length >= 4)
+  // Termes du métier (table lot_terms) : mot ou expression entière dans le texte
+  const padded = ` ${text.replace(/[^a-z0-9]+/g, ' ').trim()} `
+  const termLots = new Set((ref.lotTerms ?? []).filter((t) => padded.includes(` ${fold(t.term)} `)).map((t) => t.lotCode))
   const matched = [...pool.keys()].filter((lot) => {
+    if (termLots.has(lot)) return true
     const hay = fold([ref.lotNameByCode.get(lot) ?? '', ...(pool.get(lot)?.labels ?? [])].join(' '))
     return words.some((w) => hay.includes(w))
   }).sort((a, b) => a - b)

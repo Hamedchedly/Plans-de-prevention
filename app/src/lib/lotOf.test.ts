@@ -29,6 +29,7 @@ const naacCorps = [
 ]
 const ref = {
   lotNameByCode: new Map(lotNames),
+  lotTerms: [{ term: 'vr', lotCode: 11 }, { term: 'volet roulant', lotCode: 11 }, { term: 'volets roulants', lotCode: 11 }, { term: 'motorisation', lotCode: 18 }, { term: 'elec', lotCode: 18 }],
   naacCorps: naacCorps.map((c) => ({ naac: c.naac, corpsLabel: c.corpsLabel, lotCode: c.lotCode, validated: c.validated })),
 } as unknown as Referentiel
 const nat = (id: number, lots: number[]) => ({ id, label: `n${id}`, lots }) as unknown as NatureRef

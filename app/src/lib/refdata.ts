@@ -15,6 +15,8 @@ export interface Referentiel {
   natures: NatureRef[]
   vocab: VocabEntry[]
   naacCorps: NaacCorps[]
+  /** Termes du métier désignant un lot (ex. « vr » → menuiseries extérieures). */
+  lotTerms: { term: string; lotCode: number }[]
 }
 
 async function run<T>(p: PromiseLike<{ data: T | null; error: { message: string } | null }>): Promise<T> {
@@ -68,6 +70,9 @@ export async function loadReferentiel(): Promise<Referentiel> {
     id: n.id, label: n.label, groupLabel: n.group_label, modelCode: n.model_code,
     lots: lotsByNature.get(n.id) ?? [], extraRisks: extraByNature.get(n.id) ?? [], measures: measuresByNature.get(n.id) ?? [],
   }))
+  // Termes de lots : lus à chaque chargement ; absence de table = aucun terme (l'application reste utilisable).
+  const lotTerms = await supabase.from('lot_terms').select('term,lot_code').then(({ data, error }) =>
+    error ? [] : ((data ?? []) as { term: string; lot_code: number }[]).map((t) => ({ term: t.term, lotCode: t.lot_code })))
   const naacCorps: NaacCorps[] = naac.map((c) => ({ naac: c.naac, corpsLabel: c.corps_label, lotCode: c.lot_code, validated: c.validated }))
 
   // overlay : propositions en attente de l'utilisateur courant
@@ -103,6 +108,7 @@ export async function loadReferentiel(): Promise<Referentiel> {
     natures: allNatures,
     vocab,
     naacCorps,
+    lotTerms,
   }
 }
 

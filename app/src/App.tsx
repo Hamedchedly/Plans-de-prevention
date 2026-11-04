@@ -9,6 +9,7 @@ import { fetchAdminPending, totalPending, type AdminPending } from './lib/adminP
 import ImportStamp from './components/ImportStamp'
 import Login from './pages/Login'
 import ProfileDialog from './components/ProfileDialog'
+import NotificationBell from './components/NotificationBell'
 import CompleteProfile from './components/CompleteProfile'
 import SignupVerify from './components/SignupVerify'
 
@@ -103,6 +104,7 @@ export function RootLayout() {
             })}
           </nav>
           <ImportStamp userId={userId} path={path} />
+          {userId && <NotificationBell userId={userId} />}
           <div className="relative shrink-0">
             <button onClick={() => setUserMenu((v) => !v)} aria-haspopup="menu" aria-expanded={userMenu}
               className="flex items-center gap-2.5 rounded-full py-1 pl-1 pr-2 hover:bg-muted">

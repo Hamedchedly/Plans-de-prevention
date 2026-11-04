@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { Button, Card, Notice, errMsg, fieldClass } from '../components/ui'
+import ArchivePeriodCard from '../components/ArchivePeriodCard'
 
 interface PurgeCounts { orders: number; companies: number; companies_kept: number }
 
@@ -115,6 +116,7 @@ export function DataSection() {
 
   return (
     <div className="space-y-4">
+    <ArchivePeriodCard />
     <PurgeCard />
     <Card className="space-y-3">
       <div className="flex flex-wrap items-end gap-3">

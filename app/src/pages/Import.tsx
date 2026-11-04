@@ -4,6 +4,7 @@ import { useAuth } from '../lib/auth'
 import { mapCommande, mapSuivi, readRows, sha256, type ImportKind } from '../lib/importers'
 import { Button, Card, Notice, errMsg, fieldClass } from '../components/ui'
 import { logActivity, logError } from '../lib/activity'
+import { notifyImport } from '../lib/notifications'
 import ImportDuplicates from '../components/ImportDuplicates'
 
 const chunk = <T,>(xs: T[], n = 200) => Array.from({ length: Math.ceil(xs.length / n) }, (_, i) => xs.slice(i * n, i * n + n))
@@ -86,6 +87,8 @@ export default function ImportPage() {
       const addressed = await supabase.rpc('apply_budget_addresses')
       check(addressed)
       void logActivity('IMPORT', kind, importId, { file: file.name, summary: `${res.inserted} nouvelles, ${res.updated} mises à jour` })
+      // Notification automatique : ne doit jamais faire échouer un import réussi.
+      void notifyImport(kind === 'COMMANDES' ? 'Commandes' : 'Suivi budgétaire', file.name, res.inserted, res.updated).catch(() => undefined)
       setLog([
         `${rows.length} lignes lues dans « ${file.name} ».`,
         `${res.inserted} nouvelle(s) ligne(s), ${res.updated} mise(s) à jour (données source uniquement).`,

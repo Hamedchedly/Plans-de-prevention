@@ -71,8 +71,11 @@ export async function loadReferentiel(): Promise<Referentiel> {
     lots: lotsByNature.get(n.id) ?? [], extraRisks: extraByNature.get(n.id) ?? [], measures: measuresByNature.get(n.id) ?? [],
   }))
   // Termes de lots : lus à chaque chargement ; absence de table = aucun terme (l'application reste utilisable).
-  const lotTerms = await supabase.from('lot_terms').select('term,lot_code').then(({ data, error }) =>
-    error ? [] : ((data ?? []) as { term: string; lot_code: number }[]).map((t) => ({ term: t.term, lotCode: t.lot_code })))
+  // Les termes désactivés par le Super Admin ne servent plus aux suggestions.
+  const lotTerms = await supabase.from('lot_terms').select('term,lot_code,active').then(({ data, error }) =>
+    error ? [] : ((data ?? []) as { term: string; lot_code: number; active: boolean }[])
+      .filter((t) => t.active !== false)
+      .map((t) => ({ term: t.term, lotCode: t.lot_code })))
   const naacCorps: NaacCorps[] = naac.map((c) => ({ naac: c.naac, corpsLabel: c.corps_label, lotCode: c.lot_code, validated: c.validated }))
 
   // overlay : propositions en attente de l'utilisateur courant

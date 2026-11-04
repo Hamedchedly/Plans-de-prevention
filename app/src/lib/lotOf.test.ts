@@ -4,7 +4,8 @@ import type { NatureRef } from './rules'
 
 // Le client Supabase n'est pas utilisé ici.
 vi.mock('./supabase', () => ({ supabase: {} }))
-const { lotOf, lotsForFiche } = await import('./natureSuggest')
+const { lotsOfOrder, lotsForFiche } = await import('./natureSuggest')
+const lotOf = (o: unknown, r: unknown, n: unknown) => lotsOfOrder(o as never, r as never, n as never).lots
 
 // Données réelles (corps d'état des exports, lots, natures) relevées en base.
 const lotNames: [number, string][] = [
@@ -39,27 +40,32 @@ const order = (over: Record<string, unknown>) => ({ nature_text: null, descripti
 describe('lot d’une commande (corps d’état de l’export)', () => {
   it('5099437 : démoussage de couverture → COUVERTURE, pas RAVALEMENT', () => {
     const o = order({ naac_code: 'GE', nature_text: 'Démoussage et entretien de couverture', description: 'Démoussage des Toitures à base de BIOCIDE CURATIF ET PREVENTIF ET HYDROFUGE' })
-    expect(lotOf(o, ref, natDemoussage)).toBe(5)
+    expect(lotOf(o, ref, natDemoussage)).toEqual([5])
     expect(lotsForFiche(o, ref, natDemoussage, new Map())).toEqual([5])
   })
   it('5132550 : serrure → FERMETURES / SERRURERIE', () => {
     const o = order({ naac_code: 'CP', nature_text: 'Remplacement serrure entrée piétonne', description: 'Remplacement du système anti-panique non débrayable' })
-    expect(lotOf(o, ref, natSerrure)).toBe(12)
+    expect(lotOf(o, ref, natSerrure)).toEqual([12])
   })
   it('5138644 : menuiseries extérieures → MENUISERIES EXTERIEURES (pas INTERIEURES)', () => {
     const o = order({ naac_code: 'CP', nature_text: 'Menuiseries Extérieures - VRE', description: 'Remplacement de store existant par volet Roulant électrique' })
-    expect(lotOf(o, ref, none)).toBe(11)
+    expect(lotOf(o, ref, none)).toEqual([11])
   })
   it('5139338 : grille de protection / fermeture → FERMETURES', () => {
     const o = order({ naac_code: 'CP', nature_text: 'CAves Piper - VH - Remplacement grllle protection', description: 'grille fixe ... fermeture pour cadenas' })
-    expect(lotOf(o, ref, none)).toBe(12)
+    expect(lotOf(o, ref, none)).toEqual([12])
   })
-  it('5135482 : rien ne correspond → aucun lot plutôt qu’un lot au hasard', () => {
-    const o = order({ naac_code: 'CP', nature_text: 'Adapt PMR - Motorisation VR', description: 'Motorisation des VR (5u) Installation conforme PMR' })
-    expect(lotOf(o, ref, none)).toBeNull()
+  it('aucun mot ne correspond → aucun lot plutôt qu’un lot au hasard', () => {
+    const o = order({ naac_code: 'CP', nature_text: 'Travaux divers', description: 'Prestation non précisée' })
+    expect(lotOf(o, ref, none)).toEqual([])
+    expect(lotsOfOrder(o, ref, none).status).toBe('UNKNOWN')
+  })
+  it('5135482 : motorisation VR (volets roulants) → MENUISERIES EXTERIEURES + ELECTRICITE', () => {
+    const o = order({ naac_code: 'CP', nature_text: 'Adapt PMR - Motorisation VR', description: 'Motorisation des VR (5u)(yc F+P Kits, Alim Elec, et bouton commande). / Installation conforme PMR / (selon BPU MA-100324)' })
+    expect(lotOf(o, ref, none)).toEqual([11, 18])
   })
   it('sans code NAAC : on garde le comportement de la nature', () => {
-    expect(lotOf(order({ nature_text: 'x' }), ref, nat(1, [9]))).toBe(9)
+    expect(lotOf(order({ nature_text: 'x' }), ref, nat(1, [9]))).toEqual([9])
     expect(lotsForFiche(order({ nature_text: 'x' }), ref, nat(1, [9, 10]), new Map())).toEqual([9, 10])
   })
 })

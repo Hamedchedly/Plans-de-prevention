@@ -9,6 +9,7 @@ import { buildSuggestion, loadNatureChoices, loadNatureLotPreferences, type LotP
 import { addressOf, type OrderRow } from '../lib/types'
 import { Badge, Button, Card, EmptyState, IconButton, Notice, PageHeader, fieldClass, errMsg } from '../components/ui'
 import { Bubble } from '../components/Bubble'
+import { ConfirmDot } from '../components/ConfirmDot'
 import CompanyDialog from '../components/CompanyDialog'
 import BulkPlanWizard from '../components/BulkPlanWizard'
 import OrderActionDialog from '../components/OrderActionDialog'
@@ -77,6 +78,19 @@ const TAB_KEYS = [...MAIN_TABS, ...MORE_TABS].map((t) => t.key)
 
 /** Vue de la liste, conservée dans l'adresse : /commandes?onglet=SIGNEE&regroupement=LOT&tri=order_date&sens=desc */
 export type DashboardView = { onglet?: string; regroupement?: string; tri?: string; sens?: string }
+
+/** Lots enregistrés des fiches (table order_lots), par numéro de commande. */
+async function fetchOrderLots(numbers: string[]): Promise<Map<string, number[]>> {
+  const out = new Map<string, number[]>()
+  for (let i = 0; i < numbers.length; i += 300) {
+    const { data, error } = await supabase.from('order_lots').select('order_number,lot_code').in('order_number', numbers.slice(i, i + 300))
+    if (error) throw new Error(error.message)
+    for (const r of (data ?? []) as { order_number: string; lot_code: number }[]) {
+      out.set(r.order_number, [...(out.get(r.order_number) ?? []), r.lot_code])
+    }
+  }
+  return out
+}
 
 /** Périodes par rapport à aujourd'hui : commandes passées depuis N jours. */
 const PRESETS: { label: string; days: number | null }[] = [
@@ -226,6 +240,8 @@ export default function Dashboard({ onOpen, view, setView }: {
   const [learned, setLearned] = useState<Map<string, number>>(new Map())
   /** Décisions apprises sur les lots des natures (retirés / gardés). */
   const [lotPrefs, setLotPrefs] = useState<LotPrefs>(new Map())
+  /** Lots réellement enregistrés pour les fiches créées. */
+  const [savedLots, setSavedLots] = useState<Map<string, number[]>>(new Map())
   const [showOutOfService, setShowOutOfService] = useState(false)
   const hiddenByService = (o: OrderRow) => profile?.role === 'SUPER_ADMIN' && !showOutOfService && outOps.has(o.operator_code ?? '')
   const [lotFilter, setLotFilter] = useState('')
@@ -295,12 +311,14 @@ export default function Dashboard({ onOpen, view, setView }: {
       setVersion((v) => v + 1)
       // Personne à alerter et dates de fiche : complètent la liste sans la retarder
       const planned = orders.filter((o) => o.plan_status !== 'NON_QUALIFIEE').map((o) => o.order_number)
-      const [contactsMap, datesRes] = await Promise.all([
+      const [contactsMap, datesRes, lotsMap] = await Promise.all([
         fetchContacts(orders.map((o) => o.operator_code ?? '')).catch(() => new Map<string, Contact>()),
         planned.length ? supabase.rpc('plan_dates', { p_orders: planned }) : Promise.resolve({ data: [] as unknown[], error: null }),
+        planned.length ? fetchOrderLots(planned).catch(() => new Map<string, number[]>()) : Promise.resolve(new Map<string, number[]>()),
       ])
       if (!isCurrent()) return
       setContacts(contactsMap)
+      setSavedLots(lotsMap)
       const dts = new Map<string, { drafted: string | null; sent: string | null }>()
       for (const r of (datesRes.data ?? []) as { order_number: string; drafted_at: string | null; sent_at: string | null }[]) {
         dts.set(r.order_number, { drafted: r.drafted_at, sent: r.sent_at })
@@ -419,8 +437,8 @@ export default function Dashboard({ onOpen, view, setView }: {
   }
   const matchesFilters = (o: OrderRow, cut: number | null) => {
     const sg = suggestions.get(o.order_number)
-    const lot = sg?.lot ?? null
-    if (lotFilter && String(lot ?? '') !== lotFilter && !(lotFilter === 'NONE' && lot == null)) return false
+    const codes = lotInfoOf(o).codes
+    if (lotFilter && !(lotFilter === 'NONE' ? codes.length === 0 : codes.includes(Number(lotFilter)))) return false
     if (groupFilter && (!sg?.confident || sg.group !== groupFilter)) return false
     if (cut != null && (!o.order_date || dayOf(o.order_date) < cut)) return false
     return true
@@ -441,9 +459,17 @@ export default function Dashboard({ onOpen, view, setView }: {
   const canSelectOrder = (o: OrderRow) => (SELECTABLE.includes(tab) && o.scope_status === 'IN_SCOPE') || (isScopeTab && isManager)
   const colCount = (SELECTABLE.includes(tab) || isScopeTab ? 1 : 0) + (isManager ? 8 : 7)
   // Lot affiché (même règle que la colonne « Lot »)
-  const lotLabelOf = (o: OrderRow): string | null => {
+  /** Lots à afficher : ceux de la fiche si elle est créée, sinon ceux identifiés dans l'export. */
+  const lotInfoOf = (o: OrderRow): { codes: number[]; toConfirm: boolean; reason: string } => {
     const sg = suggestions.get(o.order_number)
-    return sg?.lotName ?? null
+    const saved = o.plan_status !== 'NON_QUALIFIEE' ? savedLots.get(o.order_number) : undefined
+    if (saved?.length) return { codes: saved, toConfirm: false, reason: '' }
+    return { codes: sg?.lots ?? [], toConfirm: (sg?.lotStatus ?? 'UNKNOWN') !== 'OK', reason: sg?.lotReason ?? 'Lot à choisir.' }
+  }
+  const lotNameOf = (codes: number[]) => codes.map((c) => ref?.lotNameByCode.get(c) ?? `Lot ${c}`).join(' · ')
+  const lotLabelOf = (o: OrderRow): string | null => {
+    const codes = lotInfoOf(o).codes
+    return codes.length ? lotNameOf(codes) : null
   }
   const groupOf = (o: OrderRow): string => {
     if (grouping === 'LOT') return lotLabelOf(o) ?? 'Sans lot identifié'
@@ -966,7 +992,15 @@ export default function Dashboard({ onOpen, view, setView }: {
                         )}
                       </td>
                       <td className="px-3 py-2.5 text-xs">
-                        {(assigned || sg?.confident) && sg?.lotName ? sg.lotName : <span className="text-muted-foreground">—</span>}
+                        {(() => {
+                          const info = lotInfoOf(o)
+                          return (
+                            <span className="inline-flex items-center gap-1.5">
+                              {info.codes.length ? lotNameOf(info.codes) : <span className="text-muted-foreground">—</span>}
+                              {info.toConfirm && <ConfirmDot reason={info.reason} />}
+                            </span>
+                          )
+                        })()}
                       </td>
                       {isManager && <td className="px-3 py-2.5">{o.operator_code ?? '—'}</td>}
                       <td className="px-3 py-2.5">

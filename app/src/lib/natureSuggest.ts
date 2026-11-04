@@ -15,8 +15,11 @@ export interface OrderSuggestion {
   nature: string | null        // libellé de la nature retenue ou proposée
   natureId: number | null
   group: string | null
-  lot: number | null
-  lotName: string | null
+  lots: number[]               // lots de la commande (export), plusieurs possibles
+  lot: number | null           // premier lot (compatibilité)
+  lotName: string | null       // libellés des lots, séparés par « · »
+  lotStatus: LotStatus         // OK = identifié ; sinon à confirmer
+  lotReason: string            // explication affichée au clic sur la pastille
   confident: boolean           // vrai si la nature est affectée ou atteint le seuil
   candidates: NatureRef[]      // propositions à choisir quand la correspondance est faible
 }
@@ -37,23 +40,39 @@ export function poolLotsOf(naacCode: string | null | undefined, ref: Referentiel
   return out
 }
 
+export type LotStatus = 'OK' | 'NATURE' | 'NO_EXPORT' | 'UNKNOWN'
+
+/** Termes du métier absents des libellés de lots : ajoutés au texte avant la comparaison. */
+const LOT_HINTS: { test: RegExp; add: string }[] = [
+  { test: /\bvr\b|volets? roulants?/, add: 'menuiseries exterieures' },
+  { test: /motoris/, add: 'electricite' },
+]
+
 /**
- * Lot d'une commande : parmi les corps d'état de son code NAAC, départagé par les mots de la commande
- * (libellé et description) puis par la nature retenue. Sans départage net, aucun lot plutôt qu'un lot au hasard.
+ * Lots d'une commande, d'après les corps d'état de son code NAAC (fichier d'export) : tous les corps d'état dont le
+ * libellé ou le lot correspond aux mots de la commande (une commande peut toucher plusieurs lots).
+ * Sans correspondance, on retient les lots de la nature présents dans les corps d'état, ou aucun lot.
  */
-export function lotOf(order: OrderText, ref: Referentiel, nature?: NatureRef): number | null {
+export function lotsOfOrder(order: OrderText, ref: Referentiel, nature?: NatureRef): { lots: number[]; status: LotStatus; reason: string } {
   const pool = poolLotsOf(order.naac_code, ref)
-  if (!pool.size) return nature && nature.lots.length === 1 ? nature.lots[0] : null
-  const words = [...new Set(tokens(`${order.nature_text ?? ''} ${order.description ?? ''}`))].filter((w) => w.length >= 4)
-  const scored = [...pool].map(([lot, e]) => {
-    const hay = fold([ref.lotNameByCode.get(lot) ?? '', ...e.labels].join(' '))
-    const score = words.filter((w) => hay.includes(w)).length + (nature?.lots.includes(lot) ? 0.5 : 0) + (e.validated ? 0.1 : 0)
-    return { lot, score }
-  }).sort((a, b) => b.score - a.score)
-  const [top, second] = scored
-  if (top && top.score >= 1 && !(second && second.score === top.score)) return top.lot
-  const inPool = (nature?.lots ?? []).filter((l) => pool.has(l))
-  return inPool.length === 1 ? inPool[0] : null
+  const natureLots = nature?.lots ?? []
+  const names = (ls: number[]) => ls.map((l) => ref.lotNameByCode.get(l) ?? `Lot ${l}`).join(' · ')
+  if (!pool.size) {
+    return natureLots.length
+      ? { lots: natureLots, status: 'NO_EXPORT', reason: 'Pas de code corps d’état (NAAC) dans l’export : lot déduit de la nature, à confirmer.' }
+      : { lots: [], status: 'UNKNOWN', reason: 'Pas de code corps d’état dans l’export et pas de nature : lot à choisir.' }
+  }
+  const text = fold(`${order.nature_text ?? ''} ${order.description ?? ''}`)
+  const expanded = [text, ...LOT_HINTS.filter((h) => h.test.test(text)).map((h) => h.add)].join(' ')
+  const words = [...new Set(tokens(expanded))].filter((w) => w.length >= 4)
+  const matched = [...pool.keys()].filter((lot) => {
+    const hay = fold([ref.lotNameByCode.get(lot) ?? '', ...(pool.get(lot)?.labels ?? [])].join(' '))
+    return words.some((w) => hay.includes(w))
+  }).sort((a, b) => a - b)
+  if (matched.length) return { lots: matched, status: 'OK', reason: `Lot d’après le corps d’état de l’export : ${names(matched)}.` }
+  const inPool = natureLots.filter((l) => pool.has(l))
+  if (inPool.length) return { lots: inPool, status: 'NATURE', reason: 'Lot déduit de la nature : aucun corps d’état de l’export ne correspond au texte de la commande.' }
+  return { lots: [], status: 'UNKNOWN', reason: `Aucun corps d’état de l’export (code ${order.naac_code ?? '—'}) ne correspond au texte de la commande : lot à choisir.` }
 }
 
 /** Meilleures natures pour une commande, classées par score. */
@@ -112,23 +131,24 @@ export function autoLotsOf(nature: { id: number; lots: number[] } | undefined, p
 export function lotsForFiche(order: OrderText | undefined, ref: Referentiel, nature: NatureRef | undefined, prefs: LotPrefs): number[] {
   const natureLots = autoLotsOf(nature, prefs)
   if (!order) return natureLots
-  const pool = poolLotsOf(order.naac_code, ref)
-  if (!pool.size) return natureLots
-  const one = lotOf(order, ref, nature)
-  if (one != null && !(nature && prefs.get(lotPrefKey(nature.id, one)) === false)) return [one]
-  return natureLots.filter((l) => pool.has(l))
+  const r = lotsOfOrder(order, ref, nature)
+  if (r.status === 'NO_EXPORT') return natureLots
+  return r.lots.filter((l) => !(nature && prefs.get(lotPrefKey(nature.id, l)) === false))
 }
 
 /** Suggestion complète pour une commande (nature affectée, puis choix mémorisé pour ce libellé, puis analyse). */
 export function buildSuggestion(order: OrderText, ref: Referentiel, learned?: Map<string, number>): OrderSuggestion {
   const toOut = (n: NatureRef | undefined, confident: boolean, candidates: NatureRef[]): OrderSuggestion => {
-    const lot = lotOf(order, ref, n)
+    const r = lotsOfOrder(order, ref, n)
     return {
       nature: n?.label ?? null,
       natureId: n?.id ?? null,
       group: n?.groupLabel ?? null,
-      lot,
-      lotName: lot != null ? ref.lotNameByCode.get(lot) ?? null : null,
+      lots: r.lots,
+      lot: r.lots[0] ?? null,
+      lotName: r.lots.length ? r.lots.map((l) => ref.lotNameByCode.get(l) ?? `Lot ${l}`).join(' · ') : null,
+      lotStatus: r.status,
+      lotReason: r.reason,
       confident,
       candidates,
     }

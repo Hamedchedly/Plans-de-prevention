@@ -385,7 +385,7 @@ export default function BulkPlanWizard({
   const suggestedLotsAll = unique([
     ...(nature?.lots ?? []),
     ...(!nature && topCandidates[0] ? topCandidates[0].nature.lots : []),
-    ...(sg?.confident && sg.lot != null ? [sg.lot] : []),
+    ...(sg ? sg.lots : []),
   ])
   const suggestedLots = suggestedLotsAll
   const visibleLots = ref.lots.filter(lotMatches)

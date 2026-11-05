@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Link } from '@tanstack/react-router'
 import { useAuth } from '../lib/auth'
 import { fetchOperatorCodes } from '../lib/operators'
+import { fetchAllBanners, saveBanner, type SiteBannerItem } from '../lib/banner'
 import { fetchNotifications, sendNotification, type SiteNotification } from '../lib/notifications'
 import {
   TEMPLATE_VARIABLES, fetchChargeRecipients, fetchLastCommandesImport, fetchTemplates, fillMailTemplate,
@@ -10,37 +10,46 @@ import {
 import { Badge, Button, Card, Notice, PageHeader, errMsg, fieldClass } from '../components/ui'
 import { MultiSelect } from '../components/MultiSelect'
 
-export type CommTab = 'notifications' | 'mails' | 'modeles'
+export type CommTab = 'notifications' | 'mails' | 'modeles' | 'bandeau'
 const TABS: { key: CommTab; label: string }[] = [
   { key: 'notifications', label: 'Notifications' },
   { key: 'mails', label: 'Mails' },
   { key: 'modeles', label: 'Modèles' },
+  { key: 'bandeau', label: 'Bandeau du site' },
 ]
 const KIND_LABEL: Record<TemplateKind, string> = { IMPORT: 'Après import', LIBRE: 'Libre' }
 
-/** Espace Communications : notifications du site, mails aux chargés, modèles de mails. */
-export function CommunicationsPage({ tab }: { tab: CommTab }) {
-  const subtitle = {
+/** Communications (Administration) : notifications, mails aux chargés, modèles et bandeau du site. */
+export function CommunicationsPage({ tab, onTab }: { tab: CommTab; onTab: (t: CommTab) => void }) {
+  const subtitle: Record<CommTab, string> = {
     notifications: 'Messages affichés dans la cloche et envoyés sur les appareils abonnés.',
     mails: 'Préparer les mails aux chargés, par exemple après un import.',
     modeles: 'Modèles de mails réutilisables, avec variables.',
-  }[tab]
+    bandeau: 'Messages affichés tout en haut du site, défilant de droite à gauche.',
+  }
   return (
     <div className="space-y-6">
-      <PageHeader title="Communications" subtitle={subtitle} />
-      <nav aria-label="Communications" className="flex w-fit gap-1 rounded-full bg-muted p-1">
+      <PageHeader title="Communications" subtitle={subtitle[tab]} />
+      <div role="tablist" aria-label="Communications" className="flex w-fit flex-wrap gap-1 rounded-full bg-muted p-1">
         {TABS.map((t) => (
-          <Link key={t.key} to="/communications/$tab" params={{ tab: t.key }} aria-current={tab === t.key ? 'page' : undefined}
+          <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} onClick={() => onTab(t.key)}
             className={`rounded-full px-4 py-1.5 text-sm ${tab === t.key ? 'bg-card font-medium shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
             {t.label}
-          </Link>
+          </button>
         ))}
-      </nav>
+      </div>
       {tab === 'notifications' && <NotificationsTab />}
       {tab === 'mails' && <MailsTab />}
       {tab === 'modeles' && <TemplatesTab />}
+      {tab === 'bandeau' && <BannerTab />}
     </div>
   )
+}
+
+/** Section d'administration « Communications ». */
+export function CommunicationsSection() {
+  const [tab, setTab] = useState<CommTab>('notifications')
+  return <CommunicationsPage tab={tab} onTab={setTab} />
 }
 
 /* ---------- Notifications du site ---------- */
@@ -440,6 +449,105 @@ function TemplatesTab() {
               <p className="mt-2 whitespace-pre-line text-muted-foreground">{sample(draft.body)}</p>
             </div>
             <Button onClick={() => void save()} disabled={!isManager || busy || draft.name.trim() === ''}>{busy ? 'Enregistrement…' : 'Enregistrer le modèle'}</Button>
+          </>
+        )}
+      </Card>
+    </div>
+  )
+}
+
+/* ---------- Bandeau du site ---------- */
+
+interface BannerDraft { id?: string; message: string; active: boolean; position: number }
+
+function BannerTab() {
+  const { profile } = useAuth()
+  const isManager = profile?.role === 'SUPER_ADMIN' || profile?.role === 'RESPONSABLE'
+  const [list, setList] = useState<SiteBannerItem[] | null>(null)
+  const [draft, setDraft] = useState<BannerDraft | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+
+  const load = () => { fetchAllBanners().then(setList).catch((e) => setErr(errMsg(e))) }
+  useEffect(() => { load() }, [])
+
+  const save = async (d: BannerDraft) => {
+    setBusy(true); setErr(null); setMsg(null)
+    try {
+      const id = await saveBanner(d)
+      setDraft({ ...d, id })
+      setMsg('Bandeau enregistré.')
+      load()
+    } catch (e) { setErr(errMsg(e)) } finally { setBusy(false) }
+  }
+
+  const newDraft = () => { setDraft({ message: '', active: true, position: (list?.length ?? 0) + 1 }); setMsg(null) }
+  const shown = (list ?? []).filter((b) => b.active && b.id !== draft?.id).map((b) => b.message)
+  const preview = draft && draft.active && draft.message.trim() ? [...shown, draft.message.trim()] : shown
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[20rem_1fr]">
+      <Card className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold">Messages</h2>
+          {isManager && <Button variant="ghost" size="sm" onClick={newDraft}>Nouveau</Button>}
+        </div>
+        {list === null ? <p className="text-sm text-muted-foreground">Chargement…</p>
+          : list.length === 0 ? <p className="text-sm text-muted-foreground">Aucun message. Le bandeau reste masqué.</p>
+          : list.map((b) => (
+            <div key={b.id} className={`rounded-2xl border p-3 ${draft?.id === b.id ? 'border-primary bg-primary/5' : 'border-border'}`}>
+              <button type="button" onClick={() => { setDraft({ id: b.id, message: b.message, active: b.active, position: b.position }); setMsg(null) }}
+                className="block w-full text-left">
+                <div className="text-sm">{b.message}</div>
+                <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                  <Badge tone={b.active ? 'ok' : 'off'}>{b.active ? 'Affiché' : 'Masqué'}</Badge>
+                  Ordre {b.position}
+                </div>
+              </button>
+              {isManager && (
+                <Button variant="ghost" size="sm" className="mt-2" disabled={busy}
+                  onClick={() => void save({ id: b.id, message: b.message, active: !b.active, position: b.position })}>
+                  {b.active ? 'Masquer' : 'Afficher'}
+                </Button>
+              )}
+            </div>
+          ))}
+      </Card>
+
+      <Card className="space-y-4">
+        {!draft ? <p className="text-sm text-muted-foreground">Choisissez un message, ou créez-en un.</p> : (
+          <>
+            <h2 className="font-semibold">{draft.id ? 'Modifier le message' : 'Nouveau message'}</h2>
+            {!isManager && <Notice tone="info">Seul un Responsable ou le Super Admin peut modifier le bandeau.</Notice>}
+            {err && <Notice tone="error">{err}</Notice>}
+            {msg && <Notice tone="ok">{msg}</Notice>}
+            <div>
+              <label className="mb-1 block text-xs text-muted-foreground">Message</label>
+              <textarea className={`${fieldClass} min-h-20`} maxLength={240} value={draft.message}
+                onChange={(e) => setDraft({ ...draft, message: e.target.value })} disabled={!isManager} />
+              <p className="mt-1 text-xs text-muted-foreground">{draft.message.length}/240 caractères</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs text-muted-foreground">Ordre d’affichage</label>
+                <input type="number" min={1} className={fieldClass} value={draft.position} disabled={!isManager}
+                  onChange={(e) => setDraft({ ...draft, position: Math.max(1, Number(e.target.value) || 1) })} />
+              </div>
+              <label className="flex items-end gap-2 pb-2 text-sm">
+                <input type="checkbox" checked={draft.active} disabled={!isManager} onChange={(e) => setDraft({ ...draft, active: e.target.checked })} />
+                Afficher dans le bandeau
+              </label>
+            </div>
+            <div>
+              <p className="mb-1 text-xs text-muted-foreground">Aperçu du bandeau</p>
+              <div className="overflow-hidden rounded-2xl bg-primary px-4 py-2 text-sm text-primary-foreground">
+                {preview.length > 0 ? preview.join('   •   ') : 'Aucun message affiché.'}
+              </div>
+            </div>
+            <Button onClick={() => void save(draft)} disabled={!isManager || busy || draft.message.trim() === ''}>
+              {busy ? 'Enregistrement…' : 'Enregistrer'}
+            </Button>
           </>
         )}
       </Card>

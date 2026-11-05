@@ -17,6 +17,7 @@ import ImportPage from './Import'
 import { adminPageLabel, visibleAdminGroups } from '../lib/adminNav'
 import { ControlsSection } from './AdminControls'
 import LotTermsCard from '../components/LotTermsCard'
+import { CommunicationsSection } from './Communications'
 
 /** Une page d'administration, choisie par l'adresse (/administration/:section). */
 export default function Admin({ section }: { section: string }) {
@@ -40,6 +41,7 @@ export default function Admin({ section }: { section: string }) {
       {allowed && section === 'donnees' && <DataSection />}
       {allowed && section === 'fichiers' && <FileNameSection />}
       {allowed && section === 'modeles' && <TemplatesSection />}
+      {allowed && section === 'communications' && <CommunicationsSection />}
       {allowed && section === 'utilisateurs' && <>
         <CreatorsSection />
         {isSuper && <UsersSection />}

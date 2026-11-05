@@ -1,4 +1,3 @@
-import { CommunicationsPage, type CommTab } from './pages/Communications'
 import { useEffect, useState, type ReactNode } from 'react'
 import { createRootRoute, createRoute, createRouter, Link, redirect, useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import { RootLayout } from './App'
@@ -115,25 +114,7 @@ const adminSectionRoute = createRoute({
   component: AdminSectionPage,
 })
 
-/** /communications : ouvre le premier onglet (Notifications). */
-const communicationsIndexRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/communications',
-  beforeLoad: () => { throw redirect({ to: '/communications/$tab', params: { tab: 'notifications' } }) },
-})
-/** /communications/:tab : une adresse par onglet, conservée à l'actualisation. */
-function CommunicationsRoutePage() {
-  const { tab } = useParams({ from: '/communications/$tab' })
-  const current: CommTab = tab === 'mails' || tab === 'modeles' ? tab : 'notifications'
-  return <ManagerOnly><CommunicationsPage tab={current} /></ManagerOnly>
-}
-const communicationsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/communications/$tab',
-  component: CommunicationsRoutePage,
-})
-
-const routeTree = rootRoute.addChildren([indexRoute, commandesRoute, orderRoute, importRoute, indicateursRoute, adminIndexRoute, adminSectionRoute, communicationsIndexRoute, communicationsRoute])
+const routeTree = rootRoute.addChildren([indexRoute, commandesRoute, orderRoute, importRoute, indicateursRoute, adminIndexRoute, adminSectionRoute])
 
 export const router = createRouter({ routeTree, defaultNotFoundComponent: NotFound })
 

@@ -17,7 +17,6 @@ import ImportPage from './Import'
 import { adminPageLabel, visibleAdminGroups } from '../lib/adminNav'
 import { ControlsSection } from './AdminControls'
 import LotTermsCard from '../components/LotTermsCard'
-import { NotificationsSection } from './AdminNotifications'
 
 /** Une page d'administration, choisie par l'adresse (/administration/:section). */
 export default function Admin({ section }: { section: string }) {
@@ -37,7 +36,6 @@ export default function Admin({ section }: { section: string }) {
         <ReferentielSection userId={profile?.user_id ?? ''} />
         <LotTermsCard />
       </>}
-      {allowed && section === 'notifications' && <NotificationsSection userId={profile?.user_id ?? ''} />}
       {allowed && section === 'entreprises' && <CompaniesSection />}
       {allowed && section === 'donnees' && <DataSection />}
       {allowed && section === 'fichiers' && <FileNameSection />}

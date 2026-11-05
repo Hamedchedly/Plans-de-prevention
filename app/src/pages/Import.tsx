@@ -43,12 +43,19 @@ export default function ImportPage() {
     }
     const inserted = numbers.filter((n) => !existing.has(n)).length
     const updated = numbers.length - inserted
+    // Nouvelles commandes par chargé (sert aux mails « après import »)
+    const newByOperator: Record<string, number> = {}
+    for (const n of numbers) {
+      if (existing.has(n)) continue
+      const code = byNumber.get(n)?.operator_code ?? ''
+      newByOperator[code] = (newByOperator[code] ?? 0) + 1
+    }
     const scoped = await supabase.rpc('apply_scope_rules')
     check(scoped)
     // audit importé : applique ENVOYE / SIGNE aux commandes nouvelles ou encore non qualifiées (les décisions prises ne sont pas écrasées)
     const audited = await supabase.rpc('apply_order_audit')
     check(audited)
-    return { inserted, updated, scopeRecalculated: scoped.data as number, auditApplied: (audited.data as number) ?? 0 }
+    return { inserted, updated, newByOperator, scopeRecalculated: scoped.data as number, auditApplied: (audited.data as number) ?? 0 }
   }
 
   const importSuivi = async (rows: Record<string, unknown>[], importId: string) => {
@@ -58,7 +65,7 @@ export default function ImportPage() {
         import_id: importId, row_no: m.row_no, order_number: m.order_number, raw: m.raw,
       }))))
     }
-    return { inserted: mapped.length, updated: 0, scopeRecalculated: 0, auditApplied: 0 }
+    return { inserted: mapped.length, updated: 0, newByOperator: {}, scopeRecalculated: 0, auditApplied: 0 }
   }
 
   const onFile = async (file: File) => {
@@ -81,7 +88,7 @@ export default function ImportPage() {
       const res = kind === 'COMMANDES' ? await importCommandes(rows, importId) : await importSuivi(rows, importId)
       check(await supabase.from('imports').update({
         status: 'TERMINE', inserted_count: res.inserted, updated_count: res.updated,
-        summary: { scope_recalculated: res.scopeRecalculated },
+        summary: { scope_recalculated: res.scopeRecalculated, new_by_operator: res.newByOperator },
       }).eq('id', importId))
       // Adresse réelle : reprise du suivi budgétaire (l'import des commandes réécrit l'adresse source)
       const addressed = await supabase.rpc('apply_budget_addresses')

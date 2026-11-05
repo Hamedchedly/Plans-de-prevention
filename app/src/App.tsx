@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, Outlet, useRouterState } from '@tanstack/react-router'
-import { BarChart3, LayoutGrid, Settings2 } from 'lucide-react'
+import { BarChart3, ChevronDown, LayoutGrid, Mail, Settings2 } from 'lucide-react'
 import { useAuth } from './lib/auth'
 import { readImpersonation } from './lib/impersonation'
 import { Button, Card } from './components/ui'
@@ -26,6 +26,39 @@ const NAV = [
   { to: '/indicateurs', label: 'Indicateurs chargés', icon: BarChart3, managerOnly: true },
   { to: '/administration', label: 'Administration', icon: Settings2, managerOnly: true },
 ] as const
+
+const COMM_ITEMS = [
+  { key: 'notifications', label: 'Notifications' },
+  { key: 'mails', label: 'Mails aux chargés' },
+  { key: 'modeles', label: 'Modèles de mails' },
+] as const
+
+/** Liste déroulante « Communications » de l'en-tête : notifications, mails et modèles. */
+function CommunicationsMenu({ path, pill }: { path: string; pill: (on: boolean, small?: boolean) => string }) {
+  const [open, setOpen] = useState(false)
+  const active = path.startsWith('/communications')
+  return (
+    <div className="relative shrink-0">
+      <button onClick={() => setOpen((v) => !v)} aria-haspopup="menu" aria-expanded={open}
+        className={`flex items-center gap-2 ${pill(active)}`}>
+        <Mail className="h-4 w-4" aria-hidden="true" />
+        Communications
+        <ChevronDown className="h-4 w-4" aria-hidden="true" />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div role="menu" className="absolute left-0 z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-border bg-card shadow-lg">
+            {COMM_ITEMS.map((i) => (
+              <Link key={i.key} role="menuitem" to="/communications/$tab" params={{ tab: i.key }} onClick={() => setOpen(false)}
+                className="block px-3 py-2 text-sm hover:bg-muted">{i.label}</Link>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
 
 /** Mise en page commune : contrôle d'accès, barre de navigation en haut et contenu. Le contenu vient du routeur. */
 export function RootLayout() {
@@ -103,6 +136,7 @@ export function RootLayout() {
               )
             })}
           </nav>
+          {isManager && <CommunicationsMenu path={path} pill={pill} />}
           <ImportStamp userId={userId} path={path} />
           {userId && <NotificationBell userId={userId} />}
           <div className="relative shrink-0">

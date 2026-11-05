@@ -9,12 +9,14 @@ export interface SiteNotification {
   body: string
   created_at: string
   read: boolean
+  audience: 'TOUS' | 'CHOIX'
+  operator_codes: string[]
 }
 
 /** Notifications visibles par l'utilisateur, la plus récente d'abord, avec son état de lecture. */
 export async function fetchNotifications(userId: string): Promise<SiteNotification[]> {
   const { data, error } = await supabase.from('notifications')
-    .select('id,kind,title,body,created_at').order('created_at', { ascending: false }).limit(50)
+    .select('id,kind,title,body,created_at,audience,operator_codes').order('created_at', { ascending: false }).limit(50)
   if (error) throw error
   const { data: reads, error: readErr } = await supabase.from('notification_reads')
     .select('notification_id').eq('user_id', userId)
@@ -22,7 +24,7 @@ export async function fetchNotifications(userId: string): Promise<SiteNotificati
   const readIds = new Set((reads ?? []).map((r) => (r as { notification_id: string }).notification_id))
   return (data ?? []).map((n) => {
     const row = n as Omit<SiteNotification, 'read'>
-    return { ...row, read: readIds.has(row.id) }
+    return { ...row, operator_codes: row.operator_codes ?? [], read: readIds.has(row.id) }
   })
 }
 

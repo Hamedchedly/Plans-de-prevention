@@ -97,6 +97,8 @@ revoke execute on function plans_prevention.notification_visible(text, text[]) f
 revoke execute on function plans_prevention.send_notification(text, text, text, text[]) from public, anon;
 revoke execute on function plans_prevention.notify_import(text, text, int, int) from public, anon;
 revoke execute on function plans_prevention.mark_notifications_read(uuid[]) from public, anon;
+-- La politique RLS de notifications appelle notification_visible en tant qu'utilisateur connecté.
+grant execute on function plans_prevention.notification_visible(text, text[]) to authenticated;
 grant execute on function plans_prevention.send_notification(text, text, text, text[]) to authenticated;
 grant execute on function plans_prevention.notify_import(text, text, int, int) to authenticated;
 grant execute on function plans_prevention.mark_notifications_read(uuid[]) to authenticated;

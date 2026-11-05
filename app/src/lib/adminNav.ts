@@ -1,6 +1,6 @@
 /** Pages de l'administration, regroupées sur deux niveaux (groupe > page). Source unique pour la barre latérale et la page. */
 export type AdminPageKey =
-  | 'import' | 'donnees' | 'perimetre' | 'referentiels' | 'entreprises'
+  | 'import' | 'donnees' | 'archivage' | 'perimetre' | 'referentiels' | 'entreprises'
   | 'alertes' | 'controles' | 'validations' | 'tracabilite' | 'communications'
   | 'modeles' | 'fichiers' | 'utilisateurs'
 
@@ -13,6 +13,7 @@ export const ADMIN_GROUPS: AdminGroup[] = [
     pages: [
       { key: 'import', label: 'Import Excel', superOnly: false },
       { key: 'donnees', label: 'Base de données', superOnly: true },
+      { key: 'archivage', label: 'Archivage et purge', superOnly: false },
       { key: 'perimetre', label: 'Périmètre', superOnly: true },
       { key: 'referentiels', label: 'Référentiels', superOnly: true },
     ],

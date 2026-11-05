@@ -5,6 +5,8 @@ import { Card, Notice, PageHeader, errMsg, fieldClass } from '../components/ui'
 import { GroupedBars, HBars, LineChart } from '../components/Charts'
 import { useAuth } from '../lib/auth'
 import { PIPELINE_SEGMENTS, PipelineBar, type PipelineCounts } from '../components/PipelineBar'
+import { YearSelect } from '../components/YearSelect'
+import { yearOfIso, yearsBetween } from '../lib/years'
 
 type Row = { operator_code: string | null; plan_status: string; order_date: string | null }
 
@@ -61,7 +63,7 @@ const cumul = <T extends object>(items: T[], key: keyof T & string): number[] =>
   items.reduce<number[]>((acc, w) => { acc.push((acc[acc.length - 1] ?? 0) + Number((w as Record<string, unknown>)[key] ?? 0)); return acc }, [])
 
 /** Utilisation de l'outil (Super Admin) : connexions, fiches par semaine, stock par étape, filtrables par chargé. */
-function UsageSection() {
+function UsageSection({ year }: { year: number | null }) {
   const [days, setDays] = useState(84)
   const [operator, setOperator] = useState('')
   const [data, setData] = useState<Usage | null>(null)
@@ -72,8 +74,8 @@ function UsageSection() {
     let alive = true
     const load = async () => {
       setBusy(true); setErr(null)
-      const to = new Date(Date.now() + 86_400_000)
-      const from = new Date(Date.now() - days * 86_400_000)
+      const to = year != null ? new Date(Date.UTC(year + 1, 0, 1)) : new Date(Date.now() + 86_400_000)
+      const from = year != null ? new Date(Date.UTC(year, 0, 1)) : new Date(Date.now() - days * 86_400_000)
       const { data: res, error } = await supabase.rpc('indicators_overview', {
         p_from: from.toISOString(), p_to: to.toISOString(), p_operator: operator || null,
       })
@@ -83,7 +85,7 @@ function UsageSection() {
     }
     void load()
     return () => { alive = false }
-  }, [days, operator])
+  }, [days, operator, year])
 
   const weeks = data?.connexions_par_semaine ?? []
   const fiches = data?.fiches_par_semaine ?? []
@@ -120,7 +122,7 @@ function UsageSection() {
           <p className="text-xs text-muted-foreground">Réservé au Super Admin. Connexions d’après le journal ; fiches d’après les actions enregistrées.</p>
         </div>
         <label className="text-xs text-muted-foreground">Période
-          <select className={fieldClass + ' mt-1 w-auto'} value={days} onChange={(e) => setDays(Number(e.target.value))}>
+          <select className={fieldClass + ' mt-1 w-auto'} value={days} disabled={year != null} onChange={(e) => setDays(Number(e.target.value))}>
             {PERIODS.map((p) => <option key={p.days} value={p.days}>{p.label}</option>)}
           </select>
         </label>
@@ -226,6 +228,8 @@ export default function Indicateurs() {
   const [focus, setFocus] = useState<string | null>(null)
   /** Curseur de période : index dans PERIOD_STEPS (3 = toujours). */
   const [step, setStep] = useState(3)
+  /** Année calendaire appliquée à toute la page (null = période glissante du curseur). */
+  const [year, setYear] = useState<number | null>(null)
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'pct', dir: 'desc' })
   const [expanded, setExpanded] = useState(false)
 
@@ -245,14 +249,18 @@ export default function Indicateurs() {
 
   /** Date de début de la fenêtre (AAAA-MM-JJ), ou null pour « toujours ». */
   const cutoff = useMemo(() => {
+    if (year != null) return null
     const m = PERIOD_STEPS[step].months
     if (m == null) return null
     const d = new Date()
     d.setMonth(d.getMonth() - m)
     return d.toISOString().slice(0, 10)
-  }, [step])
+  }, [step, year])
 
-  const scoped = useMemo(() => (cutoff ? rows.filter((r) => (r.order_date ?? '') >= cutoff) : rows), [rows, cutoff])
+  const years = useMemo(() => yearsBetween(rows.map((r) => r.order_date)), [rows])
+
+  const scoped = useMemo(() => rows.filter((r) =>
+    (cutoff ? (r.order_date ?? '') >= cutoff : true) && (year == null || yearOfIso(r.order_date) === year)), [rows, cutoff, year])
 
   const total = useMemo(() => {
     const c = emptyCounts()
@@ -310,7 +318,12 @@ export default function Indicateurs() {
 
       {err && <Notice tone="error">{err}</Notice>}
 
-      {can('SUPER_ADMIN') && <UsageSection />}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <p className="text-xs text-muted-foreground">Année appliquée à tous les indicateurs de cette page. Sans année, c’est la période glissante du curseur.</p>
+        <YearSelect years={years} value={year} onChange={setYear} />
+      </div>
+
+      {can('SUPER_ADMIN') && <UsageSection year={year} />}
 
       <Card className="space-y-4">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -323,10 +336,10 @@ export default function Indicateurs() {
           {focus && <button type="button" onClick={() => setFocus(null)} className="rounded-full bg-muted px-3.5 py-1.5 text-xs font-medium hover:bg-muted/70">Voir tous les chargés</button>}
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <span className="text-xs text-muted-foreground">Commandes des</span>
+          <span className="text-xs text-muted-foreground">{year == null ? 'Commandes des' : 'Commandes de'}</span>
           <input type="range" min={0} max={PERIOD_STEPS.length - 1} step={1} value={step} aria-label="Période des commandes"
-            onChange={(e) => { setStep(Number(e.target.value)); setExpanded(false) }} className="w-56 accent-primary" />
-          <span className="text-sm font-medium">{PERIOD_STEPS[step].label === 'Toujours' ? 'toutes les commandes' : `les ${PERIOD_STEPS[step].label.toLowerCase()}`}</span>
+            onChange={(e) => { setStep(Number(e.target.value)); setYear(null); setExpanded(false) }} className="w-56 accent-primary" />
+          <span className="text-sm font-medium">{year != null ? `l’année ${year}` : PERIOD_STEPS[step].label === 'Toujours' ? 'toutes les commandes' : `les ${PERIOD_STEPS[step].label.toLowerCase()}`}</span>
         </div>
         <PipelineBar counts={focus ? (byOperator.find((x) => x.code === focus)?.c ?? emptyCounts()) : total} />
       </Card>

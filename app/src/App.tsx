@@ -122,6 +122,7 @@ export function RootLayout() {
               <div className="text-[11px] text-muted-foreground">Secteur 11</div>
             </div>
           </div>
+          {isManager && <CommunicationsMenu path={path} pill={pill} />}
           <nav aria-label="Navigation principale" className="flex min-w-0 flex-1 gap-1 overflow-x-auto rounded-full bg-muted p-1">
             {NAV.filter((n) => !n.managerOnly || isManager).map((n) => {
               // La fiche d'une commande (/commandes/:numero) n'active aucun onglet.
@@ -136,7 +137,6 @@ export function RootLayout() {
               )
             })}
           </nav>
-          {isManager && <CommunicationsMenu path={path} pill={pill} />}
           <ImportStamp userId={userId} path={path} />
           {userId && <NotificationBell userId={userId} />}
           <div className="relative shrink-0">

@@ -43,18 +43,26 @@ export default function ImportPage() {
     }
     const inserted = numbers.filter((n) => !existing.has(n)).length
     const updated = numbers.length - inserted
-    // Nouvelles commandes par chargé (sert aux mails « après import »)
-    const newByOperator: Record<string, number> = {}
-    for (const n of numbers) {
-      if (existing.has(n)) continue
-      const code = byNumber.get(n)?.operator_code ?? ''
-      newByOperator[code] = (newByOperator[code] ?? 0) + 1
-    }
     const scoped = await supabase.rpc('apply_scope_rules')
     check(scoped)
     // audit importé : applique ENVOYE / SIGNE aux commandes nouvelles ou encore non qualifiées (les décisions prises ne sont pas écrasées)
     const audited = await supabase.rpc('apply_order_audit')
     check(audited)
+    // Nouvelles commandes par chargé, dont celles encore sans plan de prévention (statut NON_QUALIFIEE, après audit)
+    const newList = numbers.filter((n) => !existing.has(n))
+    const planOf = new Map<string, string>()
+    for (const part of chunk(newList, 200)) {
+      const res = await supabase.from('orders').select('order_number,plan_status').in('order_number', part)
+      check(res)
+      ;(res.data ?? []).forEach((x: { order_number: string; plan_status: string }) => planOf.set(x.order_number, x.plan_status))
+    }
+    const newByOperator: Record<string, { nouvelles: number; sans_plan: number }> = {}
+    for (const n of newList) {
+      const code = byNumber.get(n)?.operator_code ?? ''
+      const bucket = (newByOperator[code] ??= { nouvelles: 0, sans_plan: 0 })
+      bucket.nouvelles++
+      if (planOf.get(n) === 'NON_QUALIFIEE') bucket.sans_plan++
+    }
     return { inserted, updated, newByOperator, scopeRecalculated: scoped.data as number, auditApplied: (audited.data as number) ?? 0 }
   }
 

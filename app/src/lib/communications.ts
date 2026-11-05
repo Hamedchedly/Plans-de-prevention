@@ -9,6 +9,8 @@ export const TEMPLATE_VARIABLES: { key: string; label: string }[] = [
   { key: 'chargé', label: 'Nom complet du chargé' },
   { key: 'code', label: 'Code chargé (UTIC)' },
   { key: 'nouvelles', label: 'Nombre de nouvelles commandes (dernier import)' },
+  { key: 'sans_plan', label: 'Nouvelles commandes sans plan de prévention' },
+  { key: 'recap', label: 'Récapitulatif par chargé (mail collectif)' },
   { key: 'fichier', label: 'Nom du fichier importé' },
   { key: 'date', label: 'Date de l’import' },
   { key: 'redacteur', label: 'Nom de l’expéditeur' },
@@ -42,12 +44,40 @@ export async function saveTemplate(t: { id?: string; kind: TemplateKind; name: s
   return String(data)
 }
 
+export interface NewCounts {
+  nouvelles: number
+  /** Nouvelles commandes encore sans plan de prévention ; null pour les imports antérieurs au détail. */
+  sans_plan: number | null
+}
+
 export interface LastImport {
   file_name: string
   created_at: string
   inserted_count: number
-  /** Nouvelles commandes par code chargé ; « » = sans chargé. Absent sur les imports antérieurs à cette version. */
-  newByOperator: Record<string, number> | null
+  /** Nouvelles commandes par code chargé ; « » = sans chargé. Null si l'import n'a pas de détail. */
+  newByOperator: Record<string, NewCounts> | null
+}
+
+/** Accepte l'ancien format (nombre seul) et le nouveau (nouvelles + sans plan). */
+function parseNewByOperator(raw: unknown): Record<string, NewCounts> | null {
+  if (!raw || typeof raw !== 'object') return null
+  const out: Record<string, NewCounts> = {}
+  for (const [code, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof v === 'number') out[code] = { nouvelles: v, sans_plan: null }
+    else if (v && typeof v === 'object') {
+      const o = v as { nouvelles?: number; sans_plan?: number }
+      out[code] = { nouvelles: o.nouvelles ?? 0, sans_plan: o.sans_plan ?? 0 }
+    }
+  }
+  return out
+}
+
+/** Récapitulatif lisible par chargé, inséré dans le mail collectif. */
+export function buildRecap(rows: { name: string; code: string; nouvelles: number; sans_plan: number | null }[]): string {
+  return rows.map((r) => {
+    const sans = r.sans_plan === null ? 'détail indisponible' : `dont ${r.sans_plan} sans plan de prévention`
+    return `- ${r.name} (${r.code}) : ${r.nouvelles} nouvelle(s) commande(s), ${sans}`
+  }).join('\n')
 }
 
 /** Dernier import de commandes terminé. */
@@ -58,12 +88,12 @@ export async function fetchLastCommandesImport(): Promise<LastImport | null> {
     .order('created_at', { ascending: false }).limit(1).maybeSingle()
   if (error) throw error
   if (!data) return null
-  const row = data as { file_name: string; created_at: string; inserted_count: number; summary: { new_by_operator?: Record<string, number> } | null }
+  const row = data as { file_name: string; created_at: string; inserted_count: number; summary: { new_by_operator?: unknown } | null }
   return {
     file_name: row.file_name,
     created_at: row.created_at,
     inserted_count: row.inserted_count ?? 0,
-    newByOperator: row.summary?.new_by_operator ?? null,
+    newByOperator: parseNewByOperator(row.summary?.new_by_operator),
   }
 }
 

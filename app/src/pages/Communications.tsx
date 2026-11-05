@@ -5,7 +5,7 @@ import { fetchOperatorCodes } from '../lib/operators'
 import { fetchNotifications, sendNotification, type SiteNotification } from '../lib/notifications'
 import {
   TEMPLATE_VARIABLES, fetchChargeRecipients, fetchLastCommandesImport, fetchTemplates, fillMailTemplate,
-  mailtoUrl, saveTemplate, type ChargeRecipient, type CommTemplate, type LastImport, type TemplateKind,
+  buildRecap, mailtoUrl, saveTemplate, type ChargeRecipient, type CommTemplate, type LastImport, type TemplateKind,
 } from '../lib/communications'
 import { Badge, Button, Card, Notice, PageHeader, errMsg, fieldClass } from '../components/ui'
 import { MultiSelect } from '../components/MultiSelect'
@@ -151,7 +151,11 @@ function NotificationsTab() {
 
 /* ---------- Mails aux chargés ---------- */
 
-const SAMPLE = { prenom: 'Léa', chargé: 'Léa Martin', code: 'LMA', nouvelles: 12, fichier: 'ANM_COMD_TRAV_ER.xlsx', date: '05/11/2026', redacteur: 'Vous' }
+const SAMPLE = { prenom: 'Léa', chargé: 'Léa Martin', code: 'LMA', nouvelles: 12, sans_plan: 5, recap: '- Léa Martin (LMA) : 12 nouvelle(s) commande(s), dont 5 sans plan de prévention', fichier: 'ANM_COMD_TRAV_ER.xlsx', date: '05/11/2026', redacteur: 'Vous' }
+/** Dans un mail collectif, {prenom} devient « toute l’équipe ». */
+const COLLECTIVE_PRENOM = 'toute l’équipe'
+/** Au-delà, certaines messageries tronquent un mailto : on propose de copier le texte. */
+const LONG_BODY = 1800
 
 function MailsTab() {
   const { profile } = useAuth()
@@ -161,6 +165,8 @@ function MailsTab() {
   const [recipients, setRecipients] = useState<ChargeRecipient[]>([])
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [opened, setOpened] = useState<Set<string>>(new Set())
+  const [mode, setMode] = useState<'chacun' | 'tous'>('chacun')
+  const [copied, setCopied] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
   useEffect(() => {
@@ -171,21 +177,40 @@ function MailsTab() {
         setLast(imp)
         setRecipients(rec)
         // Par défaut : les chargés qui ont reçu de nouvelles commandes.
-        setSelected(new Set(rec.filter((r) => (imp?.newByOperator?.[r.code] ?? 0) > 0).map((r) => r.code)))
+        setSelected(new Set(rec.filter((r) => (imp?.newByOperator?.[r.code]?.nouvelles ?? 0) > 0).map((r) => r.code)))
       })
       .catch((e) => setErr(errMsg(e)))
   }, [])
 
   const template = templates.find((t) => t.id === templateId)
   const redacteur = profile?.full_name || profile?.email || ''
-  const countOf = (code: string) => last?.newByOperator?.[code] ?? 0
+  const nouvellesOf = (code: string) => last?.newByOperator?.[code]?.nouvelles ?? 0
+  const sansPlanOf = (code: string): number | null => last?.newByOperator?.[code]?.sans_plan ?? null
+
+  const rows = recipients.map((r) => ({ name: r.name, code: r.code, nouvelles: nouvellesOf(r.code), sans_plan: sansPlanOf(r.code) }))
+  const recap = buildRecap(rows)
+  const totalNouvelles = rows.reduce((sum, r) => sum + r.nouvelles, 0)
+  const totalSansPlan = rows.reduce((sum, r) => sum + (r.sans_plan ?? 0), 0)
+  const fichier = last?.file_name ?? ''
+  const date = last ? new Date(last.created_at).toLocaleDateString('fr-FR') : ''
+
   const varsOf = (r: ChargeRecipient): Record<string, string | number> => ({
     prenom: r.firstName, chargé: r.name, code: r.code,
-    nouvelles: last ? countOf(r.code) : '—',
-    fichier: last?.file_name ?? '',
-    date: last ? new Date(last.created_at).toLocaleDateString('fr-FR') : '',
-    redacteur,
+    nouvelles: last ? nouvellesOf(r.code) : '—',
+    sans_plan: last && sansPlanOf(r.code) !== null ? (sansPlanOf(r.code) as number) : '—',
+    recap, fichier, date, redacteur,
   })
+  const collectiveVars = (): Record<string, string | number> => ({
+    prenom: COLLECTIVE_PRENOM, chargé: COLLECTIVE_PRENOM, code: '',
+    nouvelles: last ? totalNouvelles : '—', sans_plan: last ? totalSansPlan : '—',
+    recap, fichier, date, redacteur,
+  })
+
+  const emails = recipients.filter((r) => r.email).map((r) => r.email as string)
+  const collective = template
+    ? { subject: fillMailTemplate(template.subject, collectiveVars()), body: fillMailTemplate(template.body, collectiveVars()) }
+    : null
+
   const toggle = (code: string) => setSelected((prev) => {
     const next = new Set(prev)
     if (next.has(code)) next.delete(code); else next.add(code)
@@ -193,12 +218,27 @@ function MailsTab() {
   })
   const firstSelected = recipients.find((r) => selected.has(r.code))
 
+  const copyCollective = async () => {
+    if (!collective) return
+    try {
+      await navigator.clipboard.writeText(`Objet : ${collective.subject}\n\n${collective.body}`)
+      setCopied(true)
+    } catch { setErr('Copie impossible dans ce navigateur.') }
+  }
+
+  const modeBtn = (key: 'chacun' | 'tous', label: string) => (
+    <button type="button" aria-pressed={mode === key} onClick={() => { setMode(key); setCopied(false) }}
+      className={`rounded-full px-4 py-1.5 text-sm ${mode === key ? 'bg-card font-medium shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+      {label}
+    </button>
+  )
+
   return (
     <div className="space-y-4">
       {err && <Notice tone="error">{err}</Notice>}
       {last === null && <Notice tone="warn">Aucun import de commandes terminé pour l’instant.</Notice>}
       {last && !last.newByOperator && (
-        <Notice tone="warn">Le détail par chargé n’est pas disponible pour le dernier import (il précède cette mise à jour). Les nouvelles commandes seront comptées au prochain import.</Notice>
+        <Notice tone="warn">Le détail par chargé n’est pas disponible pour le dernier import (il précède cette mise à jour). Les chiffres apparaîtront au prochain import d’un nouveau fichier.</Notice>
       )}
       {last && last.newByOperator && (
         <p className="text-sm text-muted-foreground">
@@ -207,27 +247,58 @@ function MailsTab() {
       )}
 
       <Card className="space-y-4">
-        <div className="flex flex-wrap items-end gap-3">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="inline-flex rounded-full bg-muted p-1">
+            {modeBtn('chacun', 'Un mail par chargé')}
+            {modeBtn('tous', 'Un mail pour tous')}
+          </div>
           <div className="min-w-64">
             <label className="mb-1 block text-xs text-muted-foreground">Modèle</label>
-            <select className={fieldClass} value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
+            <select className={fieldClass} value={templateId} onChange={(e) => { setTemplateId(e.target.value); setCopied(false) }}>
               {templates.map((t) => <option key={t.id} value={t.id}>{t.name} ({KIND_LABEL[t.kind]})</option>)}
             </select>
           </div>
-          <p className="max-w-md text-xs text-muted-foreground">
-            Chaque bouton ouvre un mail prêt à l’envoi dans votre messagerie. Vérifiez le texte avant d’envoyer.
-          </p>
         </div>
+
+        {mode === 'tous' && (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Un seul mail adressé à {emails.length} chargé(s). Le récapitulatif reprend, pour chacun, les nouvelles commandes et celles sans plan de prévention.
+            </p>
+            {collective ? (
+              <>
+                <div className="rounded-2xl bg-muted/50 p-3 text-sm">
+                  <p className="font-medium">{collective.subject}</p>
+                  <p className="mt-2 whitespace-pre-line text-muted-foreground">{collective.body}</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {emails.length > 0 ? (
+                    <a href={mailtoUrl(emails.join(','), collective.subject, collective.body)}
+                      onClick={() => setOpened(new Set(recipients.map((r) => r.code)))}
+                      className="inline-flex h-10 items-center rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground hover:opacity-90">
+                      Ouvrir le mail pour tous
+                    </a>
+                  ) : <Badge tone="warn">Aucune adresse de chargé</Badge>}
+                  <Button variant="ghost" onClick={() => void copyCollective()}>{copied ? 'Texte copié' : 'Copier le texte'}</Button>
+                </div>
+                {collective.body.length > LONG_BODY && (
+                  <Notice tone="warn">Le texte est long : certaines messageries tronquent le mail ouvert. Utilisez « Copier le texte » si besoin.</Notice>
+                )}
+              </>
+            ) : <Notice tone="info">Choisissez un modèle.</Notice>}
+          </div>
+        )}
 
         <div className="overflow-x-auto rounded-2xl border border-border">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
               <tr>
-                <th className="w-10 px-3 py-2" />
+                {mode === 'chacun' && <th className="w-10 px-3 py-2" />}
                 <th className="px-3 py-2 font-medium">Chargé</th>
                 <th className="px-3 py-2 font-medium">Adresse</th>
                 <th className="px-3 py-2 text-right font-medium">Nouvelles</th>
-                <th className="px-3 py-2" />
+                <th className="px-3 py-2 text-right font-medium">Sans plan</th>
+                {mode === 'chacun' && <th className="px-3 py-2" />}
               </tr>
             </thead>
             <tbody>
@@ -237,9 +308,11 @@ function MailsTab() {
                 const body = template ? fillMailTemplate(template.body, vars) : ''
                 return (
                   <tr key={r.code} className="border-t border-border">
-                    <td className="px-3 py-2">
-                      <input type="checkbox" aria-label={`Sélectionner ${r.name}`} checked={selected.has(r.code)} onChange={() => toggle(r.code)} />
-                    </td>
+                    {mode === 'chacun' && (
+                      <td className="px-3 py-2">
+                        <input type="checkbox" aria-label={`Sélectionner ${r.name}`} checked={selected.has(r.code)} onChange={() => toggle(r.code)} />
+                      </td>
+                    )}
                     <td className="px-3 py-2">
                       <div className="font-medium">{r.name}</div>
                       <div className="text-xs text-muted-foreground">{r.code}</div>
@@ -247,16 +320,19 @@ function MailsTab() {
                     <td className="px-3 py-2">
                       {r.email ? <span className="break-all">{r.email}</span> : <Badge tone="warn">Pas d’adresse</Badge>}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums">{last ? countOf(r.code) : '—'}</td>
-                    <td className="px-3 py-2 text-right">
-                      {opened.has(r.code) ? <Badge tone="ok">Ouvert</Badge> : r.email && template && selected.has(r.code) ? (
-                        <a href={mailtoUrl(r.email, subject, body)}
-                          onClick={() => setOpened((prev) => new Set(prev).add(r.code))}
-                          className="inline-flex h-8 items-center rounded-full bg-primary px-3 text-xs font-medium text-primary-foreground hover:opacity-90">
-                          Ouvrir le mail
-                        </a>
-                      ) : null}
-                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">{last ? nouvellesOf(r.code) : '—'}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{last && sansPlanOf(r.code) !== null ? sansPlanOf(r.code) : '—'}</td>
+                    {mode === 'chacun' && (
+                      <td className="px-3 py-2 text-right">
+                        {opened.has(r.code) ? <Badge tone="ok">Ouvert</Badge> : r.email && template && selected.has(r.code) ? (
+                          <a href={mailtoUrl(r.email, subject, body)}
+                            onClick={() => setOpened((prev) => new Set(prev).add(r.code))}
+                            className="inline-flex h-8 items-center rounded-full bg-primary px-3 text-xs font-medium text-primary-foreground hover:opacity-90">
+                            Ouvrir le mail
+                          </a>
+                        ) : null}
+                      </td>
+                    )}
                   </tr>
                 )
               })}
@@ -264,7 +340,7 @@ function MailsTab() {
           </table>
         </div>
 
-        {template && firstSelected && (
+        {mode === 'chacun' && template && firstSelected && (
           <details className="rounded-2xl bg-muted/50 p-3 text-sm">
             <summary className="cursor-pointer text-xs font-medium text-muted-foreground">Aperçu pour {firstSelected.name}</summary>
             <p className="mt-2 font-medium">{fillMailTemplate(template.subject, varsOf(firstSelected))}</p>

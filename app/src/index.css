@@ -70,8 +70,8 @@ tr:has(input[type='checkbox'][aria-label^='Sélectionner']:checked) {
 
 /* Bandeau du site : défilement de droite à gauche, boucle sans saut (le texte est dupliqué). */
 @keyframes site-ticker {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
+  from { transform: translateX(var(--box-w, 100vw)); }
+  to { transform: translateX(calc(-1 * var(--text-w, 0px))); }
 }
 .animate-site-ticker { animation: site-ticker linear infinite; }
 @media (prefers-reduced-motion: reduce) {

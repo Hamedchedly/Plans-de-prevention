@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../lib/auth'
 import { fetchOperatorCodes } from '../lib/operators'
-import { fetchAllBanners, saveBanner, type SiteBannerItem } from '../lib/banner'
+import { fetchAllBanners, removeBanner, saveBanner, type SiteBannerItem } from '../lib/banner'
 import { fetchNotifications, sendNotification, type SiteNotification } from '../lib/notifications'
 import {
   TEMPLATE_VARIABLES, fetchChargeRecipients, fetchLastCommandesImport, fetchTemplates, fillMailTemplate,
@@ -468,8 +468,20 @@ function BannerTab() {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
+  const [confirmRemove, setConfirmRemove] = useState<string | null>(null)
 
   const load = () => { fetchAllBanners().then(setList).catch((e) => setErr(errMsg(e))) }
+
+  const remove = async (id: string) => {
+    setBusy(true); setErr(null); setMsg(null)
+    try {
+      await removeBanner(id)
+      setConfirmRemove(null)
+      if (draft?.id === id) setDraft(null)
+      setMsg('Message retiré du bandeau.')
+      load()
+    } catch (e) { setErr(errMsg(e)) } finally { setBusy(false) }
+  }
   useEffect(() => { load() }, [])
 
   const save = async (d: BannerDraft) => {
@@ -505,11 +517,23 @@ function BannerTab() {
                   Ordre {b.position}
                 </div>
               </button>
-              {isManager && (
-                <Button variant="ghost" size="sm" className="mt-2" disabled={busy}
-                  onClick={() => void save({ id: b.id, message: b.message, active: !b.active, position: b.position })}>
-                  {b.active ? 'Masquer' : 'Afficher'}
-                </Button>
+              {isManager && confirmRemove !== b.id && (
+                <div className="mt-2 flex gap-1">
+                  <Button variant="ghost" size="sm" disabled={busy}
+                    onClick={() => void save({ id: b.id, message: b.message, active: !b.active, position: b.position })}>
+                    {b.active ? 'Masquer' : 'Afficher'}
+                  </Button>
+                  <Button variant="ghost" size="sm" disabled={busy} onClick={() => setConfirmRemove(b.id)}>Retirer</Button>
+                </div>
+              )}
+              {isManager && confirmRemove === b.id && (
+                <div className="mt-2 space-y-2 rounded-xl bg-muted/50 p-2 text-xs">
+                  <p>Retirer ce message du bandeau ? Il ne sera plus affiché (il reste archivé en base).</p>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={() => void remove(b.id)} disabled={busy}>Confirmer</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setConfirmRemove(null)} disabled={busy}>Annuler</Button>
+                  </div>
+                </div>
               )}
             </div>
           ))}

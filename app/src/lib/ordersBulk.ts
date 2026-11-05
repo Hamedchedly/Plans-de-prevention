@@ -6,6 +6,7 @@ export interface MatchedOrder {
   operator_code: string | null
   sector_code: string | null
   trashed_at: string | null
+  purged_at: string | null
   kpi_excluded: boolean
 }
 
@@ -20,7 +21,7 @@ export const MAX_MATCHES = 5000
 export async function fetchMatchingOrders(f: OrderFilter): Promise<{ rows: MatchedOrder[]; truncated: boolean }> {
   const out: MatchedOrder[] = []
   for (let from = 0; from < MAX_MATCHES; from += PAGE) {
-    let q = supabase.from('orders').select('order_number,order_date,operator_code,sector_code,trashed_at,kpi_excluded')
+    let q = supabase.from('orders').select('order_number,order_date,operator_code,sector_code,trashed_at,purged_at,kpi_excluded')
     if (f.sectors.length) q = q.in('sector_code', f.sectors)
     if (f.operators.length) q = q.in('operator_code', f.operators)
     if (f.from) q = q.gte('order_date', f.from)

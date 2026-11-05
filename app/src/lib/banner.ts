@@ -5,7 +5,7 @@ export interface SiteBannerItem { id: string; message: string; active: boolean; 
 /** Messages affichés dans le bandeau du site, dans l'ordre configuré. */
 export async function fetchActiveBanners(): Promise<SiteBannerItem[]> {
   const { data, error } = await supabase.from('site_banners')
-    .select('id,message,active,position').eq('active', true).order('position')
+    .select('id,message,active,position').eq('active', true).is('removed_at', null).order('position')
   if (error) throw error
   return (data ?? []) as SiteBannerItem[]
 }
@@ -13,7 +13,7 @@ export async function fetchActiveBanners(): Promise<SiteBannerItem[]> {
 /** Tous les messages, affichés ou non (administration). */
 export async function fetchAllBanners(): Promise<SiteBannerItem[]> {
   const { data, error } = await supabase.from('site_banners')
-    .select('id,message,active,position').order('position')
+    .select('id,message,active,position').is('removed_at', null).order('position')
   if (error) throw error
   return (data ?? []) as SiteBannerItem[]
 }
@@ -24,4 +24,10 @@ export async function saveBanner(b: { id?: string; message: string; active: bool
   })
   if (error) throw error
   return String(data)
+}
+
+/** Retire un message du bandeau. Il n'est pas effacé : il reste en base, marqué retiré. */
+export async function removeBanner(id: string): Promise<void> {
+  const { error } = await supabase.rpc('remove_site_banner', { p_id: id })
+  if (error) throw error
 }

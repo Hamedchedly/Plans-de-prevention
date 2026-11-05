@@ -3,9 +3,11 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { fetchOperatorCodes } from '../lib/operators'
 import { MAX_MATCHES, fetchMatchingOrders, fetchSectorCodes, type MatchedOrder, type OrderFilter, type OrderState } from '../lib/ordersBulk'
+import { restoreOrders } from '../lib/corbeille'
 import { Badge, Button, Card, Notice, PageHeader, errMsg, fieldClass } from '../components/ui'
 import { MultiSelect } from '../components/MultiSelect'
 import ArchivePeriodCard from '../components/ArchivePeriodCard'
+import CorbeillePanel from '../components/CorbeillePanel'
 
 type Action = 'archive' | 'unarchive' | 'trash' | 'restore'
 const STATES: { key: OrderState; label: string }[] = [
@@ -75,11 +77,19 @@ export function ArchivePurgeSection() {
     setBusy(true); setErr(null); setMsg(null)
     try {
       const numbers = chosen.map((r) => r.order_number)
-      const { data, error } = action === 'archive' || action === 'unarchive'
-        ? await supabase.rpc('bulk_archive_orders', { p_orders: numbers, p_archive: action === 'archive' })
-        : await supabase.rpc('set_orders_trashed', { p_orders: numbers, p_trashed: action === 'trash' })
-      if (error) throw error
-      setMsg(`${Number(data)} commande(s) : ${ACTION_LABEL[action].toLowerCase()}.`)
+      let n: number
+      if (action === 'archive' || action === 'unarchive') {
+        const { data, error } = await supabase.rpc('bulk_archive_orders', { p_orders: numbers, p_archive: action === 'archive' })
+        if (error) throw error
+        n = Number(data)
+      } else if (action === 'restore') {
+        n = await restoreOrders(numbers)
+      } else {
+        const { data, error } = await supabase.rpc('set_orders_trashed', { p_orders: numbers, p_trashed: true })
+        if (error) throw error
+        n = Number(data)
+      }
+      setMsg(`${n} commande(s) : ${ACTION_LABEL[action].toLowerCase()}.`)
       await search()
     } catch (e) { setErr(errMsg(e)) } finally { setBusy(false) }
   }
@@ -196,15 +206,13 @@ export function ArchivePurgeSection() {
               {(['archive', 'unarchive', 'trash', 'restore'] as Action[]).map((a) => actionControl(a))}
             </div>
           ) : null}
-          <div className="space-y-2 rounded-2xl bg-muted/50 p-3 text-sm">
-            <p><strong>Purge définitive</strong> : non disponible pour l’instant.</p>
-            <p className="text-muted-foreground">
-              Le projet interdit de supprimer des commandes importées : elles sont seulement marquées. Une purge demande une exception explicite,
-              avec sauvegarde et confirmation. Elle ne sera pas activée tant que cette exception n’est pas validée.
-            </p>
-          </div>
+          <p className="text-xs text-muted-foreground">
+            La purge se fait depuis la corbeille ci-dessous : une commande doit d’abord y être mise, puis purgée après sauvegarde.
+          </p>
         </Card>
       )}
+
+      <CorbeillePanel />
 
       <ArchivePeriodCard />
     </div>

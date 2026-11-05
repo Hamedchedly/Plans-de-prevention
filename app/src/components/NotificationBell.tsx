@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Bell } from 'lucide-react'
 import { fetchNotifications, markNotificationsRead, type SiteNotification } from '../lib/notifications'
+import { disablePush, enablePush, pushState, type PushState } from '../lib/push'
 
 const REFRESH_MS = 120_000
 
@@ -9,6 +10,9 @@ export default function NotificationBell({ userId }: { userId: string }) {
   const [items, setItems] = useState<SiteNotification[]>([])
   const [open, setOpen] = useState(false)
   const [failed, setFailed] = useState(false)
+  const [push, setPush] = useState<PushState>('indisponible')
+  const [pushBusy, setPushBusy] = useState(false)
+  const [pushErr, setPushErr] = useState<string | null>(null)
 
   const load = useCallback(() => {
     fetchNotifications(userId)
@@ -25,9 +29,26 @@ export default function NotificationBell({ userId }: { userId: string }) {
 
   const unread = items.filter((n) => !n.read).length
 
+  const refreshPush = useCallback(() => {
+    pushState().then(setPush).catch(() => setPush('indisponible'))
+  }, [])
+
+  const togglePush = async () => {
+    setPushBusy(true); setPushErr(null)
+    try {
+      if (push === 'active') await disablePush(); else await enablePush()
+    } catch (e) {
+      setPushErr(e instanceof Error ? e.message : 'Activation impossible')
+    } finally {
+      setPushBusy(false)
+      refreshPush()
+    }
+  }
+
   const toggle = () => {
     const next = !open
     setOpen(next)
+    if (next) refreshPush()
     if (next && unread > 0) {
       const ids = items.filter((n) => !n.read).map((n) => n.id)
       void markNotificationsRead(ids)
@@ -63,6 +84,24 @@ export default function NotificationBell({ userId }: { userId: string }) {
                   <div className="mt-1 text-[11px] text-muted-foreground">{new Date(n.created_at).toLocaleString('fr-FR')}</div>
                 </div>
               ))}
+            </div>
+            <div className="space-y-2 border-t border-border px-3 py-2.5 text-xs">
+              {push === 'indisponible' && (
+                <p className="text-muted-foreground">Notifications hors site non disponibles sur ce navigateur. Sur iPhone, ajoutez le site à l’écran d’accueil.</p>
+              )}
+              {push === 'refusee' && (
+                <p className="text-muted-foreground">Notifications bloquées dans le navigateur : autorisez-les dans les réglages du site.</p>
+              )}
+              {(push === 'inactive' || push === 'active') && (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-muted-foreground">{push === 'active' ? 'Actives sur cet appareil' : 'Inactives sur cet appareil'}</span>
+                  <button onClick={() => void togglePush()} disabled={pushBusy}
+                    className="rounded-full bg-muted px-3 py-1 font-medium hover:bg-muted/70 disabled:opacity-50">
+                    {pushBusy ? '…' : push === 'active' ? 'Désactiver' : 'Activer'}
+                  </button>
+                </div>
+              )}
+              {pushErr && <p className="text-destructive">{pushErr}</p>}
             </div>
           </div>
         </>

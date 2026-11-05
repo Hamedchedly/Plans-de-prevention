@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { sendPush } from './push'
 
 export type NotificationKind = 'MANUEL' | 'IMPORT'
 export interface SiteNotification {
@@ -33,17 +34,19 @@ export async function markNotificationsRead(ids: string[]): Promise<void> {
 
 /** Envoi manuel (Super Admin). `operators` n'est utilisé que pour l'audience CHOIX. */
 export async function sendNotification(input: { title: string; body: string; audience: 'TOUS' | 'CHOIX'; operators: string[] }): Promise<void> {
-  const { error } = await supabase.rpc('send_notification', {
+  const { data, error } = await supabase.rpc('send_notification', {
     p_title: input.title, p_body: input.body, p_audience: input.audience, p_operators: input.operators,
   })
   if (error) throw error
+  void sendPush(String(data))
 }
 
 /** Notification automatique après un import réussi (responsable ou Super Admin). */
 export async function notifyImport(kindLabel: string, fileName: string, inserted: number, updated: number): Promise<void> {
   if (inserted + updated === 0) return
-  const { error } = await supabase.rpc('notify_import', {
+  const { data, error } = await supabase.rpc('notify_import', {
     p_kind: kindLabel, p_file: fileName, p_inserted: inserted, p_updated: updated,
   })
   if (error) throw error
+  void sendPush(String(data))
 }

@@ -5,7 +5,7 @@ import { fetchAllBanners, removeBanner, saveBanner, type SiteBannerItem } from '
 import { fetchNotifications, sendNotification, type SiteNotification } from '../lib/notifications'
 import {
   TEMPLATE_VARIABLES, fetchChargeRecipients, fetchLastCommandesImport, fetchPlanStats, fetchTemplates, fillMailTemplate,
-  buildRecap, mailtoUrl, saveTemplate, type ChargeRecipient, type CommTemplate, type LastImport, type PlanStats, type TemplateKind,
+  buildRecap, buildRecapHtml, mailtoUrl, saveTemplate, type ChargeRecipient, type CommTemplate, type LastImport, type PlanStats, type TemplateKind,
 } from '../lib/communications'
 import { Badge, Button, Card, Notice, PageHeader, errMsg, fieldClass } from '../components/ui'
 import { MultiSelect } from '../components/MultiSelect'
@@ -183,6 +183,7 @@ function MailsTab() {
   const [opened, setOpened] = useState<Set<string>>(new Set())
   const [mode, setMode] = useState<'chacun' | 'tous'>('chacun')
   const [copied, setCopied] = useState(false)
+  const [tableCopied, setTableCopied] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
   useEffect(() => {
@@ -243,6 +244,21 @@ function MailsTab() {
   })
   const firstSelected = recipients.find((r) => selected.has(r.code))
 
+  /** Copie le tableau en HTML (collage dans Outlook) ; texte brut en repli. */
+  const copyTable = async () => {
+    try {
+      if (typeof ClipboardItem !== 'undefined') {
+        await navigator.clipboard.write([new ClipboardItem({
+          'text/html': new Blob([buildRecapHtml(rows, PLANS_YEAR)], { type: 'text/html' }),
+          'text/plain': new Blob([recap], { type: 'text/plain' }),
+        })])
+      } else {
+        await navigator.clipboard.writeText(recap)
+      }
+      setTableCopied(true)
+    } catch { setErr('Copie impossible dans ce navigateur.') }
+  }
+
   const copyCollective = async () => {
     if (!collective) return
     try {
@@ -252,7 +268,7 @@ function MailsTab() {
   }
 
   const modeBtn = (key: 'chacun' | 'tous', label: string) => (
-    <button type="button" aria-pressed={mode === key} onClick={() => { setMode(key); setCopied(false) }}
+    <button type="button" aria-pressed={mode === key} onClick={() => { setMode(key); setCopied(false); setTableCopied(false) }}
       className={`rounded-full px-4 py-1.5 text-sm ${mode === key ? 'bg-card font-medium shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
       {label}
     </button>
@@ -294,7 +310,7 @@ function MailsTab() {
               <>
                 <div className="rounded-2xl bg-muted/50 p-3 text-sm">
                   <p className="font-medium">{collective.subject}</p>
-                  <p className="mt-2 whitespace-pre-line text-muted-foreground">{collective.body}</p>
+                  <pre className="mt-2 overflow-x-auto whitespace-pre font-mono text-xs text-muted-foreground">{collective.body}</pre>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   {emails.length > 0 ? (
@@ -305,6 +321,7 @@ function MailsTab() {
                     </a>
                   ) : <Badge tone="warn">Aucune adresse de chargé</Badge>}
                   <Button variant="ghost" onClick={() => void copyCollective()}>{copied ? 'Texte copié' : 'Copier le texte'}</Button>
+                  <Button variant="ghost" onClick={() => void copyTable()}>{tableCopied ? 'Tableau copié' : 'Copier le tableau (Outlook)'}</Button>
                 </div>
                 {collective.body.length > LONG_BODY && (
                   <Notice tone="warn">Le texte est long : certaines messageries tronquent le mail ouvert. Utilisez « Copier le texte » si besoin.</Notice>
@@ -412,6 +429,17 @@ function TemplatesTab() {
   const sample = (text: string) => fillMailTemplate(text, SAMPLE)
 
   return (
+    <div className="space-y-6">
+    <Card className="space-y-2 text-sm">
+      <h2 className="font-semibold">Comment modifier un modèle</h2>
+      <ol className="list-decimal space-y-1 pl-5 text-muted-foreground">
+        <li>Choisissez un modèle à gauche, ou créez-en un avec « Nouveau ».</li>
+        <li>Modifiez l’objet et le corps comme un texte ordinaire. Un élément entre accolades, comme <code className="rounded bg-muted px-1">{'{prenom}'}</code>, est remplacé à l’envoi.</li>
+        <li>Le tableau par chargé s’insère à l’emplacement de <code className="rounded bg-muted px-1">{'{recap}'}</code>. Dans le mail pour tous, il contient toute l’équipe ; dans le mail individuel, seulement la ligne du chargé.</li>
+        <li>Un nom de variable mal écrit (par exemple <code className="rounded bg-muted px-1">{'{Prenom}'}</code>, avec une majuscule) n’est pas remplacé : il apparaît tel quel dans le mail. Respectez les noms de la liste ci-dessous.</li>
+        <li>Vérifiez l’aperçu en bas de l’éditeur, puis enregistrez. Le modèle est utilisé dans l’onglet Mail dès l’enregistrement.</li>
+      </ol>
+    </Card>
     <div className="grid gap-6 lg:grid-cols-[18rem_1fr]">
       <Card className="space-y-3">
         <div className="flex items-center justify-between">
@@ -466,12 +494,13 @@ function TemplatesTab() {
             <div className="rounded-2xl bg-muted/50 p-3 text-sm">
               <p className="text-xs font-medium text-muted-foreground">Aperçu</p>
               <p className="mt-1 font-medium">{sample(draft.subject)}</p>
-              <p className="mt-2 whitespace-pre-line text-muted-foreground">{sample(draft.body)}</p>
+              <pre className="mt-2 overflow-x-auto whitespace-pre font-mono text-xs text-muted-foreground">{sample(draft.body)}</pre>
             </div>
             <Button onClick={() => void save()} disabled={!isManager || busy || draft.name.trim() === ''}>{busy ? 'Enregistrement…' : 'Enregistrer le modèle'}</Button>
           </>
         )}
       </Card>
+    </div>
     </div>
   )
 }

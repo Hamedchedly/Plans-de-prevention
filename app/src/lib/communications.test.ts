@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('./supabase', () => ({ supabase: {} }))
-import { buildRecap, fillMailTemplate, mailtoUrl } from './communications'
+import { buildRecap, buildRecapHtml, fillMailTemplate, mailtoUrl } from './communications'
 
 describe('fillMailTemplate', () => {
   it('remplace les variables connues', () => {
@@ -32,17 +32,30 @@ describe('mailtoUrl', () => {
 })
 
 describe('buildRecap', () => {
-  it('liste chaque chargé : nouvelles importées, plans réalisés sur l’année, reste à faire', () => {
-    expect(buildRecap([{ name: 'Léa Martin', code: 'LMA', nouvelles: 3, realises: 120, reste: 45 }], 2026))
-      .toBe('- Léa Martin (LMA) : nouvelles commandes importées 3 · plans réalisés en 2026 : 120 · reste à faire : 45')
+  it('présente un tableau aligné sans code chargé', () => {
+    const txt = buildRecap([{ name: 'Léa Martin', code: 'LMA', nouvelles: 3, realises: 120, reste: 45 }], 2026)
+    const [head, row] = txt.split('\n')
+    expect(head).toContain('Réalisés 2026')
+    expect(row).toContain('Léa Martin')
+    expect(row).not.toContain('LMA')
+    expect(row.trim().endsWith('45')).toBe(true)
   })
 
-  it('garde une ligne par chargé, dans l’ordre donné', () => {
+  it('trie les chargés par nom', () => {
     const lines = buildRecap([
-      { name: 'Léa Martin', code: 'LMA', nouvelles: 1, realises: 2, reste: 3 },
-      { name: 'Jean Dupont', code: 'JDU', nouvelles: 0, realises: 0, reste: 0 },
+      { name: 'Quentin', code: 'Q', nouvelles: 1, realises: 2, reste: 3 },
+      { name: 'Adrien', code: 'A', nouvelles: 0, realises: 0, reste: 0 },
     ], 2026).split('\n')
-    expect(lines).toHaveLength(2)
-    expect(lines[1]).toContain('Jean Dupont (JDU)')
+    expect(lines[1]).toContain('Adrien')
+    expect(lines[2]).toContain('Quentin')
+  })
+})
+
+describe('buildRecapHtml', () => {
+  it('produit un tableau HTML et échappe les noms', () => {
+    const html = buildRecapHtml([{ name: 'A & B', code: 'X', nouvelles: 1, realises: 2, reste: 3 }], 2026)
+    expect(html.startsWith('<table')).toBe(true)
+    expect(html).toContain('A &amp; B')
+    expect(html).not.toContain('>X<')
   })
 })

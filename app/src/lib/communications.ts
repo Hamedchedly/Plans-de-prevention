@@ -13,7 +13,7 @@ export const TEMPLATE_VARIABLES: { key: string; label: string }[] = [
   { key: 'realises', label: 'Plans réalisés sur l’année' },
   { key: 'reste', label: 'Reste à faire (commandes sans plan)' },
   { key: 'annee', label: 'Année des plans réalisés' },
-  { key: 'recap', label: 'Récapitulatif (mail collectif : tous les chargés ; mail individuel : le sien)' },
+  { key: 'recap', label: 'Tableau récapitulatif (mail pour tous : toute l’équipe ; mail individuel : sa ligne)' },
   { key: 'fichier', label: 'Nom du fichier importé' },
   { key: 'date', label: 'Date de l’import' },
   { key: 'redacteur', label: 'Nom de l’expéditeur' },
@@ -77,11 +77,26 @@ function parseNewByOperator(raw: unknown): Record<string, NewCounts> | null {
 
 export interface RecapRow { name: string; code: string; nouvelles: number; realises: number; reste: number }
 
-/** Une ligne par chargé : nouvelles commandes importées, plans réalisés sur l’année, reste à faire. */
+const byName = (rows: RecapRow[]) => [...rows].sort((a, b) => a.name.localeCompare(b.name, 'fr'))
+
+/** Tableau en texte aligné (colonnes Chargé, Nouvelles importées, Réalisés, Reste à faire), pour le corps du mail. */
 export function buildRecap(rows: RecapRow[], annee: number): string {
-  return rows.map((r) =>
-    `- ${r.name} (${r.code}) : nouvelles commandes importées ${r.nouvelles} · plans réalisés en ${annee} : ${r.realises} · reste à faire : ${r.reste}`,
-  ).join('\n')
+  const head = ['Chargé', 'Nouvelles importées', `Réalisés ${annee}`, 'Reste à faire']
+  const data = byName(rows).map((r) => [r.name, String(r.nouvelles), String(r.realises), String(r.reste)])
+  const widths = head.map((h, i) => Math.max(h.length, ...data.map((d) => d[i].length)))
+  const line = (cells: string[]) => cells.map((c, i) => (i === 0 ? c.padEnd(widths[0]) : c.padStart(widths[i]))).join('   ')
+  return [line(head), ...data.map(line)].join('\n')
+}
+
+/** Même tableau en HTML : collé dans Outlook, il reste un vrai tableau. */
+export function buildRecapHtml(rows: RecapRow[], annee: number): string {
+  const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const cell = (t: string, tag: 'th' | 'td', right: boolean) =>
+    `<${tag} style="text-align:${right ? 'right' : 'left'};padding:6px 12px;border-bottom:1px solid #d4d4d8">${esc(t)}</${tag}>`
+  const head = `<tr>${cell('Chargé', 'th', false)}${cell('Nouvelles importées', 'th', true)}${cell(`Réalisés ${annee}`, 'th', true)}${cell('Reste à faire', 'th', true)}</tr>`
+  const body = byName(rows).map((r) =>
+    `<tr>${cell(r.name, 'td', false)}${cell(String(r.nouvelles), 'td', true)}${cell(String(r.realises), 'td', true)}${cell(String(r.reste), 'td', true)}</tr>`).join('')
+  return `<table style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:14px">${head}${body}</table>`
 }
 
 export interface PlanStats { realises: number; reste: number }

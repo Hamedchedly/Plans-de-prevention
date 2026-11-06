@@ -447,6 +447,14 @@ export default function Dashboard({ onOpen, view, setView }: {
   const sansContactCodes = [...new Set(sansContact.map((o) => o.operator_code ?? '—'))]
 
   const terms = tokens(q)
+  // Lot affiché (même règle que la colonne « Lot »)
+  /** Lots à afficher : ceux de la fiche si elle est créée, sinon ceux identifiés dans l'export. */
+  const lotInfoOf = (o: OrderRow): { codes: number[]; toConfirm: boolean; reason: string } => {
+    const sg = suggestions.get(o.order_number)
+    const saved = o.plan_status !== 'NON_QUALIFIEE' ? savedLots.get(o.order_number) : undefined
+    if (saved?.length) return { codes: saved, toConfirm: false, reason: '' }
+    return { codes: sg?.lots ?? [], toConfirm: (sg?.lotStatus ?? 'UNKNOWN') !== 'OK', reason: sg?.lotReason ?? 'Lot à choisir.' }
+  }
   const matches = (o: OrderRow) => {
     if (!terms.length) return true
     const hay = fold([o.order_number, addressOf(o), o.city, o.tranche_name, o.nature_text, o.description, o.isis_code].filter(Boolean).join(' '))
@@ -475,14 +483,6 @@ export default function Dashboard({ onOpen, view, setView }: {
   const list = isTrashView ? trashed.filter(matches) : visible
   const canSelectOrder = (o: OrderRow) => (SELECTABLE.includes(tab) && o.scope_status === 'IN_SCOPE') || (isScopeTab && isManager)
   const colCount = (SELECTABLE.includes(tab) || isScopeTab ? 1 : 0) + (isManager ? 8 : 7)
-  // Lot affiché (même règle que la colonne « Lot »)
-  /** Lots à afficher : ceux de la fiche si elle est créée, sinon ceux identifiés dans l'export. */
-  const lotInfoOf = (o: OrderRow): { codes: number[]; toConfirm: boolean; reason: string } => {
-    const sg = suggestions.get(o.order_number)
-    const saved = o.plan_status !== 'NON_QUALIFIEE' ? savedLots.get(o.order_number) : undefined
-    if (saved?.length) return { codes: saved, toConfirm: false, reason: '' }
-    return { codes: sg?.lots ?? [], toConfirm: (sg?.lotStatus ?? 'UNKNOWN') !== 'OK', reason: sg?.lotReason ?? 'Lot à choisir.' }
-  }
   const lotNameOf = (codes: number[]) => codes.map((c) => ref?.lotNameByCode.get(c) ?? `Lot ${c}`).join(' · ')
   const lotLabelOf = (o: OrderRow): string | null => {
     const codes = lotInfoOf(o).codes

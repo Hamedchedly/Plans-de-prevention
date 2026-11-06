@@ -10,7 +10,10 @@ export const TEMPLATE_VARIABLES: { key: string; label: string }[] = [
   { key: 'code', label: 'Code chargé (UTIC)' },
   { key: 'nouvelles', label: 'Nombre de nouvelles commandes (dernier import)' },
   { key: 'sans_plan', label: 'Nouvelles commandes sans plan de prévention' },
-  { key: 'recap', label: 'Récapitulatif par chargé (mail collectif)' },
+  { key: 'realises', label: 'Plans réalisés sur l’année' },
+  { key: 'reste', label: 'Reste à faire (commandes sans plan)' },
+  { key: 'annee', label: 'Année des plans réalisés' },
+  { key: 'recap', label: 'Récapitulatif (mail collectif : tous les chargés ; mail individuel : le sien)' },
   { key: 'fichier', label: 'Nom du fichier importé' },
   { key: 'date', label: 'Date de l’import' },
   { key: 'redacteur', label: 'Nom de l’expéditeur' },
@@ -72,12 +75,26 @@ function parseNewByOperator(raw: unknown): Record<string, NewCounts> | null {
   return out
 }
 
-/** Récapitulatif lisible par chargé, inséré dans le mail collectif. */
-export function buildRecap(rows: { name: string; code: string; nouvelles: number; sans_plan: number | null }[]): string {
-  return rows.map((r) => {
-    const sans = r.sans_plan === null ? 'détail indisponible' : `dont ${r.sans_plan} sans plan de prévention`
-    return `- ${r.name} (${r.code}) : ${r.nouvelles} nouvelle(s) commande(s), ${sans}`
-  }).join('\n')
+export interface RecapRow { name: string; code: string; nouvelles: number; realises: number; reste: number }
+
+/** Une ligne par chargé : nouvelles commandes importées, plans réalisés sur l’année, reste à faire. */
+export function buildRecap(rows: RecapRow[], annee: number): string {
+  return rows.map((r) =>
+    `- ${r.name} (${r.code}) : nouvelles commandes importées ${r.nouvelles} · plans réalisés en ${annee} : ${r.realises} · reste à faire : ${r.reste}`,
+  ).join('\n')
+}
+
+export interface PlanStats { realises: number; reste: number }
+
+/** Plans réalisés et reste à faire par code chargé, pour une année de commandes. */
+export async function fetchPlanStats(year: number): Promise<Record<string, PlanStats>> {
+  const { data, error } = await supabase.rpc('communication_stats', { p_year: year })
+  if (error) throw error
+  const out: Record<string, PlanStats> = {}
+  for (const r of (data ?? []) as { operator_code: string; realises: number; reste: number }[]) {
+    out[r.operator_code] = { realises: Number(r.realises), reste: Number(r.reste) }
+  }
+  return out
 }
 
 /** Dernier import de commandes terminé. */

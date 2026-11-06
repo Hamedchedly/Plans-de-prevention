@@ -32,13 +32,17 @@ describe('mailtoUrl', () => {
 })
 
 describe('buildRecap', () => {
-  it('liste chaque chargé avec ses nouvelles commandes et celles sans plan', () => {
-    expect(buildRecap([{ name: 'Léa Martin', code: 'LMA', nouvelles: 3, sans_plan: 2 }]))
-      .toBe('- Léa Martin (LMA) : 3 nouvelle(s) commande(s), dont 2 sans plan de prévention')
+  it('liste chaque chargé : nouvelles importées, plans réalisés sur l’année, reste à faire', () => {
+    expect(buildRecap([{ name: 'Léa Martin', code: 'LMA', nouvelles: 3, realises: 120, reste: 45 }], 2026))
+      .toBe('- Léa Martin (LMA) : nouvelles commandes importées 3 · plans réalisés en 2026 : 120 · reste à faire : 45')
   })
 
-  it('signale un détail indisponible pour les anciens imports', () => {
-    expect(buildRecap([{ name: 'Jean Dupont', code: 'JDU', nouvelles: 1, sans_plan: null }]))
-      .toContain('détail indisponible')
+  it('garde une ligne par chargé, dans l’ordre donné', () => {
+    const lines = buildRecap([
+      { name: 'Léa Martin', code: 'LMA', nouvelles: 1, realises: 2, reste: 3 },
+      { name: 'Jean Dupont', code: 'JDU', nouvelles: 0, realises: 0, reste: 0 },
+    ], 2026).split('\n')
+    expect(lines).toHaveLength(2)
+    expect(lines[1]).toContain('Jean Dupont (JDU)')
   })
 })

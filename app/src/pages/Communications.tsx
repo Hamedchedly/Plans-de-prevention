@@ -4,8 +4,8 @@ import { fetchOperatorCodes } from '../lib/operators'
 import { fetchAllBanners, removeBanner, saveBanner, type SiteBannerItem } from '../lib/banner'
 import { fetchNotifications, sendNotification, type SiteNotification } from '../lib/notifications'
 import {
-  TEMPLATE_VARIABLES, fetchChargeRecipients, fetchLastCommandesImport, fetchTemplates, fillMailTemplate,
-  buildRecap, mailtoUrl, saveTemplate, type ChargeRecipient, type CommTemplate, type LastImport, type TemplateKind,
+  TEMPLATE_VARIABLES, fetchChargeRecipients, fetchLastCommandesImport, fetchPlanStats, fetchTemplates, fillMailTemplate,
+  buildRecap, mailtoUrl, saveTemplate, type ChargeRecipient, type CommTemplate, type LastImport, type PlanStats, type TemplateKind,
 } from '../lib/communications'
 import { Badge, Button, Card, Notice, PageHeader, errMsg, fieldClass } from '../components/ui'
 import { MultiSelect } from '../components/MultiSelect'
@@ -160,7 +160,13 @@ function NotificationsTab() {
 
 /* ---------- Mails aux chargés ---------- */
 
-const SAMPLE = { prenom: 'Léa', chargé: 'Léa Martin', code: 'LMA', nouvelles: 12, sans_plan: 5, recap: '- Léa Martin (LMA) : 12 nouvelle(s) commande(s), dont 5 sans plan de prévention', fichier: 'ANM_COMD_TRAV_ER.xlsx', date: '05/11/2026', redacteur: 'Vous' }
+/** Année des plans réalisés affichés dans les mails. */
+const PLANS_YEAR = new Date().getFullYear()
+const SAMPLE = {
+  prenom: 'Léa', chargé: 'Léa Martin', code: 'LMA', nouvelles: 12, sans_plan: 5, realises: 120, reste: 45, annee: PLANS_YEAR,
+  recap: buildRecap([{ name: 'Léa Martin', code: 'LMA', nouvelles: 12, realises: 120, reste: 45 }], PLANS_YEAR),
+  fichier: 'ANM_COMD_TRAV_ER.xlsx', date: '05/11/2026', redacteur: 'Vous',
+}
 /** Dans un mail collectif, {prenom} devient « toute l’équipe ». */
 const COLLECTIVE_PRENOM = 'toute l’équipe'
 /** Au-delà, certaines messageries tronquent un mailto : on propose de copier le texte. */
@@ -172,6 +178,7 @@ function MailsTab() {
   const [templateId, setTemplateId] = useState('')
   const [last, setLast] = useState<LastImport | null | undefined>(undefined)
   const [recipients, setRecipients] = useState<ChargeRecipient[]>([])
+  const [stats, setStats] = useState<Record<string, PlanStats>>({})
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [opened, setOpened] = useState<Set<string>>(new Set())
   const [mode, setMode] = useState<'chacun' | 'tous'>('chacun')
@@ -179,9 +186,10 @@ function MailsTab() {
   const [err, setErr] = useState<string | null>(null)
 
   useEffect(() => {
-    Promise.all([fetchTemplates(), fetchLastCommandesImport(), fetchChargeRecipients()])
-      .then(([tpl, imp, rec]) => {
+    Promise.all([fetchTemplates(), fetchLastCommandesImport(), fetchChargeRecipients(), fetchPlanStats(PLANS_YEAR)])
+      .then(([tpl, imp, rec, st]) => {
         setTemplates(tpl)
+        setStats(st)
         setTemplateId((tpl.find((t) => t.kind === 'IMPORT') ?? tpl[0])?.id ?? '')
         setLast(imp)
         setRecipients(rec)
@@ -196,22 +204,30 @@ function MailsTab() {
   const nouvellesOf = (code: string) => last?.newByOperator?.[code]?.nouvelles ?? 0
   const sansPlanOf = (code: string): number | null => last?.newByOperator?.[code]?.sans_plan ?? null
 
-  const rows = recipients.map((r) => ({ name: r.name, code: r.code, nouvelles: nouvellesOf(r.code), sans_plan: sansPlanOf(r.code) }))
-  const recap = buildRecap(rows)
+  const statsOf = (code: string): PlanStats => stats[code] ?? { realises: 0, reste: 0 }
+  const rowOf = (r: ChargeRecipient) => ({ name: r.name, code: r.code, nouvelles: nouvellesOf(r.code), ...statsOf(r.code) })
+  const rows = recipients.map(rowOf)
+  const recap = buildRecap(rows, PLANS_YEAR)
   const totalNouvelles = rows.reduce((sum, r) => sum + r.nouvelles, 0)
-  const totalSansPlan = rows.reduce((sum, r) => sum + (r.sans_plan ?? 0), 0)
+  const totalSansPlan = rows.reduce((sum, r) => sum + (sansPlanOf(r.code) ?? 0), 0)
+  const totalRealises = rows.reduce((sum, r) => sum + r.realises, 0)
+  const totalReste = rows.reduce((sum, r) => sum + r.reste, 0)
   const fichier = last?.file_name ?? ''
   const date = last ? new Date(last.created_at).toLocaleDateString('fr-FR') : ''
 
+  // Mail individuel : chaque chargé ne voit que sa propre ligne.
   const varsOf = (r: ChargeRecipient): Record<string, string | number> => ({
     prenom: r.firstName, chargé: r.name, code: r.code,
     nouvelles: last ? nouvellesOf(r.code) : '—',
     sans_plan: last && sansPlanOf(r.code) !== null ? (sansPlanOf(r.code) as number) : '—',
-    recap, fichier, date, redacteur,
+    realises: statsOf(r.code).realises, reste: statsOf(r.code).reste, annee: PLANS_YEAR,
+    recap: buildRecap([rowOf(r)], PLANS_YEAR), fichier, date, redacteur,
   })
+  // Mail collectif : la liste de tous les chargés et les totaux.
   const collectiveVars = (): Record<string, string | number> => ({
     prenom: COLLECTIVE_PRENOM, chargé: COLLECTIVE_PRENOM, code: '',
     nouvelles: last ? totalNouvelles : '—', sans_plan: last ? totalSansPlan : '—',
+    realises: totalRealises, reste: totalReste, annee: PLANS_YEAR,
     recap, fichier, date, redacteur,
   })
 
@@ -272,7 +288,7 @@ function MailsTab() {
         {mode === 'tous' && (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Un seul mail adressé à {emails.length} chargé(s). Le récapitulatif reprend, pour chacun, les nouvelles commandes et celles sans plan de prévention.
+              Un seul mail adressé à {emails.length} chargé(s). Le récapitulatif reprend, pour chacun, les nouvelles commandes importées, les plans réalisés en {PLANS_YEAR} et le reste à faire.
             </p>
             {collective ? (
               <>
@@ -307,6 +323,8 @@ function MailsTab() {
                 <th className="px-3 py-2 font-medium">Adresse</th>
                 <th className="px-3 py-2 text-right font-medium">Nouvelles</th>
                 <th className="px-3 py-2 text-right font-medium">Sans plan</th>
+                <th className="px-3 py-2 text-right font-medium">Réalisés {PLANS_YEAR}</th>
+                <th className="px-3 py-2 text-right font-medium">Reste à faire</th>
                 {mode === 'chacun' && <th className="px-3 py-2" />}
               </tr>
             </thead>
@@ -331,6 +349,8 @@ function MailsTab() {
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">{last ? nouvellesOf(r.code) : '—'}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{last && sansPlanOf(r.code) !== null ? sansPlanOf(r.code) : '—'}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{statsOf(r.code).realises}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{statsOf(r.code).reste}</td>
                     {mode === 'chacun' && (
                       <td className="px-3 py-2 text-right">
                         {opened.has(r.code) ? <Badge tone="ok">Ouvert</Badge> : r.email && template && selected.has(r.code) ? (

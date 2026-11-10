@@ -17,7 +17,7 @@ const TABS: { key: CommTab; label: string }[] = [
   { key: 'modeles', label: 'Modèles' },
   { key: 'bandeau', label: 'Bandeau du site' },
 ]
-const KIND_LABEL: Record<TemplateKind, string> = { IMPORT: 'Après import', LIBRE: 'Libre' }
+const KIND_LABEL: Record<TemplateKind, string> = { IMPORT: 'Après import (individuel)', LIBRE: 'Libre', COLLECTIF: 'Mail pour tous' }
 
 /** Communications (Administration) : notifications, mails aux chargés, modèles et bandeau du site. */
 export function CommunicationsPage({ tab, onTab }: { tab: CommTab; onTab: (t: CommTab) => void }) {
@@ -176,6 +176,7 @@ function MailsTab() {
   const { profile } = useAuth()
   const [templates, setTemplates] = useState<CommTemplate[]>([])
   const [templateId, setTemplateId] = useState('')
+  const [collectiveId, setCollectiveId] = useState('')
   const [last, setLast] = useState<LastImport | null | undefined>(undefined)
   const [recipients, setRecipients] = useState<ChargeRecipient[]>([])
   const [stats, setStats] = useState<Record<string, PlanStats>>({})
@@ -191,7 +192,8 @@ function MailsTab() {
       .then(([tpl, imp, rec, st]) => {
         setTemplates(tpl)
         setStats(st)
-        setTemplateId((tpl.find((t) => t.kind === 'IMPORT') ?? tpl[0])?.id ?? '')
+        setTemplateId((tpl.find((t) => t.kind !== 'COLLECTIF') ?? tpl[0])?.id ?? '')
+        setCollectiveId(tpl.find((t) => t.kind === 'COLLECTIF')?.id ?? '')
         setLast(imp)
         setRecipients(rec)
         // Par défaut : les chargés qui ont reçu de nouvelles commandes.
@@ -200,7 +202,9 @@ function MailsTab() {
       .catch((e) => setErr(errMsg(e)))
   }, [])
 
-  const template = templates.find((t) => t.id === templateId)
+  // Un seul modèle actif à la fois : celui du mode choisi (individuel ou pour tous).
+  const template = templates.find((t) => t.id === (mode === 'tous' ? collectiveId : templateId))
+  const pickerTemplates = templates.filter((t) => (mode === 'tous' ? t.kind === 'COLLECTIF' : t.kind !== 'COLLECTIF'))
   const redacteur = profile?.full_name || profile?.email || ''
   const nouvellesOf = (code: string) => last?.newByOperator?.[code]?.nouvelles ?? 0
   const sansPlanOf = (code: string): number | null => last?.newByOperator?.[code]?.sans_plan ?? null
@@ -294,9 +298,11 @@ function MailsTab() {
             {modeBtn('tous', 'Un mail pour tous')}
           </div>
           <div className="min-w-64">
-            <label className="mb-1 block text-xs text-muted-foreground">Modèle</label>
-            <select className={fieldClass} value={templateId} onChange={(e) => { setTemplateId(e.target.value); setCopied(false) }}>
-              {templates.map((t) => <option key={t.id} value={t.id}>{t.name} ({KIND_LABEL[t.kind]})</option>)}
+            <label className="mb-1 block text-xs text-muted-foreground">{mode === 'tous' ? 'Modèle du mail pour tous' : 'Modèle du mail individuel'}</label>
+            <select className={fieldClass} value={template?.id ?? ''}
+              onChange={(e) => { if (mode === 'tous') setCollectiveId(e.target.value); else setTemplateId(e.target.value); setCopied(false) }}>
+              {pickerTemplates.length === 0 && <option value="">Aucun modèle</option>}
+              {pickerTemplates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
           </div>
         </div>
@@ -433,6 +439,7 @@ function TemplatesTab() {
     <Card className="space-y-2 text-sm">
       <h2 className="font-semibold">Comment modifier un modèle</h2>
       <ol className="list-decimal space-y-1 pl-5 text-muted-foreground">
+        <li>Il y a deux mails d’import, à modifier séparément : « Après import (individuel) », envoyé à chaque chargé, et « Mail pour tous », envoyé à toute l’équipe en un seul message.</li>
         <li>Choisissez un modèle à gauche, ou créez-en un avec « Nouveau ».</li>
         <li>Modifiez l’objet et le corps comme un texte ordinaire. Un élément entre accolades, comme <code className="rounded bg-muted px-1">{'{prenom}'}</code>, est remplacé à l’envoi.</li>
         <li>Le tableau par chargé s’insère à l’emplacement de <code className="rounded bg-muted px-1">{'{recap}'}</code>. Dans le mail pour tous, il contient toute l’équipe ; dans le mail individuel, seulement la ligne du chargé.</li>
@@ -472,7 +479,8 @@ function TemplatesTab() {
               <div>
                 <label className="mb-1 block text-xs text-muted-foreground">Type</label>
                 <select className={fieldClass} value={draft.kind} onChange={(e) => setDraft({ ...draft, kind: e.target.value as TemplateKind })} disabled={!isManager}>
-                  <option value="IMPORT">Après import</option>
+                  <option value="IMPORT">Après import (individuel)</option>
+                  <option value="COLLECTIF">Mail pour tous</option>
                   <option value="LIBRE">Libre</option>
                 </select>
               </div>

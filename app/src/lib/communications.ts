@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 
-export type TemplateKind = 'IMPORT' | 'LIBRE'
+export type TemplateKind = 'IMPORT' | 'LIBRE' | 'COLLECTIF'
 export interface CommTemplate { id: string; kind: TemplateKind; name: string; subject: string; body: string }
 
 /** Variables disponibles dans les modèles, avec leur description (affichée dans l'éditeur). */

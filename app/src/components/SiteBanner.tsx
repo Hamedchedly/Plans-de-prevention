@@ -2,7 +2,6 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { fetchActiveBanners, type SiteBannerItem } from '../lib/banner'
 
 const REFRESH_MS = 5 * 60_000
-const SEPARATOR = '   •   '
 /** Vitesse de défilement, en pixels par seconde. */
 const SPEED_PX_PER_S = 90
 const MIN_DURATION_S = 12
@@ -25,8 +24,6 @@ export default function SiteBanner() {
     return () => window.clearInterval(timer)
   }, [])
 
-  const text = items.map((i) => i.message).join(SEPARATOR)
-
   // Mesure la largeur réelle : le texte doit parcourir toute la largeur du bandeau puis sortir entièrement.
   useLayoutEffect(() => {
     const measure = () => {
@@ -38,7 +35,7 @@ export default function SiteBanner() {
     measure()
     window.addEventListener('resize', measure)
     return () => window.removeEventListener('resize', measure)
-  }, [text])
+  }, [items])
 
   if (items.length === 0) return null
 
@@ -48,7 +45,12 @@ export default function SiteBanner() {
       style={{ ['--box-w' as string]: `${sizes.box}px`, ['--text-w' as string]: `${sizes.text}px` }}>
       <span ref={textRef} className="animate-site-ticker absolute left-0 top-0 flex h-9 items-center whitespace-nowrap text-sm group-hover:[animation-play-state:paused]"
         style={{ animationDuration: `${duration}s` }}>
-        {text}
+        {items.map((item, idx) => (
+          <span key={item.id} className="inline-flex items-center">
+            <span className="mr-24">{item.message}</span>
+            {idx < items.length - 1 && <span aria-hidden="true" className="mr-24 opacity-60">•</span>}
+          </span>
+        ))}
       </span>
     </div>
   )

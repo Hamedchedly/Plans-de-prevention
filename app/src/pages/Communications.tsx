@@ -614,8 +614,13 @@ function BannerTab() {
             </div>
             <div>
               <p className="mb-1 text-xs text-muted-foreground">Aperçu du bandeau</p>
-              <div className="overflow-hidden rounded-2xl bg-primary px-4 py-2 text-sm text-primary-foreground">
-                {preview.length > 0 ? preview.join('   •   ') : 'Aucun message affiché.'}
+              <div className="overflow-hidden whitespace-nowrap rounded-2xl bg-primary px-4 py-2 text-sm text-primary-foreground">
+                {preview.length === 0 ? 'Aucun message affiché.' : preview.map((m, idx) => (
+                  <span key={idx} className="inline-flex items-center">
+                    <span className="mr-6">{m}</span>
+                    {idx < preview.length - 1 && <span aria-hidden="true" className="mr-6 opacity-60">•</span>}
+                  </span>
+                ))}
               </div>
             </div>
             <Button onClick={() => void save(draft)} disabled={!isManager || busy || draft.message.trim() === ''}>
